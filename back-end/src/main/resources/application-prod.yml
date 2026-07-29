@@ -1,0 +1,8 @@
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.weddingraffle.rifa: INFO
+    org.springframework.security: WARN

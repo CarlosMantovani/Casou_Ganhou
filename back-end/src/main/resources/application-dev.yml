@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/wedding_raffle}
+    username: ${DATABASE_USERNAME:wedding_raffle}
+    password: ${DATABASE_PASSWORD:wedding_raffle}
+
+logging:
+  level:
+    com.weddingraffle.rifa: DEBUG

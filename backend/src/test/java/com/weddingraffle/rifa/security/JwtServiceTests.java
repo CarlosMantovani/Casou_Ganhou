@@ -54,6 +54,7 @@ class JwtServiceTests {
                 new AppProperties.MercadoPago(
                         "token",
                         "http://localhost:8080/payments/webhook",
+                        "",
                         "http://localhost:5173/payment-return/success",
                         "http://localhost:5173/payment-return/failure",
                         "http://localhost:5173/payment-return/pending",

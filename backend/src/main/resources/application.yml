@@ -34,6 +34,7 @@ app:
   mercado-pago:
     access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
     webhook-url: ${MERCADO_PAGO_WEBHOOK_URL}
+    webhook-secret: ${MERCADO_PAGO_WEBHOOK_SECRET:}
     success-url: ${MERCADO_PAGO_SUCCESS_URL}
     failure-url: ${MERCADO_PAGO_FAILURE_URL}
     pending-url: ${MERCADO_PAGO_PENDING_URL}

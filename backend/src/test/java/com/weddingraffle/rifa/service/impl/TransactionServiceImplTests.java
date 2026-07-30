@@ -19,6 +19,7 @@ import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceImplTests {
@@ -40,10 +42,17 @@ class TransactionServiceImplTests {
     @Mock
     private LuckyNumberService luckyNumberService;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @Test
     void calculatesQuoteFromConfiguredUnitPrice() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
 
         TransactionQuoteResponse response =
                 transactionService.quote(new TransactionQuoteRequest("guest@example.com", 3));
@@ -57,7 +66,11 @@ class TransactionServiceImplTests {
     @Test
     void createsPendingTransactionWithCheckoutPreference() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
 
@@ -89,7 +102,11 @@ class TransactionServiceImplTests {
     @Test
     void processesApprovedPaymentNotification() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
         when(paymentProviderClient.getPayment("123"))
@@ -103,12 +120,19 @@ class TransactionServiceImplTests {
         assertThat(transaction.getMpPaymentId()).isEqualTo("123");
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
+        ArgumentCaptor<PaymentApprovedEvent> eventCaptor = ArgumentCaptor.forClass(PaymentApprovedEvent.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().externalReference()).isEqualTo("external-reference-123");
     }
 
     @Test
     void processesRejectedPaymentNotificationWithoutGeneratingLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
         when(paymentProviderClient.getPayment("123"))
@@ -121,12 +145,17 @@ class TransactionServiceImplTests {
         assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REJECTED);
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository).save(transaction);
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void ignoresDuplicateNotificationForApprovedTransaction() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
         when(paymentProviderClient.getPayment("123"))
@@ -138,12 +167,17 @@ class TransactionServiceImplTests {
 
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository, never()).save(transaction);
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void returnsCurrentStatusWithLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(), transactionRepository, paymentProviderClient, luckyNumberService);
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
         when(transactionRepository.findByExternalReference("external-reference-123"))
@@ -157,6 +191,31 @@ class TransactionServiceImplTests {
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001", "00002");
+    }
+
+    @Test
+    void statusFallbackPublishesEventWhenPaymentBecomesApproved() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
+        transaction.markPayment(PaymentStatus.PENDING, "123");
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+        when(paymentProviderClient.getPayment("123"))
+                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
+        when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
+
+        var response = transactionService.getStatus("external-reference-123");
+
+        assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        verify(luckyNumberService).generateFor(transaction);
+        verify(transactionRepository).save(transaction);
+        verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
     }
 
     private static AppProperties appProperties() {

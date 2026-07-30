@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 
 import { env } from './env';
+import { clearStoredAdminSession, getStoredAdminSession } from '../services/adminSession';
 import type { ApiError, ApiErrorResponse } from '../types/api';
 
 const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a operação. Tente novamente em alguns instantes.';
@@ -10,6 +11,16 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const session = getStoredAdminSession();
+
+  if (session) {
+    config.headers.Authorization = `${session.tokenType} ${session.accessToken}`;
+  }
+
+  return config;
 });
 
 apiClient.interceptors.response.use(
@@ -22,6 +33,12 @@ apiClient.interceptors.response.use(
       status: error.response?.status,
       fieldErrors: data?.fieldErrors ?? [],
     };
+
+    if ((apiError.status === 401 || apiError.status === 403) && window.location.pathname.startsWith('/admin')) {
+      clearStoredAdminSession();
+      window.history.replaceState({}, '', '/admin/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
 
     return Promise.reject(apiError);
   },

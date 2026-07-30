@@ -11,4 +11,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByExternalReference(String externalReference);
 
     Page<Transaction> findByEmailContainingIgnoreCase(String email, Pageable pageable);
+
+    Page<Transaction> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            String name, String email, Pageable pageable);
 }

@@ -2,7 +2,9 @@ package com.weddingraffle.rifa.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +12,7 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,9 @@ class TransactionControllerTests {
 
     @MockBean
     private TransactionService transactionService;
+
+    @MockBean
+    private LuckyNumberPdfService luckyNumberPdfService;
 
     @MockBean
     private UserDetailsService userDetailsService;
@@ -85,6 +91,16 @@ class TransactionControllerTests {
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
                 .andExpect(jsonPath("$.preferenceId").value("preference-123"))
                 .andExpect(jsonPath("$.checkoutUrl").value("https://checkout.example.com"));
+    }
+
+    @Test
+    void downloadsLuckyNumbersPdfWithoutAuthentication() throws Exception {
+        when(luckyNumberPdfService.generate("external-reference-123")).thenReturn("%PDF".getBytes());
+
+        mockMvc.perform(get("/transactions/external-reference-123/lucky-numbers.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")));
     }
 
     @TestConfiguration

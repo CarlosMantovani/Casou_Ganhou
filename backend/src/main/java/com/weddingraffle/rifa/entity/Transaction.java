@@ -40,6 +40,8 @@ public class Transaction {
 
     private String mpPaymentId;
 
+    private String mpPreferenceId;
+
     @Column(insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -85,6 +87,10 @@ public class Transaction {
         return mpPaymentId;
     }
 
+    public String getMpPreferenceId() {
+        return mpPreferenceId;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -96,5 +102,9 @@ public class Transaction {
     public void markPayment(PaymentStatus status, String mpPaymentId) {
         this.status = status;
         this.mpPaymentId = mpPaymentId;
+    }
+
+    public void assignPreference(String mpPreferenceId) {
+        this.mpPreferenceId = mpPreferenceId;
     }
 }

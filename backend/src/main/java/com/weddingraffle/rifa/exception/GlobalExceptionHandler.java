@@ -44,6 +44,45 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
+    @ExceptionHandler(ExternalPaymentException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalPayment(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.BAD_GATEWAY.value(),
+                        "PAYMENT_PROVIDER_ERROR",
+                        "Unable to communicate with the payment provider.",
+                        request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
+            ResourceNotFoundException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.NOT_FOUND.value(), "NOT_FOUND", exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidWebhookSignatureException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidWebhookSignature(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.UNAUTHORIZED.value(),
+                        "INVALID_WEBHOOK_SIGNATURE",
+                        "Invalid webhook signature.",
+                        request.getRequestURI()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
+            IllegalArgumentException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest()
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "BAD_REQUEST",
+                        exception.getMessage(),
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

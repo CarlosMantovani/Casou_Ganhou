@@ -10,7 +10,16 @@ public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, Merca
 
     public record Raffle(BigDecimal unitPrice, String numberMin, String numberMax) {}
 
-    public record MercadoPago(String accessToken, String webhookUrl) {}
+    public record MercadoPago(
+            String accessToken,
+            String webhookUrl,
+            String webhookSecret,
+            String successUrl,
+            String failureUrl,
+            String pendingUrl,
+            Retry retry) {}
+
+    public record Retry(int maxAttempts, long delayMillis, double multiplier) {}
 
     public record Mail(String from) {}
 }

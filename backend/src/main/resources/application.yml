@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: raffle-api
+  profiles:
+    default: dev
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    placeholders:
+      admin_username: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_USERNAME}
+      admin_password_hash: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_PASSWORD_HASH}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  frontend-origin: ${FRONTEND_ORIGIN}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS}
+    issuer: ${JWT_ISSUER:raffle-api}
+  raffle:
+    unit-price: ${RAFFLE_UNIT_PRICE}
+    number-min: ${RAFFLE_NUMBER_MIN}
+    number-max: ${RAFFLE_NUMBER_MAX}
+  mercado-pago:
+    access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
+    webhook-url: ${MERCADO_PAGO_WEBHOOK_URL}
+  mail:
+    from: ${SMTP_FROM}

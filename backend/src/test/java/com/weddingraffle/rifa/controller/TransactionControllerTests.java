@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
+import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
@@ -60,6 +61,21 @@ class TransactionControllerTests {
                 .andExpect(jsonPath("$.fieldErrors").isArray());
     }
 
+    @Test
+    void createReturnsCheckoutWithoutAuthentication() throws Exception {
+        when(transactionService.create(any()))
+                .thenReturn(new TransactionCreateResponse(
+                        "external-reference-123", "preference-123", "https://checkout.example.com"));
+
+        mockMvc.perform(post("/transactions")
+                        .contentType("application/json")
+                        .content("{\"email\":\"guest@example.com\",\"quantity\":2}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.preferenceId").value("preference-123"))
+                .andExpect(jsonPath("$.checkoutUrl").value("https://checkout.example.com"));
+    }
+
     @TestConfiguration
     static class TestConfig {
 
@@ -69,7 +85,13 @@ class TransactionControllerTests {
                     "http://localhost:5173",
                     new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
                     new AppProperties.Raffle(new BigDecimal("10.00"), "00000", "99999"),
-                    new AppProperties.MercadoPago("token", "http://localhost:8080/payments/webhook"),
+                    new AppProperties.MercadoPago(
+                            "token",
+                            "http://localhost:8080/payments/webhook",
+                            "http://localhost:5173/payment-return/success",
+                            "http://localhost:5173/payment-return/failure",
+                            "http://localhost:5173/payment-return/pending",
+                            new AppProperties.Retry(3, 500, 2)),
                     new AppProperties.Mail("no-reply@example.com"));
         }
     }

@@ -34,5 +34,12 @@ app:
   mercado-pago:
     access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
     webhook-url: ${MERCADO_PAGO_WEBHOOK_URL}
+    success-url: ${MERCADO_PAGO_SUCCESS_URL}
+    failure-url: ${MERCADO_PAGO_FAILURE_URL}
+    pending-url: ${MERCADO_PAGO_PENDING_URL}
+    retry:
+      max-attempts: ${MERCADO_PAGO_RETRY_MAX_ATTEMPTS:3}
+      delay-millis: ${MERCADO_PAGO_RETRY_DELAY_MILLIS:500}
+      multiplier: ${MERCADO_PAGO_RETRY_MULTIPLIER:2}
   mail:
     from: ${SMTP_FROM}

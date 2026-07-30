@@ -44,6 +44,16 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
+    @ExceptionHandler(ExternalPaymentException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalPayment(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.BAD_GATEWAY.value(),
+                        "PAYMENT_PROVIDER_ERROR",
+                        "Unable to communicate with the payment provider.",
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

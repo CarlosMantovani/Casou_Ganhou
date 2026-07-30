@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/transactions/quote")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/transactions")
+                        .permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/raffle/draw")

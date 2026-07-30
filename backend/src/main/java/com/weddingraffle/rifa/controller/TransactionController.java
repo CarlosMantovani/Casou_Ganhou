@@ -1,5 +1,7 @@
 package com.weddingraffle.rifa.controller;
 
+import com.weddingraffle.rifa.dto.TransactionCreateRequest;
+import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.service.TransactionService;
@@ -25,5 +27,11 @@ public class TransactionController {
     @PostMapping("/quote")
     public ResponseEntity<TransactionQuoteResponse> quote(@Valid @RequestBody TransactionQuoteRequest request) {
         return ResponseEntity.ok(transactionService.quote(request));
+    }
+
+    @Operation(summary = "Create transaction and Mercado Pago checkout")
+    @PostMapping
+    public ResponseEntity<TransactionCreateResponse> create(@Valid @RequestBody TransactionCreateRequest request) {
+        return ResponseEntity.ok(transactionService.create(request));
     }
 }

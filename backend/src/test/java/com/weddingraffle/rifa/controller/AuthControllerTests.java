@@ -71,7 +71,13 @@ class AuthControllerTests {
                     "http://localhost:5173",
                     new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
                     new AppProperties.Raffle(null, "00000", "99999"),
-                    new AppProperties.MercadoPago("token", "http://localhost:8080/payments/webhook"),
+                    new AppProperties.MercadoPago(
+                            "token",
+                            "http://localhost:8080/payments/webhook",
+                            "http://localhost:5173/payment-return/success",
+                            "http://localhost:5173/payment-return/failure",
+                            "http://localhost:5173/payment-return/pending",
+                            new AppProperties.Retry(3, 500, 2)),
                     new AppProperties.Mail("no-reply@example.com"));
         }
     }

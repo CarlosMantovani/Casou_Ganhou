@@ -26,6 +26,7 @@ vi.mock('./services/authService', () => ({
 
 vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
+    createCashTransaction: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -86,6 +87,9 @@ describe('App', () => {
           email: 'guest@example.com',
           externalReference: 'external-reference',
           luckyNumbers: ['00001', '00002'],
+          name: 'Guest User',
+          paymentMethod: 'MERCADO_PAGO',
+          phone: '11999999999',
           quantity: 2,
           status: 'APPROVED',
           totalAmount: '20.00',
@@ -271,11 +275,44 @@ describe('App', () => {
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Buscar por e-mail'), 'guest');
+    await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     await waitFor(() =>
-      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ email: 'guest', page: 0, size: 20 }),
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
+    );
+  });
+
+  it('registers an admin cash payment and shows pdf link', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.createCashTransaction.mockResolvedValue({
+      email: null,
+      externalReference: 'cash-reference',
+      luckyNumbers: ['00077'],
+      name: 'Cash Guest',
+      paymentMethod: 'CASH',
+      phone: '11999999999',
+      quantity: 1,
+      status: 'APPROVED',
+      totalAmount: '10.00',
+    });
+    mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
+      'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',
+    );
+
+    renderApp('/admin/cash-payment');
+
+    await user.type(await screen.findByLabelText('Nome'), 'Cash Guest');
+    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.clear(screen.getByLabelText('Quantidade'));
+    await user.type(screen.getByLabelText('Quantidade'), '1');
+    await user.click(screen.getByRole('button', { name: /Confirmar pagamento/i }));
+
+    expect(await screen.findByText('00077')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
+      'href',
+      'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',
     );
   });
 
@@ -283,14 +320,14 @@ describe('App', () => {
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedRaffleService.getResult.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',
-      winnerEmail: 'winner@example.com',
+      winnerName: 'Winner Guest',
       winningNumber: '00042',
     });
 
     renderApp('/admin/draw');
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
-    expect(screen.getByText('winner@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Winner Guest')).toBeInTheDocument();
     expect(mockedRaffleService.draw).not.toHaveBeenCalled();
   });
 
@@ -300,7 +337,7 @@ describe('App', () => {
     mockedRaffleService.getResult.mockRejectedValue({ status: 404 });
     mockedRaffleService.draw.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',
-      winnerEmail: 'winner@example.com',
+      winnerName: 'Winner Guest',
       winningNumber: '00042',
     });
 

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 
 import { AuthProvider, useAuth } from './AuthContext';
+import { AdminCashPaymentPage } from './AdminCashPaymentPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AdminDrawPage } from './AdminDrawPage';
 import { AdminLoginPage } from './AdminLoginPage';
@@ -39,6 +40,10 @@ function AdminRoutes() {
 
   if (path === '/admin/draw') {
     return <AdminDrawPage />;
+  }
+
+  if (path === '/admin/cash-payment') {
+    return <AdminCashPaymentPage />;
   }
 
   return (

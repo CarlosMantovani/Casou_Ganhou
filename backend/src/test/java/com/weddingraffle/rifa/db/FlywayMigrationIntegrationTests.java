@@ -45,6 +45,12 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(indexExists(statement, "idx_transaction_status")).isTrue();
             assertThat(indexExists(statement, "idx_lucky_number_email")).isTrue();
+            assertThat(columnExists(statement, "transaction", "confirmation_email_sent_at"))
+                    .isTrue();
+            assertThat(columnExists(statement, "transaction", "confirmation_email_failed_at"))
+                    .isTrue();
+            assertThat(columnExists(statement, "transaction", "confirmation_email_last_error"))
+                    .isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
         }
     }
@@ -62,6 +68,15 @@ class FlywayMigrationIntegrationTests {
         try (ResultSet resultSet = statement.executeQuery(
                 "select exists (select 1 from pg_indexes where schemaname = 'public' and indexname = '" + indexName
                         + "')")) {
+            resultSet.next();
+            return resultSet.getBoolean(1);
+        }
+    }
+
+    private static boolean columnExists(Statement statement, String tableName, String columnName) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                "select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = '"
+                        + tableName + "' and column_name = '" + columnName + "')")) {
             resultSet.next();
             return resultSet.getBoolean(1);
         }

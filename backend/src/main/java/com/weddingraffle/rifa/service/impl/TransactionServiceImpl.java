@@ -15,11 +15,13 @@ import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,16 +34,19 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public TransactionServiceImpl(
             AppProperties appProperties,
             TransactionRepository transactionRepository,
             PaymentProviderClient paymentProviderClient,
-            LuckyNumberService luckyNumberService) {
+            LuckyNumberService luckyNumberService,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.appProperties = appProperties;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -92,6 +97,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
         transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
+        publishPaymentApprovedEvent(transaction, paymentStatus);
         LOGGER.info(
                 "Updated transaction externalReference={} to status={}",
                 transaction.getExternalReference(),
@@ -113,6 +119,7 @@ public class TransactionServiceImpl implements TransactionService {
             }
             transaction.markPayment(paymentStatus, payment.paymentId());
             transactionRepository.save(transaction);
+            publishPaymentApprovedEvent(transaction, paymentStatus);
         }
 
         return new TransactionStatusResponse(
@@ -130,5 +137,11 @@ public class TransactionServiceImpl implements TransactionService {
             case "cancelled" -> PaymentStatus.CANCELLED;
             default -> PaymentStatus.PENDING;
         };
+    }
+
+    private void publishPaymentApprovedEvent(Transaction transaction, PaymentStatus paymentStatus) {
+        if (paymentStatus == PaymentStatus.APPROVED) {
+            applicationEventPublisher.publishEvent(new PaymentApprovedEvent(transaction.getExternalReference()));
+        }
     }
 }

@@ -42,6 +42,13 @@ public class Transaction {
 
     private String mpPreferenceId;
 
+    private OffsetDateTime confirmationEmailSentAt;
+
+    private OffsetDateTime confirmationEmailFailedAt;
+
+    @Column(length = 500)
+    private String confirmationEmailLastError;
+
     @Column(insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -91,6 +98,18 @@ public class Transaction {
         return mpPreferenceId;
     }
 
+    public OffsetDateTime getConfirmationEmailSentAt() {
+        return confirmationEmailSentAt;
+    }
+
+    public OffsetDateTime getConfirmationEmailFailedAt() {
+        return confirmationEmailFailedAt;
+    }
+
+    public String getConfirmationEmailLastError() {
+        return confirmationEmailLastError;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -106,5 +125,16 @@ public class Transaction {
 
     public void assignPreference(String mpPreferenceId) {
         this.mpPreferenceId = mpPreferenceId;
+    }
+
+    public void markConfirmationEmailSent(OffsetDateTime sentAt) {
+        this.confirmationEmailSentAt = sentAt;
+        this.confirmationEmailFailedAt = null;
+        this.confirmationEmailLastError = null;
+    }
+
+    public void markConfirmationEmailFailed(OffsetDateTime failedAt, String error) {
+        this.confirmationEmailFailedAt = failedAt;
+        this.confirmationEmailLastError = error;
     }
 }

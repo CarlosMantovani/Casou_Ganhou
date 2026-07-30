@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.integration;
 
 import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
@@ -8,6 +9,7 @@ import com.mercadopago.client.preference.PreferencePayerRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
+import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.exception.ExternalPaymentException;
@@ -22,11 +24,13 @@ public class MercadoPagoClient implements PaymentProviderClient {
     private static final String ITEM_TITLE = "Lucky number";
 
     private final AppProperties appProperties;
+    private final PaymentClient paymentClient;
     private final PreferenceClient preferenceClient;
 
     public MercadoPagoClient(AppProperties appProperties) {
         this.appProperties = appProperties;
         MercadoPagoConfig.setAccessToken(appProperties.mercadoPago().accessToken());
+        this.paymentClient = new PaymentClient();
         this.preferenceClient = new PreferenceClient();
     }
 
@@ -44,6 +48,24 @@ public class MercadoPagoClient implements PaymentProviderClient {
             return new CheckoutPreferenceResponse(preference.getId(), preference.getInitPoint());
         } catch (MPApiException | MPException exception) {
             throw new ExternalPaymentException("Unable to create Mercado Pago preference.", exception);
+        }
+    }
+
+    @Override
+    @Retryable(
+            retryFor = ExternalPaymentException.class,
+            maxAttemptsExpression = "#{@appProperties.mercadoPago().retry().maxAttempts()}",
+            backoff =
+                    @Backoff(
+                            delayExpression = "#{@appProperties.mercadoPago().retry().delayMillis()}",
+                            multiplierExpression = "#{@appProperties.mercadoPago().retry().multiplier()}"))
+    public PaymentProviderPayment getPayment(String paymentId) {
+        try {
+            Payment payment = paymentClient.get(Long.valueOf(paymentId));
+            return new PaymentProviderPayment(
+                    String.valueOf(payment.getId()), payment.getExternalReference(), payment.getStatus());
+        } catch (MPApiException | MPException | NumberFormatException exception) {
+            throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
         }
     }
 

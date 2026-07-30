@@ -1,16 +1,15 @@
 package com.weddingraffle.rifa.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
-import com.weddingraffle.rifa.dto.AuthLoginResponse;
-import com.weddingraffle.rifa.service.AuthService;
+import com.weddingraffle.rifa.service.TransactionService;
+import com.weddingraffle.rifa.service.WebhookSignatureService;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -21,45 +20,43 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, AuthControllerTests.TestConfig.class})
-class AuthControllerTests {
+@WebMvcTest(PaymentWebhookController.class)
+@Import({SecurityConfig.class, PaymentWebhookControllerTests.TestConfig.class})
+class PaymentWebhookControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private AuthService authService;
+    private TransactionService transactionService;
+
+    @MockBean
+    private WebhookSignatureService webhookSignatureService;
 
     @MockBean
     private UserDetailsService userDetailsService;
 
     @Test
-    void loginReturnsTokenWithoutAuthentication() throws Exception {
-        when(authService.login(any())).thenReturn(new AuthLoginResponse("Bearer", "jwt-token", 3600));
-
-        mockMvc.perform(post("/auth/login")
+    void webhookProcessesPaymentNotificationWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/payments/webhook")
+                        .header("x-request-id", "request-123")
+                        .header("x-signature", "ts=123,v1=abc")
                         .contentType("application/json")
-                        .content("{\"username\":\"admin\",\"password\":\"password\"}"))
+                        .content("{\"type\":\"payment\",\"data\":{\"id\":\"123\"}}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.accessToken").value("jwt-token"))
-                .andExpect(jsonPath("$.expiresIn").value(3600));
+                .andExpect(jsonPath("$.processed").value(true));
+
+        verify(webhookSignatureService).validate("123", "request-123", "ts=123,v1=abc");
+        verify(transactionService).processPaymentNotification("123");
     }
 
     @Test
-    void loginReturnsValidationErrorForInvalidRequest() throws Exception {
-        mockMvc.perform(post("/auth/login").contentType("application/json").content("{}"))
+    void webhookReturnsBadRequestWhenPaymentIdIsMissing() throws Exception {
+        mockMvc.perform(post("/payments/webhook")
+                        .contentType("application/json")
+                        .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.fieldErrors").isArray());
-    }
-
-    @Test
-    void adminEndpointWithoutTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/transactions"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
     }
 
     @TestConfiguration
@@ -70,7 +67,7 @@ class AuthControllerTests {
             return new AppProperties(
                     "http://localhost:5173",
                     new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
-                    new AppProperties.Raffle(null, "00000", "99999"),
+                    new AppProperties.Raffle(new BigDecimal("10.00"), "00000", "99999"),
                     new AppProperties.MercadoPago(
                             "token",
                             "http://localhost:8080/payments/webhook",

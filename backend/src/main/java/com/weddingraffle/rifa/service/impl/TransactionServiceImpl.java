@@ -5,14 +5,18 @@ import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.dto.TransactionStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
+import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,5 +66,58 @@ public class TransactionServiceImpl implements TransactionService {
         LOGGER.info("Created pending transaction with externalReference={}", externalReference);
 
         return new TransactionCreateResponse(externalReference, preference.preferenceId(), preference.checkoutUrl());
+    }
+
+    @Override
+    @Transactional
+    public void processPaymentNotification(String paymentId) {
+        PaymentProviderPayment payment = paymentProviderClient.getPayment(paymentId);
+        Transaction transaction = transactionRepository
+                .findByExternalReference(payment.externalReference())
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
+
+        if (transaction.getStatus() == PaymentStatus.APPROVED) {
+            LOGGER.info(
+                    "Ignored already approved transaction with externalReference={}",
+                    transaction.getExternalReference());
+            return;
+        }
+
+        transaction.markPayment(toPaymentStatus(payment.status()), payment.paymentId());
+        transactionRepository.save(transaction);
+        LOGGER.info(
+                "Updated transaction externalReference={} to status={}",
+                transaction.getExternalReference(),
+                transaction.getStatus());
+    }
+
+    @Override
+    @Transactional
+    public TransactionStatusResponse getStatus(String externalReference) {
+        Transaction transaction = transactionRepository
+                .findByExternalReference(externalReference)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
+
+        if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
+            PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
+            transaction.markPayment(toPaymentStatus(payment.status()), payment.paymentId());
+            transactionRepository.save(transaction);
+        }
+
+        return new TransactionStatusResponse(
+                transaction.getExternalReference(),
+                transaction.getStatus(),
+                transaction.getQuantity(),
+                transaction.getTotalAmount(),
+                List.of());
+    }
+
+    private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {
+        return switch (mercadoPagoStatus) {
+            case "approved" -> PaymentStatus.APPROVED;
+            case "rejected" -> PaymentStatus.REJECTED;
+            case "cancelled" -> PaymentStatus.CANCELLED;
+            default -> PaymentStatus.PENDING;
+        };
     }
 }

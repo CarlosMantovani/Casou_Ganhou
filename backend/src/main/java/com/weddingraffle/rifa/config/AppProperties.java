@@ -13,6 +13,7 @@ public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, Merca
     public record MercadoPago(
             String accessToken,
             String webhookUrl,
+            String webhookSecret,
             String successUrl,
             String failureUrl,
             String pendingUrl,

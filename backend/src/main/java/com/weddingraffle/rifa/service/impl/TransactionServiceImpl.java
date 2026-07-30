@@ -14,9 +14,9 @@ import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
+import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +31,17 @@ public class TransactionServiceImpl implements TransactionService {
     private final AppProperties appProperties;
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
+    private final LuckyNumberService luckyNumberService;
 
     public TransactionServiceImpl(
             AppProperties appProperties,
             TransactionRepository transactionRepository,
-            PaymentProviderClient paymentProviderClient) {
+            PaymentProviderClient paymentProviderClient,
+            LuckyNumberService luckyNumberService) {
         this.appProperties = appProperties;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
+        this.luckyNumberService = luckyNumberService;
     }
 
     @Override
@@ -83,7 +86,11 @@ public class TransactionServiceImpl implements TransactionService {
             return;
         }
 
-        transaction.markPayment(toPaymentStatus(payment.status()), payment.paymentId());
+        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
+        if (paymentStatus == PaymentStatus.APPROVED) {
+            luckyNumberService.generateFor(transaction);
+        }
+        transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
         LOGGER.info(
                 "Updated transaction externalReference={} to status={}",
@@ -100,7 +107,11 @@ public class TransactionServiceImpl implements TransactionService {
 
         if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
             PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
-            transaction.markPayment(toPaymentStatus(payment.status()), payment.paymentId());
+            PaymentStatus paymentStatus = toPaymentStatus(payment.status());
+            if (paymentStatus == PaymentStatus.APPROVED) {
+                luckyNumberService.generateFor(transaction);
+            }
+            transaction.markPayment(paymentStatus, payment.paymentId());
             transactionRepository.save(transaction);
         }
 
@@ -109,7 +120,7 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
-                List.of());
+                luckyNumberService.findNumbers(transaction.getExternalReference()));
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {

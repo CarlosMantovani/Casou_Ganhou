@@ -12,15 +12,15 @@ Thumbs.db
 !.env.development.example
 !.env.production.example
 
-back-end/target/
-back-end/.mvn/wrapper/maven-wrapper.jar
-back-end/AGENTS.MD
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/AGENTS.MD
 
-front-end/node_modules/
-front-end/dist/
-front-end/coverage/
-front-end/.vite/
-front-end/AGENTS.MD
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+frontend/AGENTS.MD
 
 docs
 AGENTS.MD

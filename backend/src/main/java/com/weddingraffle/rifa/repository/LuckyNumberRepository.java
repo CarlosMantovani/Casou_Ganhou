@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.repository;
 
 import com.weddingraffle.rifa.entity.LuckyNumber;
+import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,18 @@ public interface LuckyNumberRepository extends JpaRepository<LuckyNumber, Long> 
     boolean existsByTransaction(Transaction transaction);
 
     List<LuckyNumber> findByTransactionOrderByNumberAsc(Transaction transaction);
+
+    List<LuckyNumber> findByTransactionInOrderByNumberAsc(List<Transaction> transactions);
+
+    @Query(
+            """
+            select luckyNumber
+            from LuckyNumber luckyNumber
+            join fetch luckyNumber.transaction transaction
+            where transaction.status = :status
+            order by luckyNumber.number
+            """)
+    List<LuckyNumber> findEligibleForDraw(@Param("status") PaymentStatus status);
 
     @Query(
             """

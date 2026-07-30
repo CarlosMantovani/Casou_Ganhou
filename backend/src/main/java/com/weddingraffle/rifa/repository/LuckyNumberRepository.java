@@ -1,0 +1,26 @@
+package com.weddingraffle.rifa.repository;
+
+import com.weddingraffle.rifa.entity.LuckyNumber;
+import com.weddingraffle.rifa.entity.Transaction;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface LuckyNumberRepository extends JpaRepository<LuckyNumber, Long> {
+
+    boolean existsByNumber(String number);
+
+    boolean existsByTransaction(Transaction transaction);
+
+    List<LuckyNumber> findByTransactionOrderByNumberAsc(Transaction transaction);
+
+    @Query(
+            """
+            select luckyNumber.number
+            from LuckyNumber luckyNumber
+            where luckyNumber.transaction.externalReference = :externalReference
+            order by luckyNumber.number
+            """)
+    List<String> findNumbersByTransactionExternalReference(@Param("externalReference") String externalReference);
+}

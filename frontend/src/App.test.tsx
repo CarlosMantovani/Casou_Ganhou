@@ -12,6 +12,7 @@ import { transactionService } from './services/transactionService';
 vi.mock('./services/transactionService', () => ({
   transactionService: {
     create: vi.fn(),
+    getLuckyNumbersPdfUrl: vi.fn(),
     getStatus: vi.fn(),
     quote: vi.fn(),
   },
@@ -70,10 +71,15 @@ describe('App', () => {
     window.sessionStorage.clear();
     mockedTransactionService.quote.mockResolvedValue({
       email: 'guest@example.com',
+      name: 'Guest User',
+      phone: '11999999999',
       quantity: 1,
       unitPrice: '10.00',
       totalAmount: '10.00',
     });
+    mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
+      'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
+    );
     mockedAdminTransactionService.list.mockResolvedValue({
       content: [
         {
@@ -98,11 +104,13 @@ describe('App', () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.type(screen.getByLabelText('E-mail'), 'invalid');
+    await user.type(screen.getByLabelText('Nome'), 'Guest User');
+    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.type(screen.getByLabelText('E-mail (opcional)'), 'invalid');
 
-    expect(await screen.findByText('Informe um e-mail válido.')).toBeInTheDocument();
+    expect(await screen.findByText('Informe um e-mail valido.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
   });
 
   it('shows quote values when quantity changes', async () => {
@@ -110,12 +118,16 @@ describe('App', () => {
     mockedTransactionService.quote
       .mockResolvedValueOnce({
         email: 'guest@example.com',
+        name: 'Guest User',
+        phone: '11999999999',
         quantity: 1,
         unitPrice: '10.00',
         totalAmount: '10.00',
       })
       .mockResolvedValueOnce({
         email: 'guest@example.com',
+        name: 'Guest User',
+        phone: '11999999999',
         quantity: 2,
         unitPrice: '10.00',
         totalAmount: '20.00',
@@ -123,7 +135,9 @@ describe('App', () => {
 
     renderApp();
 
-    await user.type(screen.getByLabelText('E-mail'), 'guest@example.com');
+    await user.type(screen.getByLabelText('Nome'), 'Guest User');
+    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.type(screen.getByLabelText('E-mail (opcional)'), 'guest@example.com');
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findAllByText('R$ 10,00');
 
@@ -147,20 +161,28 @@ describe('App', () => {
 
     renderApp();
 
-    await user.type(screen.getByLabelText('E-mail'), 'guest@example.com');
+    await user.type(screen.getByLabelText('Nome'), 'Guest User');
+    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.type(screen.getByLabelText('E-mail (opcional)'), 'guest@example.com');
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findAllByText('R$ 10,00');
 
     await user.click(screen.getByRole('button', { name: /Pagar com Mercado Pago/i }));
     await waitFor(() => expect(mockedTransactionService.create).toHaveBeenCalledTimes(1));
 
-    expect(mockedTransactionService.create).toHaveBeenCalledWith({ email: 'guest@example.com', quantity: 1 });
+    expect(mockedTransactionService.create).toHaveBeenCalledWith({
+      email: 'guest@example.com',
+      name: 'Guest User',
+      phone: '(11) 99999-9999',
+      quantity: 1,
+    });
     expect(assign).toHaveBeenCalledWith('https://checkout.example.com');
   });
 
   it('renders approved payment numbers from backend status', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      emailProvided: true,
       luckyNumbers: ['00042', '12345'],
       quantity: 2,
       status: 'APPROVED',
@@ -171,12 +193,32 @@ describe('App', () => {
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('12345')).toBeInTheDocument();
-    expect(screen.getByText('Confirmação enviada por e-mail')).toBeInTheDocument();
+    expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
+  });
+
+  it('renders pdf download when approved payment has no email', async () => {
+    mockedTransactionService.getStatus.mockResolvedValue({
+      externalReference: 'external-reference',
+      emailProvided: false,
+      luckyNumbers: ['00042'],
+      quantity: 1,
+      status: 'APPROVED',
+      totalAmount: '10.00',
+    });
+
+    renderApp('/payment-return/success?external_reference=external-reference');
+
+    expect(await screen.findByText('Baixe seus numeros agora')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
+      'href',
+      'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
+    );
   });
 
   it('renders pending payment message', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      emailProvided: false,
       luckyNumbers: [],
       quantity: 1,
       status: 'PENDING',
@@ -186,13 +228,13 @@ describe('App', () => {
     renderApp('/payment-return/pending?external_reference=external-reference');
 
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
-    expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
+    expect(screen.getByText(/numeros serao gerados assim que a confirmacao/i)).toBeInTheDocument();
   });
 
   it('renders a friendly error when external reference is missing', () => {
     renderApp('/payment-return/success');
 
-    expect(screen.getByText('Não foi possível localizar sua compra')).toBeInTheDocument();
+    expect(screen.getByText('Nao foi possivel localizar sua compra')).toBeInTheDocument();
   });
 
   it('redirects protected admin route to login without session', async () => {

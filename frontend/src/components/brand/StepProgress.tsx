@@ -3,7 +3,7 @@ interface StepProgressProps {
 }
 
 const steps = [
-  { id: 1, label: 'Seu e-mail' },
+  { id: 1, label: 'Seus dados' },
   { id: 2, label: 'Quantidade' },
   { id: 3, label: 'Confirmação' },
 ] as const;

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Gift, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, Gift, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
@@ -23,7 +23,7 @@ export function PaymentReturnPage() {
   });
 
   if (!externalReference) {
-    return <PaymentState title="Não foi possível localizar sua compra" message={publicMessages.missingReference} tone="error" />;
+    return <PaymentState title="Nao foi possivel localizar sua compra" message={publicMessages.missingReference} tone="error" />;
   }
 
   if (statusQuery.isLoading) {
@@ -38,7 +38,7 @@ export function PaymentReturnPage() {
   }
 
   if (statusQuery.isError || !statusQuery.data) {
-    return <PaymentState title="Não foi possível confirmar o pagamento" message={publicMessages.genericError} tone="error" />;
+    return <PaymentState title="Nao foi possivel confirmar o pagamento" message={publicMessages.genericError} tone="error" />;
   }
 
   const transaction = statusQuery.data;
@@ -53,7 +53,7 @@ export function PaymentReturnPage() {
               Muito obrigado pela <span className="italic text-terracotta">sua gentileza!</span>
             </h1>
             <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
-              Sua participação foi confirmada. Boa sorte no sorteio!
+              Sua participacao foi confirmada. Boa sorte no sorteio!
             </p>
             <div className="mt-6">
               <GoldDivider />
@@ -61,7 +61,7 @@ export function PaymentReturnPage() {
           </div>
 
           <Card className="border border-gold/30 text-center">
-            <h2 className="font-serif text-lg font-semibold">Seus números da sorte</h2>
+            <h2 className="font-serif text-lg font-semibold">Seus numeros da sorte</h2>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               {transaction.luckyNumbers.map((number) => (
                 <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
@@ -71,26 +71,14 @@ export function PaymentReturnPage() {
             </div>
           </Card>
 
-          <Card className="border border-[#EEE6DF] bg-cream text-left shadow-none">
-            <div className="flex gap-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-terracotta">
-                <Check aria-hidden="true" className="h-5 w-5" />
-              </span>
-              <div>
-                <h2 className="text-sm font-bold">Confirmação enviada por e-mail</h2>
-                <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-                  Seus números também foram enviados para o e-mail informado na compra.
-                </p>
-              </div>
-            </div>
-          </Card>
+          {transaction.emailProvided ? <EmailConfirmationCard /> : <PdfDownloadCard externalReference={transaction.externalReference} />}
 
           <p className="font-serif text-sm italic leading-relaxed text-terracotta">
-            Que este número te traga a alegria de celebrar junto ao casal neste dia tão especial.
+            Que este numero te traga a alegria de celebrar junto ao casal neste dia tao especial.
           </p>
 
           <a className="text-sm font-semibold text-warm-gray underline underline-offset-4" href="/">
-            Voltar ao início
+            Voltar ao inicio
           </a>
         </div>
       </main>
@@ -106,6 +94,49 @@ export function PaymentReturnPage() {
   }
 
   return <PaymentState title="Pagamento recusado" message={publicMessages.rejected} tone="error" />;
+}
+
+function EmailConfirmationCard() {
+  return (
+    <Card className="border border-[#EEE6DF] bg-cream text-left shadow-none">
+      <div className="flex gap-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-terracotta">
+          <Check aria-hidden="true" className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-sm font-bold">Confirmacao enviada por e-mail</h2>
+          <p className="mt-1 text-sm leading-relaxed text-warm-gray">
+            Seus numeros tambem foram enviados para o e-mail informado na compra.
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PdfDownloadCard({ externalReference }: { externalReference: string }) {
+  return (
+    <Card className="border border-gold bg-gold/10 text-left shadow-none">
+      <div className="flex gap-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gold text-charcoal">
+          <Download aria-hidden="true" className="h-5 w-5" />
+        </span>
+        <div className="flex-1">
+          <h2 className="text-sm font-bold">Baixe seus numeros agora</h2>
+          <p className="mt-1 text-sm leading-relaxed text-warm-gray">
+            Como nenhum e-mail foi informado, esta e a unica forma de guardar seus numeros.
+          </p>
+          <a
+            className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"
+            href={transactionService.getLuckyNumbersPdfUrl(externalReference)}
+          >
+            <Download aria-hidden="true" className="h-4 w-4" />
+            Baixar PDF
+          </a>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 interface PaymentStateProps {
@@ -142,7 +173,7 @@ function PaymentState({ icon, message, title, tone }: PaymentStateProps) {
             className="inline-flex min-h-12 w-full items-center justify-center rounded-lg border border-terracotta bg-transparent px-5 py-3 text-sm font-semibold text-terracotta transition hover:bg-blush focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
             href="/"
           >
-            Voltar ao início
+            Voltar ao inicio
           </a>
         </div>
       </div>

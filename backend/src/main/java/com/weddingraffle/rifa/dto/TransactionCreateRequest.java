@@ -5,4 +5,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record TransactionCreateRequest(@NotBlank @Email String email, @NotNull @Min(value = 1) Integer quantity) {}
+public record TransactionCreateRequest(
+        @NotBlank String name,
+        @NotBlank String phone,
+        @Email String email,
+        @NotNull @Min(value = 1) Integer quantity) {}

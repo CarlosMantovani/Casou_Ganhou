@@ -55,12 +55,13 @@ public class RaffleServiceImpl implements RaffleService {
         }
 
         LuckyNumber winner = eligibleLuckyNumbers.get(raffleWinnerSelector.selectIndex(eligibleLuckyNumbers.size()));
-        RaffleDraw raffleDraw = raffleDrawRepository.save(new RaffleDraw(winner.getNumber(), winner.getEmail()));
+        RaffleDraw raffleDraw = raffleDrawRepository.save(
+                new RaffleDraw(winner.getNumber(), winner.getTransaction().getName(), winner.getEmail()));
         return toResponse(raffleDraw);
     }
 
     private RaffleDrawResponse toResponse(RaffleDraw raffleDraw) {
         return new RaffleDrawResponse(
-                raffleDraw.getWinningNumber(), raffleDraw.getWinnerEmail(), raffleDraw.getDrawnAt());
+                raffleDraw.getWinningNumber(), raffleDraw.getWinnerName(), raffleDraw.getDrawnAt());
     }
 }

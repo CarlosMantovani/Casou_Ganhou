@@ -17,6 +17,7 @@ import java.util.List;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class MercadoPagoClient implements PaymentProviderClient {
@@ -82,15 +83,20 @@ public class MercadoPagoClient implements PaymentProviderClient {
                 .pending(appProperties.mercadoPago().pendingUrl())
                 .build();
 
-        PreferencePayerRequest payer =
-                PreferencePayerRequest.builder().email(request.email()).build();
+        PreferencePayerRequest payer = StringUtils.hasText(request.email())
+                ? PreferencePayerRequest.builder().email(request.email()).build()
+                : null;
 
-        return PreferenceRequest.builder()
+        PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
                 .items(List.of(item))
-                .payer(payer)
                 .backUrls(backUrls)
                 .notificationUrl(appProperties.mercadoPago().webhookUrl())
-                .externalReference(request.externalReference())
-                .build();
+                .externalReference(request.externalReference());
+
+        if (payer != null) {
+            builder.payer(payer);
+        }
+
+        return builder.build();
     }
 }

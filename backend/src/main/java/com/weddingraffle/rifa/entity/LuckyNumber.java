@@ -22,7 +22,7 @@ public class LuckyNumber {
     @Column(nullable = false, unique = true)
     private String number;
 
-    @Column(nullable = false, length = 320)
+    @Column(length = 320)
     private String email;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

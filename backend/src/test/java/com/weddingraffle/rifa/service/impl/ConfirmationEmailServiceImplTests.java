@@ -90,6 +90,29 @@ class ConfirmationEmailServiceImplTests {
     }
 
     @Test
+    void doesNotSendWhenTransactionHasNoEmail() {
+        ConfirmationEmailServiceImpl service = new ConfirmationEmailServiceImpl(
+                appProperties(), transactionRepository, luckyNumberService, javaMailSender);
+        Transaction transaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                null,
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.MERCADO_PAGO,
+                "external-reference-123");
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+
+        service.sendForApprovedTransaction("external-reference-123");
+
+        verify(javaMailSender, never()).send(any(SimpleMailMessage.class));
+        verify(luckyNumberService, never()).findNumbers(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
     void recordsFailureWhenApprovedTransactionHasNoLuckyNumbers() {
         ConfirmationEmailServiceImpl service = new ConfirmationEmailServiceImpl(
                 appProperties(), transactionRepository, luckyNumberService, javaMailSender);

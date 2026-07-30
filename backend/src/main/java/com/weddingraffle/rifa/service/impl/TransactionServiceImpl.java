@@ -6,6 +6,7 @@ import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
+import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -51,23 +53,36 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionQuoteResponse quote(TransactionQuoteRequest request) {
+        String name = normalizeName(request.name());
+        String phone = normalizePhone(request.phone());
+        String email = normalizeEmail(request.email());
         BigDecimal unitPrice = appProperties.raffle().unitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
-        return new TransactionQuoteResponse(request.email(), request.quantity(), unitPrice, totalAmount);
+        return new TransactionQuoteResponse(name, phone, email, request.quantity(), unitPrice, totalAmount);
     }
 
     @Override
     @Transactional
     public TransactionCreateResponse create(TransactionCreateRequest request) {
+        String name = normalizeName(request.name());
+        String phone = normalizePhone(request.phone());
+        String email = normalizeEmail(request.email());
         String externalReference = UUID.randomUUID().toString();
         BigDecimal unitPrice = appProperties.raffle().unitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(
-                new CheckoutPreferenceRequest(request.email(), request.quantity(), unitPrice, externalReference));
+                new CheckoutPreferenceRequest(name, email, request.quantity(), unitPrice, externalReference));
 
         Transaction transaction = new Transaction(
-                request.email(), request.quantity(), totalAmount, PaymentStatus.PENDING, externalReference);
+                name,
+                phone,
+                email,
+                request.quantity(),
+                totalAmount,
+                PaymentStatus.PENDING,
+                PaymentMethod.MERCADO_PAGO,
+                externalReference);
         transaction.assignPreference(preference.preferenceId());
         transactionRepository.save(transaction);
 
@@ -124,10 +139,27 @@ public class TransactionServiceImpl implements TransactionService {
 
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
+                StringUtils.hasText(transaction.getEmail()),
                 transaction.getStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 luckyNumberService.findNumbers(transaction.getExternalReference()));
+    }
+
+    private static String normalizeName(String name) {
+        return name.trim();
+    }
+
+    private static String normalizeEmail(String email) {
+        return StringUtils.hasText(email) ? email.trim().toLowerCase() : null;
+    }
+
+    private static String normalizePhone(String phone) {
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.length() != 10 && digits.length() != 11) {
+            throw new IllegalArgumentException("Phone must have 10 or 11 digits.");
+        }
+        return digits;
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {

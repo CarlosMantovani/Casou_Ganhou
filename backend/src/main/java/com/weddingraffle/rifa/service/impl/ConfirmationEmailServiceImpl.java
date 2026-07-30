@@ -15,6 +15,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class ConfirmationEmailServiceImpl implements ConfirmationEmailService {
@@ -46,6 +47,12 @@ public class ConfirmationEmailServiceImpl implements ConfirmationEmailService {
                 .orElseThrow(() -> new IllegalArgumentException("Transaction not found."));
 
         if (transaction.getStatus() != PaymentStatus.APPROVED || transaction.getConfirmationEmailSentAt() != null) {
+            return;
+        }
+
+        if (!StringUtils.hasText(transaction.getEmail())) {
+            LOGGER.info(
+                    "Skipped confirmation email for externalReference={} because email is empty.", externalReference);
             return;
         }
 

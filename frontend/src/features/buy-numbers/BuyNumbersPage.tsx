@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, Minus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { CreditCard, Minus, Plus, Trophy } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
+import { publicHomeService } from '../../services/publicHomeService';
 import { transactionService } from '../../services/transactionService';
 import { formatCurrency } from '../../utils/formatters';
 import { buyerSchema, type BuyerFormData } from './schemas';
@@ -17,6 +18,11 @@ import { buyerSchema, type BuyerFormData } from './schemas';
 export function BuyNumbersPage() {
   const [buyer, setBuyer] = useState<BuyerFormData | null>(null);
   const [quantity, setQuantity] = useState(1);
+
+  const homeSummaryQuery = useQuery({
+    queryKey: ['public-home-summary'],
+    queryFn: publicHomeService.getSummary,
+  });
 
   const {
     formState: { errors, isValid },
@@ -75,6 +81,13 @@ export function BuyNumbersPage() {
         </header>
 
         <StepProgress currentStep={currentStep} />
+
+        {!buyer ? (
+          <PublicHomeSummary
+            scheduledDrawAt={homeSummaryQuery.data?.scheduledDrawAt ?? null}
+            topBuyers={homeSummaryQuery.data?.topBuyers ?? []}
+          />
+        ) : null}
 
         {!buyer ? (
           <Card>
@@ -218,5 +231,97 @@ export function BuyNumbersPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function PublicHomeSummary({
+  scheduledDrawAt,
+  topBuyers,
+}: {
+  scheduledDrawAt: string | null;
+  topBuyers: Array<{ avatarEmoji: string; avatarColor: string; quantity: number }>;
+}) {
+  if (!scheduledDrawAt && topBuyers.length === 0) return null;
+
+  return (
+    <section className="space-y-4" aria-label="Resumo da rifa">
+      {scheduledDrawAt ? <Countdown scheduledDrawAt={scheduledDrawAt} /> : null}
+      {topBuyers.length > 0 ? <TopBuyersRank topBuyers={topBuyers} /> : null}
+    </section>
+  );
+}
+
+function Countdown({ scheduledDrawAt }: { scheduledDrawAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const remainingMs = Math.max(0, new Date(scheduledDrawAt).getTime() - now);
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return (
+    <Card className="bg-charcoal text-white shadow-none">
+      <p className="text-center text-xs font-bold uppercase tracking-wide text-gold">Sorteio em</p>
+      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+        <CountdownPart label="dias" value={days} />
+        <CountdownPart label="horas" value={hours} />
+        <CountdownPart label="min" value={minutes} />
+        <CountdownPart label="seg" value={seconds} />
+      </div>
+    </Card>
+  );
+}
+
+function CountdownPart({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-white/10 px-2 py-3">
+      <span className="block font-serif text-2xl font-bold leading-none">{String(value).padStart(2, '0')}</span>
+      <span className="mt-1 block text-[11px] font-semibold uppercase text-white/60">{label}</span>
+    </div>
+  );
+}
+
+function TopBuyersRank({
+  topBuyers,
+}: {
+  topBuyers: Array<{ avatarEmoji: string; avatarColor: string; quantity: number }>;
+}) {
+  return (
+    <Card className="shadow-none">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-warm-gray">Top presentes</p>
+          <h2 className="font-serif text-lg font-bold text-charcoal">Maiores compradores</h2>
+        </div>
+        <Trophy aria-hidden="true" className="h-5 w-5 text-gold" />
+      </div>
+
+      <ol className="space-y-3">
+        {topBuyers.map((buyer, index) => (
+          <li className="flex items-center justify-between gap-3" key={`${buyer.avatarEmoji}-${buyer.avatarColor}-${index}`}>
+            <div className="flex items-center gap-3">
+              <span
+                className="grid h-10 w-10 place-items-center rounded-full text-lg"
+                style={{ backgroundColor: buyer.avatarColor }}
+                aria-hidden="true"
+              >
+                {buyer.avatarEmoji}
+              </span>
+              <span className="text-sm font-bold text-charcoal">#{index + 1}</span>
+            </div>
+            <span className="text-sm font-semibold text-warm-gray">
+              {buyer.quantity} {buyer.quantity === 1 ? 'numero' : 'numeros'}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Gift, LogOut, ReceiptText, Search, Ticket } from 'lucide-react';
+import { Gift, LogOut, ReceiptText, Search, Settings, Ticket } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
 import type { AdminTransactionResponse } from '../../types/admin';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { useAuth } from './AuthContext';
 
 const PAGE_SIZE = 20;
@@ -55,6 +55,13 @@ export function AdminDashboardPage() {
             >
               <ReceiptText aria-hidden="true" className="h-4 w-4" />
               Dinheiro
+            </a>
+            <a
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+              href="/admin/settings"
+            >
+              <Settings aria-hidden="true" className="h-4 w-4" />
+              Configurações
             </a>
             <a
               className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal transition hover:bg-gold/90"
@@ -164,6 +171,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
             <th className="px-3 py-3 font-bold">Nome</th>
             <th className="px-3 py-3 font-bold">Contato</th>
             <th className="px-3 py-3 font-bold">Metodo</th>
+            <th className="px-3 py-3 font-bold">Compra</th>
             <th className="px-3 py-3 font-bold">Qtd.</th>
             <th className="px-3 py-3 font-bold">Total</th>
             <th className="px-3 py-3 font-bold">Status</th>
@@ -179,6 +187,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
                 <span className="block text-xs">{transaction.email || '-'}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
+              <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">{transaction.quantity}</td>
               <td className="px-3 py-4 text-warm-gray">{formatCurrency(transaction.totalAmount)}</td>
               <td className="px-3 py-4">

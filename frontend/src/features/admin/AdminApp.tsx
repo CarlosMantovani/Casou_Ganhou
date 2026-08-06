@@ -5,6 +5,7 @@ import { AdminCashPaymentPage } from './AdminCashPaymentPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AdminDrawPage } from './AdminDrawPage';
 import { AdminLoginPage } from './AdminLoginPage';
+import { AdminSettingsPage } from './AdminSettingsPage';
 
 export default function AdminApp() {
   return (
@@ -44,6 +45,10 @@ function AdminRoutes() {
 
   if (path === '/admin/cash-payment') {
     return <AdminCashPaymentPage />;
+  }
+
+  if (path === '/admin/settings') {
+    return <AdminSettingsPage />;
   }
 
   return (

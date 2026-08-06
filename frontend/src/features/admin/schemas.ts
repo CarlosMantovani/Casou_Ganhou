@@ -24,5 +24,11 @@ export const cashPaymentSchema = z.object({
   quantity: z.coerce.number().int().min(1, 'Informe ao menos 1 numero.'),
 });
 
+export const raffleSettingsSchema = z.object({
+  unitPrice: z.coerce.number().min(0.01, 'Informe um valor maior que zero.'),
+  scheduledDrawAt: z.string().optional(),
+});
+
 export type AdminLoginFormData = z.infer<typeof adminLoginSchema>;
 export type CashPaymentFormData = z.infer<typeof cashPaymentSchema>;
+export type RaffleSettingsFormData = z.infer<typeof raffleSettingsSchema>;

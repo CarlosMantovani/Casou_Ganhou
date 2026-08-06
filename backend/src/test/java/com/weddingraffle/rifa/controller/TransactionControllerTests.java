@@ -12,6 +12,7 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.exception.ExternalPaymentException;
 import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
@@ -91,6 +92,34 @@ class TransactionControllerTests {
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
                 .andExpect(jsonPath("$.preferenceId").value("preference-123"))
                 .andExpect(jsonPath("$.checkoutUrl").value("https://checkout.example.com"));
+    }
+
+    @Test
+    void createReturnsBadGatewayWhenPaymentProviderFails() throws Exception {
+        when(transactionService.create(any()))
+                .thenThrow(new ExternalPaymentException(
+                        "Unable to create Mercado Pago preference.", new RuntimeException()));
+
+        mockMvc.perform(
+                        post("/transactions")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("PAYMENT_PROVIDER_ERROR"));
+    }
+
+    @Test
+    void createReturnsInternalErrorWhenUnexpectedFailureOccurs() throws Exception {
+        when(transactionService.create(any())).thenThrow(new IllegalStateException("Unexpected failure."));
+
+        mockMvc.perform(
+                        post("/transactions")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
     }
 
     @Test

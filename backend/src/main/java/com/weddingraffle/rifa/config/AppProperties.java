@@ -8,7 +8,11 @@ public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, Merca
 
     public record Jwt(String secret, long expirationSeconds, String issuer) {}
 
-    public record Raffle(BigDecimal unitPrice, String numberMin, String numberMax) {}
+    public record Raffle(String numberMin, String numberMax) {
+        public Raffle(BigDecimal ignoredUnitPrice, String numberMin, String numberMax) {
+            this(numberMin, numberMax);
+        }
+    }
 
     public record MercadoPago(
             String accessToken,

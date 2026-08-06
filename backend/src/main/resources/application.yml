@@ -30,6 +30,7 @@ spring:
     placeholders:
       admin_username: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_USERNAME}
       admin_password_hash: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_PASSWORD_HASH}
+      raffle_unit_price: ${RAFFLE_UNIT_PRICE}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -41,7 +42,6 @@ app:
     expiration-seconds: ${JWT_EXPIRATION_SECONDS}
     issuer: ${JWT_ISSUER:raffle-api}
   raffle:
-    unit-price: ${RAFFLE_UNIT_PRICE}
     number-min: ${RAFFLE_NUMBER_MIN}
     number-max: ${RAFFLE_NUMBER_MAX}
   mercado-pago:

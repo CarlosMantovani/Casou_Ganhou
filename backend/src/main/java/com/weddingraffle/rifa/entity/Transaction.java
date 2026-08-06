@@ -36,6 +36,9 @@ public class Transaction {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal unitPrice;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "transaction_status")
@@ -70,7 +73,16 @@ public class Transaction {
 
     public Transaction(
             String email, Integer quantity, BigDecimal totalAmount, PaymentStatus status, String externalReference) {
-        this(email, "0000000000", email, quantity, totalAmount, status, PaymentMethod.MERCADO_PAGO, externalReference);
+        this(
+                email,
+                "0000000000",
+                email,
+                quantity,
+                totalAmount,
+                totalAmount.divide(BigDecimal.valueOf(quantity)),
+                status,
+                PaymentMethod.MERCADO_PAGO,
+                externalReference);
     }
 
     public Transaction(
@@ -82,11 +94,34 @@ public class Transaction {
             PaymentStatus status,
             PaymentMethod paymentMethod,
             String externalReference) {
+        this(
+                name,
+                phone,
+                email,
+                quantity,
+                totalAmount,
+                totalAmount.divide(BigDecimal.valueOf(quantity)),
+                status,
+                paymentMethod,
+                externalReference);
+    }
+
+    public Transaction(
+            String name,
+            String phone,
+            String email,
+            Integer quantity,
+            BigDecimal totalAmount,
+            BigDecimal unitPrice,
+            PaymentStatus status,
+            PaymentMethod paymentMethod,
+            String externalReference) {
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.quantity = quantity;
         this.totalAmount = totalAmount;
+        this.unitPrice = unitPrice;
         this.status = status;
         this.paymentMethod = paymentMethod;
         this.externalReference = externalReference;
@@ -114,6 +149,10 @@ public class Transaction {
 
     public BigDecimal getTotalAmount() {
         return totalAmount;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
     }
 
     public PaymentStatus getStatus() {

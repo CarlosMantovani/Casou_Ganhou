@@ -1,6 +1,5 @@
 package com.weddingraffle.rifa.service.impl;
 
-import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
@@ -13,6 +12,7 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
+import com.weddingraffle.rifa.service.RaffleConfigService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -30,19 +30,19 @@ import org.springframework.util.StringUtils;
 @Service
 public class AdminTransactionServiceImpl implements AdminTransactionService {
 
-    private final AppProperties appProperties;
+    private final RaffleConfigService raffleConfigService;
     private final TransactionRepository transactionRepository;
     private final LuckyNumberRepository luckyNumberRepository;
     private final LuckyNumberService luckyNumberService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public AdminTransactionServiceImpl(
-            AppProperties appProperties,
+            RaffleConfigService raffleConfigService,
             TransactionRepository transactionRepository,
             LuckyNumberRepository luckyNumberRepository,
             LuckyNumberService luckyNumberService,
             ApplicationEventPublisher applicationEventPublisher) {
-        this.appProperties = appProperties;
+        this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.luckyNumberRepository = luckyNumberRepository;
         this.luckyNumberService = luckyNumberService;
@@ -66,7 +66,8 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
-        BigDecimal totalAmount = appProperties.raffle().unitPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal unitPrice = raffleConfigService.currentUnitPrice();
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         Transaction transaction = transactionRepository.save(new Transaction(
                 name,
@@ -74,6 +75,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 email,
                 request.quantity(),
                 totalAmount,
+                unitPrice,
                 PaymentStatus.APPROVED,
                 PaymentMethod.CASH,
                 UUID.randomUUID().toString()));
@@ -93,6 +95,8 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
+                transaction.getUnitPrice(),
+                transaction.getCreatedAt(),
                 luckyNumbers);
     }
 
@@ -115,7 +119,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPaymentMethod(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
+                transaction.getUnitPrice(),
                 transaction.getStatus(),
+                transaction.getCreatedAt(),
                 numbersByTransaction.getOrDefault(transaction, List.of()));
     }
 }

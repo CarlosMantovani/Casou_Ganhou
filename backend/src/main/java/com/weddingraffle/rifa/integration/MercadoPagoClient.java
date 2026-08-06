@@ -16,6 +16,8 @@ import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.exception.ExternalPaymentException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
@@ -23,6 +25,8 @@ import org.springframework.util.StringUtils;
 
 @Component
 public class MercadoPagoClient implements PaymentProviderClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoClient.class);
 
     private static final String ITEM_TITLE = "Lucky number";
     private static final String ATM_PAYMENT_TYPE = "atm";
@@ -53,7 +57,10 @@ public class MercadoPagoClient implements PaymentProviderClient {
         try {
             Preference preference = preferenceClient.create(toPreferenceRequest(request));
             return new CheckoutPreferenceResponse(preference.getId(), preference.getInitPoint());
-        } catch (MPApiException | MPException exception) {
+        } catch (MPApiException exception) {
+            logMercadoPagoApiError("create preference", exception);
+            throw new ExternalPaymentException("Unable to create Mercado Pago preference.", exception);
+        } catch (MPException exception) {
             throw new ExternalPaymentException("Unable to create Mercado Pago preference.", exception);
         }
     }
@@ -71,7 +78,10 @@ public class MercadoPagoClient implements PaymentProviderClient {
             Payment payment = paymentClient.get(Long.valueOf(paymentId));
             return new PaymentProviderPayment(
                     String.valueOf(payment.getId()), payment.getExternalReference(), payment.getStatus());
-        } catch (MPApiException | MPException | NumberFormatException exception) {
+        } catch (MPApiException exception) {
+            logMercadoPagoApiError("get payment", exception);
+            throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
+        } catch (MPException | NumberFormatException exception) {
             throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
         }
     }
@@ -119,5 +129,15 @@ public class MercadoPagoClient implements PaymentProviderClient {
 
     private static PreferencePaymentTypeRequest excludedPaymentType(String paymentType) {
         return PreferencePaymentTypeRequest.builder().id(paymentType).build();
+    }
+
+    private static void logMercadoPagoApiError(String operation, MPApiException exception) {
+        String responseContent =
+                exception.getApiResponse() != null ? exception.getApiResponse().getContent() : null;
+        LOGGER.error(
+                "Mercado Pago API error during {}. statusCode={}, responseBody={}",
+                operation,
+                exception.getStatusCode(),
+                responseContent);
     }
 }

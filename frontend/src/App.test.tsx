@@ -6,7 +6,9 @@ import { App } from './App';
 import { adminTransactionService } from './services/adminTransactionService';
 import { createAdminSession, storeAdminSession } from './services/adminSession';
 import { authService } from './services/authService';
+import { publicHomeService } from './services/publicHomeService';
 import { raffleService } from './services/raffleService';
+import { raffleConfigService } from './services/raffleConfigService';
 import { transactionService } from './services/transactionService';
 
 vi.mock('./services/transactionService', () => ({
@@ -31,6 +33,12 @@ vi.mock('./services/adminTransactionService', () => ({
   },
 }));
 
+vi.mock('./services/publicHomeService', () => ({
+  publicHomeService: {
+    getSummary: vi.fn(),
+  },
+}));
+
 vi.mock('./services/raffleService', () => ({
   raffleService: {
     draw: vi.fn(),
@@ -38,10 +46,20 @@ vi.mock('./services/raffleService', () => ({
   },
 }));
 
+vi.mock('./services/raffleConfigService', () => ({
+  raffleConfigService: {
+    getConfig: vi.fn(),
+    updateScheduledDrawAt: vi.fn(),
+    updateUnitPrice: vi.fn(),
+  },
+}));
+
 const mockedTransactionService = vi.mocked(transactionService);
 const mockedAuthService = vi.mocked(authService);
 const mockedAdminTransactionService = vi.mocked(adminTransactionService);
+const mockedPublicHomeService = vi.mocked(publicHomeService);
 const mockedRaffleService = vi.mocked(raffleService);
+const mockedRaffleConfigService = vi.mocked(raffleConfigService);
 const originalLocation = window.location;
 
 function renderApp(path = '/') {
@@ -81,9 +99,26 @@ describe('App', () => {
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
       'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
     );
+    mockedPublicHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: null,
+      topBuyers: [],
+    });
+    mockedRaffleConfigService.getConfig.mockResolvedValue({
+      unitPrice: '10.00',
+      scheduledDrawAt: null,
+    });
+    mockedRaffleConfigService.updateUnitPrice.mockResolvedValue({
+      unitPrice: '15.00',
+      scheduledDrawAt: null,
+    });
+    mockedRaffleConfigService.updateScheduledDrawAt.mockResolvedValue({
+      unitPrice: '15.00',
+      scheduledDrawAt: '2026-09-06T00:00:00Z',
+    });
     mockedAdminTransactionService.list.mockResolvedValue({
       content: [
         {
+          createdAt: '2026-08-06T12:00:00Z',
           email: 'guest@example.com',
           externalReference: 'external-reference',
           luckyNumbers: ['00001', '00002'],
@@ -93,6 +128,7 @@ describe('App', () => {
           quantity: 2,
           status: 'APPROVED',
           totalAmount: '20.00',
+          unitPrice: '10.00',
         },
       ],
       first: true,
@@ -115,6 +151,20 @@ describe('App', () => {
     expect(await screen.findByText('Informe um e-mail valido.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+  });
+
+  it('renders public countdown and anonymous top buyers on home', async () => {
+    mockedPublicHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2099-09-06T00:00:00Z',
+      topBuyers: [{ avatarEmoji: '🎁', avatarColor: '#B75D46', quantity: 5 }],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Sorteio em')).toBeInTheDocument();
+    expect(screen.getByText('Top presentes')).toBeInTheDocument();
+    expect(screen.getByText('5 numeros')).toBeInTheDocument();
+    expect(screen.queryByText('11999999999')).not.toBeInTheDocument();
   });
 
   it('shows quote values when quantity changes', async () => {
@@ -274,6 +324,7 @@ describe('App', () => {
 
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
+    expect(screen.getByText(/06\/08\/2026/)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
@@ -281,6 +332,31 @@ describe('App', () => {
     await waitFor(() =>
       expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
     );
+  });
+
+  it('updates raffle settings from admin page', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedRaffleConfigService.getConfig.mockResolvedValue({
+      unitPrice: '10.00',
+      scheduledDrawAt: null,
+    });
+
+    renderApp('/admin/settings');
+
+    const unitPriceInput = await screen.findByLabelText('Preço unitário');
+    await user.clear(unitPriceInput);
+    await user.type(unitPriceInput, '15.50');
+    await user.type(screen.getByLabelText('Data e hora do sorteio'), '2099-09-05T21:00');
+    await user.click(screen.getByRole('button', { name: /Salvar configurações/i }));
+
+    await waitFor(() =>
+      expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({ unitPrice: '15.50' }),
+    );
+    expect(mockedRaffleConfigService.updateScheduledDrawAt).toHaveBeenCalledWith({
+      scheduledDrawAt: expect.any(String),
+    });
+    expect(await screen.findByText('Configurações salvas.')).toBeInTheDocument();
   });
 
   it('registers an admin cash payment and shows pdf link', async () => {
@@ -296,6 +372,8 @@ describe('App', () => {
       quantity: 1,
       status: 'APPROVED',
       totalAmount: '10.00',
+      unitPrice: '10.00',
+      createdAt: '2026-08-06T12:00:00Z',
     });
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
       'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',

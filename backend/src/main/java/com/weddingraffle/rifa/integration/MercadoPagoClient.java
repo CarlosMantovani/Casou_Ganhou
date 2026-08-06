@@ -25,7 +25,6 @@ import org.springframework.util.StringUtils;
 public class MercadoPagoClient implements PaymentProviderClient {
 
     private static final String ITEM_TITLE = "Lucky number";
-    private static final String ACCOUNT_MONEY_PAYMENT_TYPE = "account_money";
     private static final String ATM_PAYMENT_TYPE = "atm";
     private static final String DIGITAL_CURRENCY_PAYMENT_TYPE = "digital_currency";
     private static final String PREPAID_CARD_PAYMENT_TYPE = "prepaid_card";
@@ -111,7 +110,6 @@ public class MercadoPagoClient implements PaymentProviderClient {
     static PreferencePaymentMethodsRequest paymentMethods() {
         return PreferencePaymentMethodsRequest.builder()
                 .excludedPaymentTypes(List.of(
-                        excludedPaymentType(ACCOUNT_MONEY_PAYMENT_TYPE),
                         excludedPaymentType(TICKET_PAYMENT_TYPE),
                         excludedPaymentType(DIGITAL_CURRENCY_PAYMENT_TYPE),
                         excludedPaymentType(ATM_PAYMENT_TYPE),

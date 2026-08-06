@@ -13,7 +13,6 @@ class MercadoPagoClientTests {
                 .map(PreferencePaymentTypeRequest::getId)
                 .toList();
 
-        assertThat(excludedPaymentTypes)
-                .containsExactlyInAnyOrder("account_money", "ticket", "digital_currency", "atm", "prepaid_card");
+        assertThat(excludedPaymentTypes).containsExactlyInAnyOrder("ticket", "digital_currency", "atm", "prepaid_card");
     }
 }

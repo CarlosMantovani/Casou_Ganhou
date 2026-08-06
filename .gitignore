@@ -11,6 +11,7 @@ Thumbs.db
 !.env.example
 !.env.development.example
 !.env.production.example
+!.env.staging.example
 
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar

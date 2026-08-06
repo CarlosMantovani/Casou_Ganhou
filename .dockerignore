@@ -1,0 +1,8 @@
+.git
+.codex
+backend/.env
+backend/target
+frontend/.env.development
+frontend/dist
+frontend/node_modules
+**/.DS_Store

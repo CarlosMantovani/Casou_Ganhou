@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentMethod;
@@ -15,6 +14,7 @@ import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
+import com.weddingraffle.rifa.service.RaffleConfigService;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -36,6 +36,9 @@ class AdminTransactionServiceImplTests {
 
     @Mock
     private LuckyNumberService luckyNumberService;
+
+    @Mock
+    private RaffleConfigService raffleConfigService;
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -80,6 +83,7 @@ class AdminTransactionServiceImplTests {
     @Test
     void createsApprovedCashTransactionWithLuckyNumbers() {
         AdminTransactionServiceImpl service = service();
+        when(raffleConfigService.currentUnitPrice()).thenReturn(new BigDecimal("10.00"));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -94,6 +98,7 @@ class AdminTransactionServiceImplTests {
         assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
         assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(response.unitPrice()).isEqualByComparingTo("10.00");
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001");
         verify(transactionRepository).save(any(Transaction.class));
@@ -103,26 +108,10 @@ class AdminTransactionServiceImplTests {
 
     private AdminTransactionServiceImpl service() {
         return new AdminTransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 luckyNumberRepository,
                 luckyNumberService,
                 applicationEventPublisher);
-    }
-
-    private static AppProperties appProperties() {
-        return new AppProperties(
-                "http://localhost:5173",
-                new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
-                new AppProperties.Raffle(new BigDecimal("10.00"), "00000", "99999"),
-                new AppProperties.MercadoPago(
-                        "token",
-                        "http://localhost:8080/payments/webhook",
-                        "",
-                        "http://localhost:5173/payment-return/success",
-                        "http://localhost:5173/payment-return/failure",
-                        "http://localhost:5173/payment-return/pending",
-                        new AppProperties.Retry(3, 500, 2)),
-                new AppProperties.Mail("no-reply@example.com"));
     }
 }

@@ -29,7 +29,13 @@ class FlywayMigrationIntegrationTests {
         Flyway flyway = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
-                .placeholders(Map.of("admin_username", "admin", "admin_password_hash", ADMIN_PASSWORD_HASH))
+                .placeholders(Map.of(
+                        "admin_username",
+                        "admin",
+                        "admin_password_hash",
+                        ADMIN_PASSWORD_HASH,
+                        "raffle_unit_price",
+                        "10.00"))
                 .load();
 
         flyway.migrate();
@@ -40,6 +46,7 @@ class FlywayMigrationIntegrationTests {
             assertThat(tableExists(statement, "lucky_number")).isTrue();
             assertThat(tableExists(statement, "raffle_draw")).isTrue();
             assertThat(tableExists(statement, "admin_user")).isTrue();
+            assertThat(tableExists(statement, "raffle_config")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_email")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_external_reference"))
                     .isTrue();
@@ -51,6 +58,8 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(columnExists(statement, "transaction", "confirmation_email_last_error"))
                     .isTrue();
+            assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
+            assertThat(raffleConfigSeedExists(statement)).isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
         }
     }
@@ -85,6 +94,14 @@ class FlywayMigrationIntegrationTests {
     private static boolean adminSeedExists(Statement statement) throws SQLException {
         try (ResultSet resultSet = statement.executeQuery(
                 "select exists (select 1 from admin_user where username = 'admin' and char_length(password_hash) = 60)")) {
+            resultSet.next();
+            return resultSet.getBoolean(1);
+        }
+    }
+
+    private static boolean raffleConfigSeedExists(Statement statement) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                "select exists (select 1 from raffle_config where id = 1 and unit_price = 10.00)")) {
             resultSet.next();
             return resultSet.getBoolean(1);
         }

@@ -17,6 +17,7 @@ import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,9 @@ class AdminTransactionControllerTests {
                         PaymentMethod.MERCADO_PAGO,
                         2,
                         new BigDecimal("20.00"),
+                        new BigDecimal("10.00"),
                         PaymentStatus.APPROVED,
+                        OffsetDateTime.parse("2026-08-06T12:00:00Z"),
                         List.of("00001", "00002")))));
 
         mockMvc.perform(get("/transactions")
@@ -92,6 +95,8 @@ class AdminTransactionControllerTests {
                         PaymentStatus.APPROVED,
                         2,
                         new BigDecimal("20.00"),
+                        new BigDecimal("10.00"),
+                        OffsetDateTime.parse("2026-08-06T12:00:00Z"),
                         List.of("00001", "00002")));
 
         mockMvc.perform(post("/transactions/cash")

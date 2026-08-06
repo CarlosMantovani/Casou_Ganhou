@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
@@ -195,7 +197,7 @@ class TransactionServiceImplTests {
                 .thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
 
-        var response = transactionService.getStatus("external-reference-123");
+        var response = transactionService.getStatus("external-reference-123", null);
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
         assertThat(response.emailProvided()).isTrue();
@@ -222,11 +224,57 @@ class TransactionServiceImplTests {
                 .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
 
-        var response = transactionService.getStatus("external-reference-123");
+        var response = transactionService.getStatus("external-reference-123", null);
 
         assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
+    }
+
+    @Test
+    void statusRefreshUsesCheckoutReturnPaymentIdWhenTransactionHasNoPaymentIdYet() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                raffleConfigService,
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+        when(paymentProviderClient.getPayment("456"))
+                .thenReturn(new PaymentProviderPayment("456", "external-reference-123", "approved"));
+        when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
+
+        var response = transactionService.getStatus("external-reference-123", "456");
+
+        assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(transaction.getMpPaymentId()).isEqualTo("456");
+        verify(luckyNumberService).generateFor(transaction);
+        verify(transactionRepository).save(transaction);
+    }
+
+    @Test
+    void statusRefreshRejectsPaymentIdFromDifferentTransaction() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                raffleConfigService,
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+        when(paymentProviderClient.getPayment("456"))
+                .thenReturn(new PaymentProviderPayment("456", "another-reference", "approved"));
+
+        assertThatThrownBy(() -> transactionService.getStatus("external-reference-123", "456"))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(luckyNumberService, never()).generateFor(any());
+        verify(transactionRepository, never()).save(any());
     }
 }

@@ -14,5 +14,5 @@ public interface TransactionService {
 
     void processPaymentNotification(String paymentId);
 
-    TransactionStatusResponse getStatus(String externalReference);
+    TransactionStatusResponse getStatus(String externalReference, String paymentId);
 }

@@ -28,6 +28,8 @@ public class MercadoPagoClient implements PaymentProviderClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoClient.class);
 
+    private static final String AUTO_RETURN_APPROVED = "approved";
+    private static final String CURRENCY_ID_BRL = "BRL";
     private static final String ITEM_TITLE = "Lucky number";
     private static final String ATM_PAYMENT_TYPE = "atm";
     private static final String DIGITAL_CURRENCY_PAYMENT_TYPE = "digital_currency";
@@ -86,9 +88,10 @@ public class MercadoPagoClient implements PaymentProviderClient {
         }
     }
 
-    private PreferenceRequest toPreferenceRequest(CheckoutPreferenceRequest request) {
+    PreferenceRequest toPreferenceRequest(CheckoutPreferenceRequest request) {
         PreferenceItemRequest item = PreferenceItemRequest.builder()
                 .title(ITEM_TITLE)
+                .currencyId(CURRENCY_ID_BRL)
                 .quantity(request.quantity())
                 .unitPrice(request.unitPrice())
                 .build();
@@ -105,6 +108,7 @@ public class MercadoPagoClient implements PaymentProviderClient {
 
         PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
                 .items(List.of(item))
+                .autoReturn(AUTO_RETURN_APPROVED)
                 .backUrls(backUrls)
                 .paymentMethods(paymentMethods())
                 .notificationUrl(appProperties.mercadoPago().webhookUrl())

@@ -108,13 +108,7 @@ public class TransactionServiceImpl implements TransactionService {
             return;
         }
 
-        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-        if (paymentStatus == PaymentStatus.APPROVED) {
-            luckyNumberService.generateFor(transaction);
-        }
-        transaction.markPayment(paymentStatus, payment.paymentId());
-        transactionRepository.save(transaction);
-        publishPaymentApprovedEvent(transaction, paymentStatus);
+        refreshPaymentStatus(transaction, payment);
         LOGGER.info(
                 "Updated transaction externalReference={} to status={}",
                 transaction.getExternalReference(),
@@ -123,20 +117,16 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public TransactionStatusResponse getStatus(String externalReference) {
+    public TransactionStatusResponse getStatus(String externalReference, String paymentId) {
         Transaction transaction = transactionRepository
                 .findByExternalReference(externalReference)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
 
-        if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
-            PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
-            PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-            if (paymentStatus == PaymentStatus.APPROVED) {
-                luckyNumberService.generateFor(transaction);
+        if (transaction.getStatus() == PaymentStatus.PENDING) {
+            String paymentIdToCheck = StringUtils.hasText(paymentId) ? paymentId : transaction.getMpPaymentId();
+            if (StringUtils.hasText(paymentIdToCheck)) {
+                refreshPaymentStatus(transaction, paymentProviderClient.getPayment(paymentIdToCheck));
             }
-            transaction.markPayment(paymentStatus, payment.paymentId());
-            transactionRepository.save(transaction);
-            publishPaymentApprovedEvent(transaction, paymentStatus);
         }
 
         return new TransactionStatusResponse(
@@ -146,6 +136,20 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 luckyNumberService.findNumbers(transaction.getExternalReference()));
+    }
+
+    private void refreshPaymentStatus(Transaction transaction, PaymentProviderPayment payment) {
+        if (!transaction.getExternalReference().equals(payment.externalReference())) {
+            throw new ResourceNotFoundException("Transaction not found.");
+        }
+
+        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
+        if (paymentStatus == PaymentStatus.APPROVED) {
+            luckyNumberService.generateFor(transaction);
+        }
+        transaction.markPayment(paymentStatus, payment.paymentId());
+        transactionRepository.save(transaction);
+        publishPaymentApprovedEvent(transaction, paymentStatus);
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {

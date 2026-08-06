@@ -11,19 +11,30 @@ function getExternalReference(searchParams: URLSearchParams) {
   return searchParams.get('external_reference') ?? searchParams.get('externalReference') ?? '';
 }
 
+function getPaymentId(searchParams: URLSearchParams) {
+  return searchParams.get('payment_id') ?? searchParams.get('collection_id') ?? '';
+}
+
 export function PaymentReturnPage() {
   const searchParams = new URLSearchParams(window.location.search);
   const externalReference = getExternalReference(searchParams);
+  const paymentId = getPaymentId(searchParams);
 
   const statusQuery = useQuery({
     enabled: Boolean(externalReference),
-    queryKey: ['transaction-status', externalReference],
-    queryFn: () => transactionService.getStatus(externalReference),
+    queryKey: ['transaction-status', externalReference, paymentId],
+    queryFn: () => transactionService.getStatus(externalReference, paymentId || undefined),
     refetchInterval: (query) => (query.state.data?.status === 'PENDING' ? 5000 : false),
   });
 
   if (!externalReference) {
-    return <PaymentState title="Nao foi possivel localizar sua compra" message={publicMessages.missingReference} tone="error" />;
+    return (
+      <PaymentState
+        title="Nao foi possivel localizar sua compra"
+        message={publicMessages.missingReference}
+        tone="error"
+      />
+    );
   }
 
   if (statusQuery.isLoading) {
@@ -38,7 +49,13 @@ export function PaymentReturnPage() {
   }
 
   if (statusQuery.isError || !statusQuery.data) {
-    return <PaymentState title="Nao foi possivel confirmar o pagamento" message={publicMessages.genericError} tone="error" />;
+    return (
+      <PaymentState
+        title="Nao foi possivel confirmar o pagamento"
+        message={publicMessages.genericError}
+        tone="error"
+      />
+    );
   }
 
   const transaction = statusQuery.data;
@@ -64,14 +81,21 @@ export function PaymentReturnPage() {
             <h2 className="font-serif text-lg font-semibold">Seus numeros da sorte</h2>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               {transaction.luckyNumbers.map((number) => (
-                <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
+                <span
+                  className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+                  key={number}
+                >
                   {number}
                 </span>
               ))}
             </div>
           </Card>
 
-          {transaction.emailProvided ? <EmailConfirmationCard /> : <PdfDownloadCard externalReference={transaction.externalReference} />}
+          {transaction.emailProvided ? (
+            <EmailConfirmationCard />
+          ) : (
+            <PdfDownloadCard externalReference={transaction.externalReference} />
+          )}
 
           <p className="font-serif text-sm italic leading-relaxed text-terracotta">
             Que este numero te traga a alegria de celebrar junto ao casal neste dia tao especial.
@@ -86,11 +110,15 @@ export function PaymentReturnPage() {
   }
 
   if (transaction.status === 'PENDING') {
-    return <PaymentState title="Pagamento pendente" message={publicMessages.pending} tone="pending" />;
+    return (
+      <PaymentState title="Pagamento pendente" message={publicMessages.pending} tone="pending" />
+    );
   }
 
   if (transaction.status === 'CANCELLED') {
-    return <PaymentState title="Pagamento cancelado" message={publicMessages.cancelled} tone="error" />;
+    return (
+      <PaymentState title="Pagamento cancelado" message={publicMessages.cancelled} tone="error" />
+    );
   }
 
   return <PaymentState title="Pagamento recusado" message={publicMessages.rejected} tone="error" />;
@@ -147,7 +175,12 @@ interface PaymentStateProps {
 }
 
 function PaymentState({ icon, message, title, tone }: PaymentStateProps) {
-  const iconColor = tone === 'pending' ? 'text-gold' : tone === 'neutral' ? 'text-terracotta' : 'text-terracotta-dark';
+  const iconColor =
+    tone === 'pending'
+      ? 'text-gold'
+      : tone === 'neutral'
+        ? 'text-terracotta'
+        : 'text-terracotta-dark';
 
   return (
     <main className="min-h-screen bg-cream px-6 pb-16 pt-16 text-charcoal">

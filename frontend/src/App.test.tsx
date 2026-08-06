@@ -246,8 +246,28 @@ describe('App', () => {
     renderApp('/payment-return/success?external_reference=external-reference');
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
+    expect(mockedTransactionService.getStatus).toHaveBeenCalledWith(
+      'external-reference',
+      undefined,
+    );
     expect(screen.getByText('12345')).toBeInTheDocument();
     expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
+  });
+
+  it('passes Mercado Pago payment id when returning from checkout', async () => {
+    mockedTransactionService.getStatus.mockResolvedValue({
+      externalReference: 'external-reference',
+      emailProvided: true,
+      luckyNumbers: ['00042'],
+      quantity: 1,
+      status: 'APPROVED',
+      totalAmount: '10.00',
+    });
+
+    renderApp('/payment-return/success?external_reference=external-reference&payment_id=456');
+
+    expect(await screen.findByText('00042')).toBeInTheDocument();
+    expect(mockedTransactionService.getStatus).toHaveBeenCalledWith('external-reference', '456');
   });
 
   it('renders pdf download when approved payment has no email', async () => {
@@ -313,12 +333,17 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
 
     expect(await screen.findByText('Painel administrativo')).toBeInTheDocument();
-    expect(mockedAuthService.login).toHaveBeenCalledWith({ username: 'admin', password: 'password' });
+    expect(mockedAuthService.login).toHaveBeenCalledWith({
+      username: 'admin',
+      password: 'password',
+    });
   });
 
   it('lists admin transactions with email filter', async () => {
     const user = userEvent.setup();
-    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    storeAdminSession(
+      createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }),
+    );
 
     renderApp('/admin');
 
@@ -330,13 +355,19 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     await waitFor(() =>
-      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({
+        query: 'guest',
+        page: 0,
+        size: 20,
+      }),
     );
   });
 
   it('updates raffle settings from admin page', async () => {
     const user = userEvent.setup();
-    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    storeAdminSession(
+      createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }),
+    );
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       unitPrice: '10.00',
       scheduledDrawAt: null,
@@ -351,7 +382,9 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /Salvar configurações/i }));
 
     await waitFor(() =>
-      expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({ unitPrice: '15.50' }),
+      expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({
+        unitPrice: '15.50',
+      }),
     );
     expect(mockedRaffleConfigService.updateScheduledDrawAt).toHaveBeenCalledWith({
       scheduledDrawAt: expect.any(String),
@@ -361,7 +394,9 @@ describe('App', () => {
 
   it('registers an admin cash payment and shows pdf link', async () => {
     const user = userEvent.setup();
-    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    storeAdminSession(
+      createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }),
+    );
     mockedAdminTransactionService.createCashTransaction.mockResolvedValue({
       email: null,
       externalReference: 'cash-reference',
@@ -395,7 +430,9 @@ describe('App', () => {
   });
 
   it('renders existing raffle result without drawing again', async () => {
-    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    storeAdminSession(
+      createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }),
+    );
     mockedRaffleService.getResult.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',
       winnerName: 'Winner Guest',
@@ -411,7 +448,9 @@ describe('App', () => {
 
   it('confirms and runs raffle draw when no result exists', async () => {
     const user = userEvent.setup();
-    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    storeAdminSession(
+      createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }),
+    );
     mockedRaffleService.getResult.mockRejectedValue({ status: 404 });
     mockedRaffleService.draw.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',

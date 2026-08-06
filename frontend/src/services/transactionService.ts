@@ -18,8 +18,16 @@ export const transactionService = {
     return response.data;
   },
 
-  async getStatus(externalReference: string): Promise<TransactionStatusResponse> {
-    const response = await apiClient.get<TransactionStatusResponse>(`/transactions/${externalReference}/status`);
+  async getStatus(
+    externalReference: string,
+    paymentId?: string,
+  ): Promise<TransactionStatusResponse> {
+    const response = await apiClient.get<TransactionStatusResponse>(
+      `/transactions/${externalReference}/status`,
+      {
+        params: paymentId ? { paymentId } : undefined,
+      },
+    );
     return response.data;
   },
 

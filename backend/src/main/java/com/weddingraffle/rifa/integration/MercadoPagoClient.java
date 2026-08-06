@@ -6,6 +6,8 @@ import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
 import com.mercadopago.client.preference.PreferencePayerRequest;
+import com.mercadopago.client.preference.PreferencePaymentMethodsRequest;
+import com.mercadopago.client.preference.PreferencePaymentTypeRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
@@ -23,6 +25,11 @@ import org.springframework.util.StringUtils;
 public class MercadoPagoClient implements PaymentProviderClient {
 
     private static final String ITEM_TITLE = "Lucky number";
+    private static final String ACCOUNT_MONEY_PAYMENT_TYPE = "account_money";
+    private static final String ATM_PAYMENT_TYPE = "atm";
+    private static final String DIGITAL_CURRENCY_PAYMENT_TYPE = "digital_currency";
+    private static final String PREPAID_CARD_PAYMENT_TYPE = "prepaid_card";
+    private static final String TICKET_PAYMENT_TYPE = "ticket";
 
     private final AppProperties appProperties;
     private final PaymentClient paymentClient;
@@ -38,11 +45,11 @@ public class MercadoPagoClient implements PaymentProviderClient {
     @Override
     @Retryable(
             retryFor = ExternalPaymentException.class,
-            maxAttemptsExpression = "#{@appProperties.mercadoPago().retry().maxAttempts()}",
+            maxAttemptsExpression = "${app.mercado-pago.retry.max-attempts:3}",
             backoff =
                     @Backoff(
-                            delayExpression = "#{@appProperties.mercadoPago().retry().delayMillis()}",
-                            multiplierExpression = "#{@appProperties.mercadoPago().retry().multiplier()}"))
+                            delayExpression = "${app.mercado-pago.retry.delay-millis:500}",
+                            multiplierExpression = "${app.mercado-pago.retry.multiplier:2}"))
     public CheckoutPreferenceResponse createPreference(CheckoutPreferenceRequest request) {
         try {
             Preference preference = preferenceClient.create(toPreferenceRequest(request));
@@ -55,11 +62,11 @@ public class MercadoPagoClient implements PaymentProviderClient {
     @Override
     @Retryable(
             retryFor = ExternalPaymentException.class,
-            maxAttemptsExpression = "#{@appProperties.mercadoPago().retry().maxAttempts()}",
+            maxAttemptsExpression = "${app.mercado-pago.retry.max-attempts:3}",
             backoff =
                     @Backoff(
-                            delayExpression = "#{@appProperties.mercadoPago().retry().delayMillis()}",
-                            multiplierExpression = "#{@appProperties.mercadoPago().retry().multiplier()}"))
+                            delayExpression = "${app.mercado-pago.retry.delay-millis:500}",
+                            multiplierExpression = "${app.mercado-pago.retry.multiplier:2}"))
     public PaymentProviderPayment getPayment(String paymentId) {
         try {
             Payment payment = paymentClient.get(Long.valueOf(paymentId));
@@ -90,6 +97,7 @@ public class MercadoPagoClient implements PaymentProviderClient {
         PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
                 .items(List.of(item))
                 .backUrls(backUrls)
+                .paymentMethods(paymentMethods())
                 .notificationUrl(appProperties.mercadoPago().webhookUrl())
                 .externalReference(request.externalReference());
 
@@ -98,5 +106,20 @@ public class MercadoPagoClient implements PaymentProviderClient {
         }
 
         return builder.build();
+    }
+
+    static PreferencePaymentMethodsRequest paymentMethods() {
+        return PreferencePaymentMethodsRequest.builder()
+                .excludedPaymentTypes(List.of(
+                        excludedPaymentType(ACCOUNT_MONEY_PAYMENT_TYPE),
+                        excludedPaymentType(TICKET_PAYMENT_TYPE),
+                        excludedPaymentType(DIGITAL_CURRENCY_PAYMENT_TYPE),
+                        excludedPaymentType(ATM_PAYMENT_TYPE),
+                        excludedPaymentType(PREPAID_CARD_PAYMENT_TYPE)))
+                .build();
+    }
+
+    private static PreferencePaymentTypeRequest excludedPaymentType(String paymentType) {
+        return PreferencePaymentTypeRequest.builder().id(paymentType).build();
     }
 }

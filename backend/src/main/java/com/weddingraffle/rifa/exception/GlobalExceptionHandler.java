@@ -5,6 +5,8 @@ import com.weddingraffle.rifa.dto.FieldErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -16,6 +18,8 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
@@ -45,7 +49,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ExternalPaymentException.class)
-    public ResponseEntity<ApiErrorResponse> handleExternalPayment(HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleExternalPayment(
+            ExternalPaymentException exception, HttpServletRequest request) {
+        LOGGER.error(
+                "Payment provider error while processing {} {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                exception);
+
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(ApiErrorResponse.withoutFieldErrors(
                         HttpStatus.BAD_GATEWAY.value(),
@@ -113,7 +124,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleUnexpected(HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+        LOGGER.error(
+                "Unexpected error while processing {} {}", request.getMethod(), request.getRequestURI(), exception);
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.withoutFieldErrors(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),

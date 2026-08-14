@@ -51,7 +51,10 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             Transaction transaction, Map<Transaction, List<String>> numbersByTransaction) {
         return new AdminTransactionResponse(
                 transaction.getExternalReference(),
+                transaction.getName(),
+                transaction.getPhone(),
                 transaction.getEmail(),
+                transaction.getPaymentMethod(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 transaction.getStatus(),

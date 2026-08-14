@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import java.math.BigDecimal;
@@ -51,7 +52,10 @@ class AdminTransactionControllerTests {
         when(adminTransactionService.list(eq("guest"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(new AdminTransactionResponse(
                         "external",
+                        "Guest User",
+                        "11999999999",
                         "guest@example.com",
+                        PaymentMethod.MERCADO_PAGO,
                         2,
                         new BigDecimal("20.00"),
                         PaymentStatus.APPROVED,
@@ -62,6 +66,7 @@ class AdminTransactionControllerTests {
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))
+                .andExpect(jsonPath("$.content[0].name").value("Guest User"))
                 .andExpect(jsonPath("$.content[0].luckyNumbers[0]").value("00001"));
     }
 

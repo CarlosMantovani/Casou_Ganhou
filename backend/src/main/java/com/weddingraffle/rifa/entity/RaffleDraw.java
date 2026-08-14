@@ -19,7 +19,10 @@ public class RaffleDraw {
     @Column(nullable = false)
     private String winningNumber;
 
-    @Column(nullable = false, length = 320)
+    @Column(nullable = false)
+    private String winnerName;
+
+    @Column(length = 320)
     private String winnerEmail;
 
     @Column(nullable = false)
@@ -28,7 +31,12 @@ public class RaffleDraw {
     protected RaffleDraw() {}
 
     public RaffleDraw(String winningNumber, String winnerEmail) {
+        this(winningNumber, winnerEmail, winnerEmail);
+    }
+
+    public RaffleDraw(String winningNumber, String winnerName, String winnerEmail) {
         this.winningNumber = winningNumber;
+        this.winnerName = winnerName;
         this.winnerEmail = winnerEmail;
         this.drawnAt = OffsetDateTime.now();
     }
@@ -39,6 +47,10 @@ public class RaffleDraw {
 
     public String getWinningNumber() {
         return winningNumber;
+    }
+
+    public String getWinnerName() {
+        return winnerName;
     }
 
     public String getWinnerEmail() {

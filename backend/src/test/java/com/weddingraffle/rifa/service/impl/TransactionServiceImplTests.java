@@ -54,9 +54,11 @@ class TransactionServiceImplTests {
                 luckyNumberService,
                 applicationEventPublisher);
 
-        TransactionQuoteResponse response =
-                transactionService.quote(new TransactionQuoteRequest("guest@example.com", 3));
+        TransactionQuoteResponse response = transactionService.quote(
+                new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3));
 
+        assertThat(response.name()).isEqualTo("Guest User");
+        assertThat(response.phone()).isEqualTo("11999999999");
         assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.quantity()).isEqualTo(3);
         assertThat(response.unitPrice()).isEqualByComparingTo("10.00");
@@ -74,8 +76,8 @@ class TransactionServiceImplTests {
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
 
-        TransactionCreateResponse response =
-                transactionService.create(new TransactionCreateRequest("guest@example.com", 2));
+        TransactionCreateResponse response = transactionService.create(
+                new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2));
 
         assertThat(response.externalReference()).isNotBlank();
         assertThat(response.preferenceId()).isEqualTo("preference-123");
@@ -84,6 +86,7 @@ class TransactionServiceImplTests {
         ArgumentCaptor<CheckoutPreferenceRequest> preferenceCaptor =
                 ArgumentCaptor.forClass(CheckoutPreferenceRequest.class);
         verify(paymentProviderClient).createPreference(preferenceCaptor.capture());
+        assertThat(preferenceCaptor.getValue().name()).isEqualTo("Guest User");
         assertThat(preferenceCaptor.getValue().email()).isEqualTo("guest@example.com");
         assertThat(preferenceCaptor.getValue().quantity()).isEqualTo(2);
         assertThat(preferenceCaptor.getValue().unitPrice()).isEqualByComparingTo("10.00");
@@ -92,6 +95,8 @@ class TransactionServiceImplTests {
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertThat(transactionCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(transactionCaptor.getValue().getName()).isEqualTo("Guest User");
+        assertThat(transactionCaptor.getValue().getPhone()).isEqualTo("11999999999");
         assertThat(transactionCaptor.getValue().getEmail()).isEqualTo("guest@example.com");
         assertThat(transactionCaptor.getValue().getQuantity()).isEqualTo(2);
         assertThat(transactionCaptor.getValue().getTotalAmount()).isEqualByComparingTo("20.00");
@@ -187,6 +192,7 @@ class TransactionServiceImplTests {
         var response = transactionService.getStatus("external-reference-123");
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
+        assertThat(response.emailProvided()).isTrue();
         assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");

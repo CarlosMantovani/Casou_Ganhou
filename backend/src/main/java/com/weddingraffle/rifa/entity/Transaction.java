@@ -21,7 +21,13 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 320)
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false, length = 20)
+    private String phone;
+
+    @Column(length = 320)
     private String email;
 
     @Column(nullable = false)
@@ -34,6 +40,11 @@ public class Transaction {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "transaction_status")
     private PaymentStatus status = PaymentStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "payment_method")
+    private PaymentMethod paymentMethod = PaymentMethod.MERCADO_PAGO;
 
     @Column(nullable = false, unique = true)
     private String externalReference;
@@ -59,15 +70,38 @@ public class Transaction {
 
     public Transaction(
             String email, Integer quantity, BigDecimal totalAmount, PaymentStatus status, String externalReference) {
+        this(email, "0000000000", email, quantity, totalAmount, status, PaymentMethod.MERCADO_PAGO, externalReference);
+    }
+
+    public Transaction(
+            String name,
+            String phone,
+            String email,
+            Integer quantity,
+            BigDecimal totalAmount,
+            PaymentStatus status,
+            PaymentMethod paymentMethod,
+            String externalReference) {
+        this.name = name;
+        this.phone = phone;
         this.email = email;
         this.quantity = quantity;
         this.totalAmount = totalAmount;
         this.status = status;
+        this.paymentMethod = paymentMethod;
         this.externalReference = externalReference;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPhone() {
+        return phone;
     }
 
     public String getEmail() {
@@ -84,6 +118,10 @@ public class Transaction {
 
     public PaymentStatus getStatus() {
         return status;
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
     }
 
     public String getExternalReference() {

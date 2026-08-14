@@ -44,19 +44,17 @@ class RaffleControllerTests {
 
     @Test
     void drawReturnsWinnerForAdmin() throws Exception {
-        when(raffleService.draw())
-                .thenReturn(new RaffleDrawResponse("00001", "guest@example.com", OffsetDateTime.now()));
+        when(raffleService.draw()).thenReturn(new RaffleDrawResponse("00001", "Guest User", OffsetDateTime.now()));
 
         mockMvc.perform(post("/raffle/draw").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.winningNumber").value("00001"))
-                .andExpect(jsonPath("$.winnerEmail").value("guest@example.com"));
+                .andExpect(jsonPath("$.winnerName").value("Guest User"));
     }
 
     @Test
     void resultReturnsWinnerForAdmin() throws Exception {
-        when(raffleService.getResult())
-                .thenReturn(new RaffleDrawResponse("00001", "guest@example.com", OffsetDateTime.now()));
+        when(raffleService.getResult()).thenReturn(new RaffleDrawResponse("00001", "Guest User", OffsetDateTime.now()));
 
         mockMvc.perform(get("/raffle/result").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())

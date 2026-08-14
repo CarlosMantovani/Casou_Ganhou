@@ -39,8 +39,15 @@ class RaffleServiceImplTests {
     void drawsOneWinnerFromApprovedLuckyNumbers() {
         RaffleServiceImpl raffleService =
                 new RaffleServiceImpl(raffleDrawRepository, luckyNumberRepository, raffleWinnerSelector);
-        Transaction approvedTransaction =
-                new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external");
+        Transaction approvedTransaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                "guest@example.com",
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.MERCADO_PAGO,
+                "external");
         LuckyNumber first = new LuckyNumber("00001", "guest@example.com", approvedTransaction);
         LuckyNumber second = new LuckyNumber("00002", "guest@example.com", approvedTransaction);
         when(raffleDrawRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
@@ -52,7 +59,7 @@ class RaffleServiceImplTests {
         var response = raffleService.draw();
 
         assertThat(response.winningNumber()).isEqualTo("00002");
-        assertThat(response.winnerEmail()).isEqualTo("guest@example.com");
+        assertThat(response.winnerName()).isEqualTo("Guest User");
         assertThat(response.drawnAt()).isNotNull();
     }
 

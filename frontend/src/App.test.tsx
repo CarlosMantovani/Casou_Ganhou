@@ -3,6 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { App } from './App';
+import { adminTransactionService } from './services/adminTransactionService';
+import { createAdminSession, storeAdminSession } from './services/adminSession';
+import { authService } from './services/authService';
+import { raffleService } from './services/raffleService';
 import { transactionService } from './services/transactionService';
 
 vi.mock('./services/transactionService', () => ({
@@ -13,7 +17,29 @@ vi.mock('./services/transactionService', () => ({
   },
 }));
 
+vi.mock('./services/authService', () => ({
+  authService: {
+    login: vi.fn(),
+  },
+}));
+
+vi.mock('./services/adminTransactionService', () => ({
+  adminTransactionService: {
+    list: vi.fn(),
+  },
+}));
+
+vi.mock('./services/raffleService', () => ({
+  raffleService: {
+    draw: vi.fn(),
+    getResult: vi.fn(),
+  },
+}));
+
 const mockedTransactionService = vi.mocked(transactionService);
+const mockedAuthService = vi.mocked(authService);
+const mockedAdminTransactionService = vi.mocked(adminTransactionService);
+const mockedRaffleService = vi.mocked(raffleService);
 const originalLocation = window.location;
 
 function renderApp(path = '/') {
@@ -41,11 +67,30 @@ describe('App', () => {
       value: originalLocation,
     });
     window.history.pushState({}, '', '/');
+    window.sessionStorage.clear();
     mockedTransactionService.quote.mockResolvedValue({
       email: 'guest@example.com',
       quantity: 1,
       unitPrice: '10.00',
       totalAmount: '10.00',
+    });
+    mockedAdminTransactionService.list.mockResolvedValue({
+      content: [
+        {
+          email: 'guest@example.com',
+          externalReference: 'external-reference',
+          luckyNumbers: ['00001', '00002'],
+          quantity: 2,
+          status: 'APPROVED',
+          totalAmount: '20.00',
+        },
+      ],
+      first: true,
+      last: true,
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
     });
   });
 
@@ -148,5 +193,81 @@ describe('App', () => {
     renderApp('/payment-return/success');
 
     expect(screen.getByText('Não foi possível localizar sua compra')).toBeInTheDocument();
+  });
+
+  it('redirects protected admin route to login without session', async () => {
+    renderApp('/admin');
+
+    expect(await screen.findByText('Área Administrativa')).toBeInTheDocument();
+    expect(screen.getByLabelText('Usuário')).toBeInTheDocument();
+  });
+
+  it('logs admin in and renders dashboard', async () => {
+    const user = userEvent.setup();
+    mockedAuthService.login.mockImplementation(async () => {
+      const response = { accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' };
+      storeAdminSession(createAdminSession(response));
+      return response;
+    });
+
+    renderApp('/admin/login');
+
+    await user.type(await screen.findByLabelText('Usuário'), 'admin');
+    await user.type(screen.getByLabelText('Senha'), 'password');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    expect(await screen.findByText('Painel administrativo')).toBeInTheDocument();
+    expect(mockedAuthService.login).toHaveBeenCalledWith({ username: 'admin', password: 'password' });
+  });
+
+  it('lists admin transactions with email filter', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+
+    renderApp('/admin');
+
+    expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
+    expect(screen.getByText('00001')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Buscar por e-mail'), 'guest');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    await waitFor(() =>
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ email: 'guest', page: 0, size: 20 }),
+    );
+  });
+
+  it('renders existing raffle result without drawing again', async () => {
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedRaffleService.getResult.mockResolvedValue({
+      drawnAt: '2026-07-30T12:00:00Z',
+      winnerEmail: 'winner@example.com',
+      winningNumber: '00042',
+    });
+
+    renderApp('/admin/draw');
+
+    expect(await screen.findByText('00042')).toBeInTheDocument();
+    expect(screen.getByText('winner@example.com')).toBeInTheDocument();
+    expect(mockedRaffleService.draw).not.toHaveBeenCalled();
+  });
+
+  it('confirms and runs raffle draw when no result exists', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedRaffleService.getResult.mockRejectedValue({ status: 404 });
+    mockedRaffleService.draw.mockResolvedValue({
+      drawnAt: '2026-07-30T12:00:00Z',
+      winnerEmail: 'winner@example.com',
+      winningNumber: '00042',
+    });
+
+    renderApp('/admin/draw');
+
+    await user.click(await screen.findByRole('button', { name: 'Sortear vencedor' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('00042')).toBeInTheDocument();
   });
 });

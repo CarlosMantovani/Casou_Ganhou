@@ -37,8 +37,22 @@ public class PaymentWebhookController {
             @RequestHeader(value = "x-signature", required = false) String signature) {
         String paymentId = paymentId(request, queryParams);
         webhookSignatureService.validate(paymentId, requestId, signature);
+        if (!isPaymentNotification(request, queryParams)) {
+            return ResponseEntity.ok(new PaymentWebhookResponse(false));
+        }
         transactionService.processPaymentNotification(paymentId);
         return ResponseEntity.ok(new PaymentWebhookResponse(true));
+    }
+
+    private static boolean isPaymentNotification(PaymentWebhookRequest request, Map<String, String> queryParams) {
+        String type = queryParams.get("type");
+        if (!StringUtils.hasText(type)) {
+            type = queryParams.get("topic");
+        }
+        if (!StringUtils.hasText(type) && request != null) {
+            type = request.type();
+        }
+        return !StringUtils.hasText(type) || "payment".equalsIgnoreCase(type);
     }
 
     private static String paymentId(PaymentWebhookRequest request, Map<String, String> queryParams) {

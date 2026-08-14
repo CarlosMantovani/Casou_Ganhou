@@ -17,6 +17,7 @@ import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,7 @@ class AdminTransactionControllerTests {
         when(adminTransactionService.list(eq("guest"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(new AdminTransactionResponse(
                         "external",
+                        OffsetDateTime.parse("2026-08-14T18:00:00-03:00"),
                         "Guest User",
                         "11999999999",
                         "guest@example.com",
@@ -68,6 +70,7 @@ class AdminTransactionControllerTests {
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-08-14T18:00:00-03:00"))
                 .andExpect(jsonPath("$.content[0].name").value("Guest User"))
                 .andExpect(jsonPath("$.content[0].luckyNumbers[0]").value("00001"));
     }

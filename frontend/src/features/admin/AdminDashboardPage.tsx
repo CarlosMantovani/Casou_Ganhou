@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
 import type { AdminTransactionResponse } from '../../types/admin';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { useAuth } from './AuthContext';
 
 const PAGE_SIZE = 20;
@@ -162,6 +162,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
         <thead className="border-b border-[#E7DDD6] text-xs uppercase text-warm-gray">
           <tr>
             <th className="px-3 py-3 font-bold">Nome</th>
+            <th className="px-3 py-3 font-bold">Data</th>
             <th className="px-3 py-3 font-bold">Contato</th>
             <th className="px-3 py-3 font-bold">Metodo</th>
             <th className="px-3 py-3 font-bold">Qtd.</th>
@@ -174,6 +175,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
           {transactions.map((transaction) => (
             <tr key={transaction.externalReference}>
               <td className="px-3 py-4 font-medium text-charcoal">{transaction.name}</td>
+              <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">
                 <span className="block">{transaction.phone}</span>
                 <span className="block text-xs">{transaction.email || '-'}</span>

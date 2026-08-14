@@ -5,12 +5,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -68,6 +70,38 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))
                 .andExpect(jsonPath("$.content[0].name").value("Guest User"))
                 .andExpect(jsonPath("$.content[0].luckyNumbers[0]").value("00001"));
+    }
+
+    @Test
+    void createCashTransactionRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/transactions/cash")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createCashTransactionReturnsApprovedNumbersForAdmin() throws Exception {
+        when(adminTransactionService.createCashTransaction(any()))
+                .thenReturn(new CashTransactionCreateResponse(
+                        "external",
+                        "Guest User",
+                        "11999999999",
+                        null,
+                        PaymentMethod.CASH,
+                        PaymentStatus.APPROVED,
+                        2,
+                        new BigDecimal("20.00"),
+                        List.of("00001", "00002")));
+
+        mockMvc.perform(post("/transactions/cash")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalReference").value("external"))
+                .andExpect(jsonPath("$.paymentMethod").value("CASH"))
+                .andExpect(jsonPath("$.luckyNumbers[0]").value("00001"));
     }
 
     @TestConfiguration

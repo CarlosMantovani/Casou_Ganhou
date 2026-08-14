@@ -18,6 +18,7 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.TransactionService;
+import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -53,9 +54,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionQuoteResponse quote(TransactionQuoteRequest request) {
-        String name = normalizeName(request.name());
-        String phone = normalizePhone(request.phone());
-        String email = normalizeEmail(request.email());
+        String name = ParticipantNormalizer.normalizeName(request.name());
+        String phone = ParticipantNormalizer.normalizePhone(request.phone());
+        String email = ParticipantNormalizer.normalizeEmail(request.email());
         BigDecimal unitPrice = appProperties.raffle().unitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
         return new TransactionQuoteResponse(name, phone, email, request.quantity(), unitPrice, totalAmount);
@@ -64,9 +65,9 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransactionCreateResponse create(TransactionCreateRequest request) {
-        String name = normalizeName(request.name());
-        String phone = normalizePhone(request.phone());
-        String email = normalizeEmail(request.email());
+        String name = ParticipantNormalizer.normalizeName(request.name());
+        String phone = ParticipantNormalizer.normalizePhone(request.phone());
+        String email = ParticipantNormalizer.normalizeEmail(request.email());
         String externalReference = UUID.randomUUID().toString();
         BigDecimal unitPrice = appProperties.raffle().unitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
@@ -144,22 +145,6 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 luckyNumberService.findNumbers(transaction.getExternalReference()));
-    }
-
-    private static String normalizeName(String name) {
-        return name.trim();
-    }
-
-    private static String normalizeEmail(String email) {
-        return StringUtils.hasText(email) ? email.trim().toLowerCase() : null;
-    }
-
-    private static String normalizePhone(String phone) {
-        String digits = phone.replaceAll("\\D", "");
-        if (digits.length() != 10 && digits.length() != 11) {
-            throw new IllegalArgumentException("Phone must have 10 or 11 digits.");
-        }
-        return digits;
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {

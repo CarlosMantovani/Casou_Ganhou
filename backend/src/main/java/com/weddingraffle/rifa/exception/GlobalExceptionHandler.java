@@ -83,6 +83,17 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
+    @ExceptionHandler(InvalidTransactionStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidTransactionState(
+            InvalidTransactionStateException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.CONFLICT.value(),
+                        "INVALID_TRANSACTION_STATE",
+                        exception.getMessage(),
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
             IllegalArgumentException exception, HttpServletRequest request) {

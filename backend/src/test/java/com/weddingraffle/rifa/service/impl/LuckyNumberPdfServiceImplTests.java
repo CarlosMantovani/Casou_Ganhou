@@ -1,0 +1,51 @@
+package com.weddingraffle.rifa.service.impl;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
+import com.weddingraffle.rifa.entity.PaymentStatus;
+import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
+import com.weddingraffle.rifa.repository.TransactionRepository;
+import com.weddingraffle.rifa.service.LuckyNumberService;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class LuckyNumberPdfServiceImplTests {
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private LuckyNumberService luckyNumberService;
+
+    @Test
+    void generatesPdfForApprovedTransactionWithLuckyNumbers() {
+        LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
+        Transaction transaction =
+                new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external");
+        when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
+        when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
+
+        byte[] pdf = service.generate("external");
+
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
+    void failsWhenTransactionIsNotApproved() {
+        LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
+        Transaction transaction =
+                new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external");
+        when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
+
+        assertThatThrownBy(() -> service.generate("external")).isInstanceOf(InvalidTransactionStateException.class);
+    }
+}

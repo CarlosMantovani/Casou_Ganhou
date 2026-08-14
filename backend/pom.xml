@@ -18,6 +18,7 @@
   <properties>
     <java.version>21</java.version>
     <mapstruct.version>1.6.3</mapstruct.version>
+    <pdfbox.version>3.0.8</pdfbox.version>
     <springdoc.version>2.6.0</springdoc.version>
     <spotless.version>2.43.0</spotless.version>
     <mercado-pago.version>3.3.1</mercado-pago.version>
@@ -60,6 +61,11 @@
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct</artifactId>
       <version>${mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
     </dependency>
     <dependency>
       <groupId>com.mercadopago</groupId>

@@ -66,13 +66,15 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
-        BigDecimal totalAmount = appProperties.raffle().unitPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal unitPrice = appProperties.raffle().unitPrice();
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         Transaction transaction = transactionRepository.save(new Transaction(
                 name,
                 phone,
                 email,
                 request.quantity(),
+                unitPrice,
                 totalAmount,
                 PaymentStatus.APPROVED,
                 PaymentMethod.CASH,

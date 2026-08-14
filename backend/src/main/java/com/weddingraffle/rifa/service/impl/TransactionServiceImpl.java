@@ -80,6 +80,7 @@ public class TransactionServiceImpl implements TransactionService {
                 phone,
                 email,
                 request.quantity(),
+                unitPrice,
                 totalAmount,
                 PaymentStatus.PENDING,
                 PaymentMethod.MERCADO_PAGO,

@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -35,6 +36,9 @@ public class Transaction {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal unitPrice;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -70,7 +74,16 @@ public class Transaction {
 
     public Transaction(
             String email, Integer quantity, BigDecimal totalAmount, PaymentStatus status, String externalReference) {
-        this(email, "0000000000", email, quantity, totalAmount, status, PaymentMethod.MERCADO_PAGO, externalReference);
+        this(
+                email,
+                "0000000000",
+                email,
+                quantity,
+                inferUnitPrice(totalAmount, quantity),
+                totalAmount,
+                status,
+                PaymentMethod.MERCADO_PAGO,
+                externalReference);
     }
 
     public Transaction(
@@ -82,10 +95,33 @@ public class Transaction {
             PaymentStatus status,
             PaymentMethod paymentMethod,
             String externalReference) {
+        this(
+                name,
+                phone,
+                email,
+                quantity,
+                inferUnitPrice(totalAmount, quantity),
+                totalAmount,
+                status,
+                paymentMethod,
+                externalReference);
+    }
+
+    public Transaction(
+            String name,
+            String phone,
+            String email,
+            Integer quantity,
+            BigDecimal unitPrice,
+            BigDecimal totalAmount,
+            PaymentStatus status,
+            PaymentMethod paymentMethod,
+            String externalReference) {
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.quantity = quantity;
+        this.unitPrice = unitPrice;
         this.totalAmount = totalAmount;
         this.status = status;
         this.paymentMethod = paymentMethod;
@@ -114,6 +150,10 @@ public class Transaction {
 
     public BigDecimal getTotalAmount() {
         return totalAmount;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
     }
 
     public PaymentStatus getStatus() {
@@ -174,5 +214,9 @@ public class Transaction {
     public void markConfirmationEmailFailed(OffsetDateTime failedAt, String error) {
         this.confirmationEmailFailedAt = failedAt;
         this.confirmationEmailLastError = error;
+    }
+
+    private static BigDecimal inferUnitPrice(BigDecimal totalAmount, Integer quantity) {
+        return totalAmount.divide(BigDecimal.valueOf(quantity), 2, RoundingMode.HALF_UP);
     }
 }

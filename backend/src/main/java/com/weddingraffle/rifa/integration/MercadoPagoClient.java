@@ -38,11 +38,11 @@ public class MercadoPagoClient implements PaymentProviderClient {
     @Override
     @Retryable(
             retryFor = ExternalPaymentException.class,
-            maxAttemptsExpression = "#{@appProperties.mercadoPago().retry().maxAttempts()}",
+            maxAttemptsExpression = "${app.mercado-pago.retry.max-attempts}",
             backoff =
                     @Backoff(
-                            delayExpression = "#{@appProperties.mercadoPago().retry().delayMillis()}",
-                            multiplierExpression = "#{@appProperties.mercadoPago().retry().multiplier()}"))
+                            delayExpression = "${app.mercado-pago.retry.delay-millis}",
+                            multiplierExpression = "${app.mercado-pago.retry.multiplier}"))
     public CheckoutPreferenceResponse createPreference(CheckoutPreferenceRequest request) {
         try {
             Preference preference = preferenceClient.create(toPreferenceRequest(request));
@@ -55,11 +55,11 @@ public class MercadoPagoClient implements PaymentProviderClient {
     @Override
     @Retryable(
             retryFor = ExternalPaymentException.class,
-            maxAttemptsExpression = "#{@appProperties.mercadoPago().retry().maxAttempts()}",
+            maxAttemptsExpression = "${app.mercado-pago.retry.max-attempts}",
             backoff =
                     @Backoff(
-                            delayExpression = "#{@appProperties.mercadoPago().retry().delayMillis()}",
-                            multiplierExpression = "#{@appProperties.mercadoPago().retry().multiplier()}"))
+                            delayExpression = "${app.mercado-pago.retry.delay-millis}",
+                            multiplierExpression = "${app.mercado-pago.retry.multiplier}"))
     public PaymentProviderPayment getPayment(String paymentId) {
         try {
             Payment payment = paymentClient.get(Long.valueOf(paymentId));

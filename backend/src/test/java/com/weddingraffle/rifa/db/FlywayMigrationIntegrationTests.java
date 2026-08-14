@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class FlywayMigrationIntegrationTests {
 
     private static final String ADMIN_PASSWORD_HASH = "$2a$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+    private static final String RAFFLE_UNIT_PRICE = "10.00";
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -29,7 +30,10 @@ class FlywayMigrationIntegrationTests {
         Flyway flyway = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
-                .placeholders(Map.of("admin_username", "admin", "admin_password_hash", ADMIN_PASSWORD_HASH))
+                .placeholders(Map.of(
+                        "admin_username", "admin",
+                        "admin_password_hash", ADMIN_PASSWORD_HASH,
+                        "raffle_unit_price", RAFFLE_UNIT_PRICE))
                 .load();
 
         flyway.migrate();
@@ -40,6 +44,7 @@ class FlywayMigrationIntegrationTests {
             assertThat(tableExists(statement, "lucky_number")).isTrue();
             assertThat(tableExists(statement, "raffle_draw")).isTrue();
             assertThat(tableExists(statement, "admin_user")).isTrue();
+            assertThat(tableExists(statement, "raffle_config")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_email")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_external_reference"))
                     .isTrue();
@@ -51,6 +56,7 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(columnExists(statement, "transaction", "confirmation_email_last_error"))
                     .isTrue();
+            assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
         }
     }

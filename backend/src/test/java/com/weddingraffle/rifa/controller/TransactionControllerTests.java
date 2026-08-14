@@ -82,13 +82,16 @@ class TransactionControllerTests {
         mockMvc.perform(options("/transactions/quote")
                         .header("Origin", "https://3278-45-225-145-57.ngrok-free.app")
                         .header("Access-Control-Request-Method", "POST")
-                        .header("Access-Control-Request-Headers", "content-type"))
+                        .header("Access-Control-Request-Headers", "content-type,ngrok-skip-browser-warning"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "https://3278-45-225-145-57.ngrok-free.app"))
                 .andExpect(
                         header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString("POST")))
                 .andExpect(header().string(
-                                "Access-Control-Allow-Headers", org.hamcrest.Matchers.containsString("content-type")));
+                                "Access-Control-Allow-Headers", org.hamcrest.Matchers.containsString("content-type")))
+                .andExpect(header().string(
+                                "Access-Control-Allow-Headers",
+                                org.hamcrest.Matchers.containsString("ngrok-skip-browser-warning")));
     }
 
     @Test

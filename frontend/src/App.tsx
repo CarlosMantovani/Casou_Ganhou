@@ -1,3 +1,12 @@
+import { BuyNumbersPage } from './features/buy-numbers/BuyNumbersPage';
+import { PaymentReturnPage } from './features/payment-return/PaymentReturnPage';
+
 export function App() {
-  return <main aria-label="Application root" />;
+  const path = window.location.pathname;
+
+  if (path.startsWith('/payment-return/')) {
+    return <PaymentReturnPage />;
+  }
+
+  return <BuyNumbersPage />;
 }

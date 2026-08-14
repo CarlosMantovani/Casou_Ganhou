@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.controller;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,6 +64,22 @@ class PaymentWebhookControllerTests {
 
         verify(webhookSignatureService).validate("123", "request-123", "ts=123,v1=abc");
         verify(transactionService).processPaymentNotification("123");
+    }
+
+    @Test
+    void webhookIgnoresNonPaymentNotification() throws Exception {
+        mockMvc.perform(post("/payments/webhook")
+                        .queryParam("data.id", "merchant-order-123")
+                        .queryParam("type", "merchant_order")
+                        .header("x-request-id", "request-123")
+                        .header("x-signature", "ts=123,v1=abc")
+                        .contentType("application/json")
+                        .content("{\"type\":\"merchant_order\",\"data\":{\"id\":\"merchant-order-123\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processed").value(false));
+
+        verify(webhookSignatureService).validate("merchant-order-123", "request-123", "ts=123,v1=abc");
+        verifyNoInteractions(transactionService);
     }
 
     @Test

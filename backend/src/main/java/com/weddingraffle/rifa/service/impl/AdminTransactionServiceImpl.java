@@ -111,6 +111,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             Transaction transaction, Map<Transaction, List<String>> numbersByTransaction) {
         return new AdminTransactionResponse(
                 transaction.getExternalReference(),
+                transaction.getCreatedAt(),
                 transaction.getName(),
                 transaction.getPhone(),
                 transaction.getEmail(),

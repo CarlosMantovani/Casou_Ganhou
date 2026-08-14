@@ -4,6 +4,7 @@ export type PaymentMethod = 'MERCADO_PAGO' | 'CASH';
 
 export interface AdminTransactionResponse {
   externalReference: string;
+  createdAt: string;
   name: string;
   phone: string;
   email: string | null;
@@ -21,7 +22,17 @@ export interface CashTransactionCreateRequest {
   quantity: number;
 }
 
-export type CashTransactionCreateResponse = AdminTransactionResponse;
+export interface CashTransactionCreateResponse {
+  externalReference: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  paymentMethod: PaymentMethod;
+  quantity: number;
+  totalAmount: string;
+  status: PaymentStatus;
+  luckyNumbers: string[];
+}
 
 export interface RaffleDrawResponse {
   winningNumber: string;

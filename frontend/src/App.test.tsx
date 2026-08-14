@@ -84,6 +84,7 @@ describe('App', () => {
     mockedAdminTransactionService.list.mockResolvedValue({
       content: [
         {
+          createdAt: '2026-08-14T18:00:00-03:00',
           email: 'guest@example.com',
           externalReference: 'external-reference',
           luckyNumbers: ['00001', '00002'],
@@ -273,6 +274,7 @@ describe('App', () => {
     renderApp('/admin');
 
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
+    expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');

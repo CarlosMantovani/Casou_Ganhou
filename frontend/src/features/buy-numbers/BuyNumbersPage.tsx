@@ -12,48 +12,52 @@ import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
 import { transactionService } from '../../services/transactionService';
 import { formatCurrency } from '../../utils/formatters';
-import { buyerEmailSchema, type BuyerEmailFormData } from './schemas';
+import { buyerSchema, type BuyerFormData } from './schemas';
 
 export function BuyNumbersPage() {
-  const [email, setEmail] = useState('');
+  const [buyer, setBuyer] = useState<BuyerFormData | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   const {
     formState: { errors, isValid },
     handleSubmit,
     register,
-  } = useForm<BuyerEmailFormData>({
-    defaultValues: { email: '' },
+  } = useForm<BuyerFormData>({
+    defaultValues: { email: '', name: '', phone: '' },
     mode: 'onChange',
-    resolver: zodResolver(buyerEmailSchema),
+    resolver: zodResolver(buyerSchema),
   });
 
   const quoteQuery = useQuery({
-    enabled: Boolean(email),
-    queryKey: ['transaction-quote', email, quantity],
-    queryFn: () => transactionService.quote({ email, quantity }),
+    enabled: Boolean(buyer),
+    queryKey: ['transaction-quote', buyer, quantity],
+    queryFn: () => transactionService.quote({ ...buyer!, quantity }),
   });
 
   const createTransactionMutation = useMutation({
-    mutationFn: (request: { email: string; quantity: number }) => transactionService.create(request),
+    mutationFn: (request: BuyerFormData & { quantity: number }) => transactionService.create(request),
     onSuccess: (response) => {
       window.location.assign(response.checkoutUrl);
     },
   });
 
-  const onSubmitEmail = (data: BuyerEmailFormData) => {
-    setEmail(data.email.trim());
+  const onSubmitBuyer = (data: BuyerFormData) => {
+    setBuyer({
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email?.trim() || undefined,
+    });
   };
 
   const decreaseQuantity = () => setQuantity((current) => Math.max(1, current - 1));
   const increaseQuantity = () => setQuantity((current) => current + 1);
 
   const handlePay = () => {
-    if (!email || createTransactionMutation.isPending) return;
-    createTransactionMutation.mutate({ email, quantity });
+    if (!buyer || createTransactionMutation.isPending) return;
+    createTransactionMutation.mutate({ ...buyer, quantity });
   };
 
-  const currentStep: 1 | 2 = email ? 2 : 1;
+  const currentStep: 1 | 2 = buyer ? 2 : 1;
   const unitPrice = quoteQuery.data?.unitPrice;
   const totalAmount = quoteQuery.data?.totalAmount;
 
@@ -63,7 +67,7 @@ export function BuyNumbersPage() {
         <header className="text-center">
           <BrandMark />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
-            Participe do sorteio e faça parte deste presente especial para o casal.
+            Participe do sorteio e faca parte deste presente especial para o casal.
           </p>
           <div className="mt-6">
             <GoldDivider />
@@ -72,21 +76,42 @@ export function BuyNumbersPage() {
 
         <StepProgress currentStep={currentStep} />
 
-        {!email ? (
+        {!buyer ? (
           <Card>
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmitEmail)}>
+            <form className="space-y-5" onSubmit={handleSubmit(onSubmitBuyer)}>
               <div>
-                <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos começar!</h1>
-                <p className="mt-1 text-sm text-warm-gray">Informe seu e-mail para escolher seus números.</p>
+                <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos comecar!</h1>
+                <p className="mt-1 text-sm text-warm-gray">Informe seus dados para escolher seus numeros.</p>
               </div>
+
+              <TextInput
+                autoComplete="name"
+                error={errors.name?.message}
+                id="buyer-name"
+                label="Nome"
+                placeholder="Seu nome"
+                {...register('name')}
+              />
+
+              <TextInput
+                autoComplete="tel"
+                error={errors.phone?.message}
+                helper="Use um telefone com DDD."
+                id="buyer-phone"
+                inputMode="tel"
+                label="Telefone"
+                placeholder="(11) 99999-9999"
+                type="tel"
+                {...register('phone')}
+              />
 
               <TextInput
                 autoComplete="email"
                 error={errors.email?.message}
-                helper="Os números serão enviados para este e-mail após a confirmação do pagamento."
+                helper="Informe seu e-mail para receber os numeros automaticamente, ou deixe em branco e baixe um PDF ao final."
                 id="buyer-email"
                 inputMode="email"
-                label="E-mail"
+                label="E-mail (opcional)"
                 placeholder="seu@email.com"
                 type="email"
                 {...register('email')}
@@ -101,14 +126,14 @@ export function BuyNumbersPage() {
           <section className="space-y-4" aria-labelledby="quantity-title">
             <div className="text-center">
               <h1 className="font-serif text-lg text-charcoal" id="quantity-title">
-                Quantos números você quer?
+                Quantos numeros voce quer?
               </h1>
               <button
                 className="mt-2 text-xs font-semibold text-terracotta underline underline-offset-4"
-                onClick={() => setEmail('')}
+                onClick={() => setBuyer(null)}
                 type="button"
               >
-                Trocar e-mail
+                Alterar dados
               </button>
             </div>
 
@@ -126,7 +151,7 @@ export function BuyNumbersPage() {
 
                 <div className="min-w-24 text-center">
                   <span className="block font-serif text-7xl font-bold leading-none text-charcoal">{quantity}</span>
-                  <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'número' : 'números'}</span>
+                  <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'numero' : 'numeros'}</span>
                 </div>
 
                 <button
@@ -144,10 +169,12 @@ export function BuyNumbersPage() {
               <dl className="space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-sm text-warm-gray">Quantidade</dt>
-                  <dd className="text-sm font-semibold">{quantity} {quantity === 1 ? 'número' : 'números'}</dd>
+                  <dd className="text-sm font-semibold">
+                    {quantity} {quantity === 1 ? 'numero' : 'numeros'}
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-sm text-warm-gray">Valor unitário</dt>
+                  <dt className="text-sm text-warm-gray">Valor unitario</dt>
                   <dd className="text-sm font-semibold">
                     {quoteQuery.isLoading ? 'Atualizando...' : unitPrice ? formatCurrency(unitPrice) : '-'}
                   </dd>
@@ -185,7 +212,7 @@ export function BuyNumbersPage() {
             </Button>
 
             <p className="px-2 text-center text-xs leading-relaxed text-warm-gray">
-              Você será redirecionado ao Mercado Pago para concluir o pagamento com segurança.
+              Voce sera redirecionado ao Mercado Pago para concluir o pagamento com seguranca.
             </p>
           </section>
         )}

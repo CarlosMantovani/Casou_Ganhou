@@ -22,4 +22,8 @@ export const transactionService = {
     const response = await apiClient.get<TransactionStatusResponse>(`/transactions/${externalReference}/status`);
     return response.data;
   },
+
+  getLuckyNumbersPdfUrl(externalReference: string): string {
+    return `${apiClient.defaults.baseURL}/transactions/${externalReference}/lucky-numbers.pdf`;
+  },
 };

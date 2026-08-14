@@ -42,11 +42,6 @@ public class PaymentWebhookController {
     }
 
     private static String paymentId(PaymentWebhookRequest request, Map<String, String> queryParams) {
-        if (request != null
-                && request.data() != null
-                && StringUtils.hasText(request.data().id())) {
-            return request.data().id();
-        }
         String dataId = queryParams.get("data.id");
         if (StringUtils.hasText(dataId)) {
             return dataId;
@@ -54,6 +49,11 @@ public class PaymentWebhookController {
         String id = queryParams.get("id");
         if (StringUtils.hasText(id)) {
             return id;
+        }
+        if (request != null
+                && request.data() != null
+                && StringUtils.hasText(request.data().id())) {
+            return request.data().id();
         }
         throw new IllegalArgumentException("Payment id is required.");
     }

@@ -163,6 +163,7 @@ class TransactionServiceImplTests {
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
+        transaction.markPayment(PaymentStatus.APPROVED, "123");
         when(paymentProviderClient.getPayment("123"))
                 .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
         when(transactionRepository.findByExternalReference("external-reference-123"))
@@ -172,6 +173,64 @@ class TransactionServiceImplTests {
 
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository, never()).save(transaction);
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updatesApprovedTransactionWhenPaymentIsRefundedWithoutGeneratingLuckyNumbers() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
+        transaction.markPayment(PaymentStatus.APPROVED, "123");
+        when(paymentProviderClient.getPayment("123"))
+                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "refunded"));
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+
+        transactionService.processPaymentNotification("123");
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        verify(luckyNumberService, never()).generateFor(transaction);
+        verify(transactionRepository).save(transaction);
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void mapsChargebackAndMediationStatusesWithoutGeneratingLuckyNumbers() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                appProperties(),
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                applicationEventPublisher);
+        Transaction chargebackTransaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
+        chargebackTransaction.markPayment(PaymentStatus.APPROVED, "123");
+        Transaction mediationTransaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-456");
+        mediationTransaction.markPayment(PaymentStatus.APPROVED, "456");
+        when(paymentProviderClient.getPayment("123"))
+                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "charged_back"));
+        when(paymentProviderClient.getPayment("456"))
+                .thenReturn(new PaymentProviderPayment("456", "external-reference-456", "in_mediation"));
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(chargebackTransaction));
+        when(transactionRepository.findByExternalReference("external-reference-456"))
+                .thenReturn(Optional.of(mediationTransaction));
+
+        transactionService.processPaymentNotification("123");
+        transactionService.processPaymentNotification("456");
+
+        assertThat(chargebackTransaction.getStatus()).isEqualTo(PaymentStatus.CHARGED_BACK);
+        assertThat(mediationTransaction.getStatus()).isEqualTo(PaymentStatus.IN_MEDIATION);
+        verify(luckyNumberService, never()).generateFor(any());
+        verify(transactionRepository).save(chargebackTransaction);
+        verify(transactionRepository).save(mediationTransaction);
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 

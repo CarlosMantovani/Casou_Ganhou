@@ -51,6 +51,21 @@ class PaymentWebhookControllerTests {
     }
 
     @Test
+    void webhookUsesQueryPaymentIdBeforeBodyPaymentId() throws Exception {
+        mockMvc.perform(post("/payments/webhook")
+                        .queryParam("data.id", "123")
+                        .header("x-request-id", "request-123")
+                        .header("x-signature", "ts=123,v1=abc")
+                        .contentType("application/json")
+                        .content("{\"type\":\"payment\",\"data\":{\"id\":\"ignored\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processed").value(true));
+
+        verify(webhookSignatureService).validate("123", "request-123", "ts=123,v1=abc");
+        verify(transactionService).processPaymentNotification("123");
+    }
+
+    @Test
     void webhookReturnsBadRequestWhenPaymentIdIsMissing() throws Exception {
         mockMvc.perform(post("/payments/webhook")
                         .contentType("application/json")

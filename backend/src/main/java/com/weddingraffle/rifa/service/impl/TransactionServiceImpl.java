@@ -20,6 +20,8 @@ import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,20 +103,24 @@ public class TransactionServiceImpl implements TransactionService {
                 .findByExternalReference(payment.externalReference())
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
 
-        if (transaction.getStatus() == PaymentStatus.APPROVED) {
+        PaymentStatus currentStatus = transaction.getStatus();
+        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
+        boolean paymentIdChanged = !Objects.equals(transaction.getMpPaymentId(), payment.paymentId());
+
+        if (currentStatus == paymentStatus && !paymentIdChanged) {
             LOGGER.info(
-                    "Ignored already approved transaction with externalReference={}",
-                    transaction.getExternalReference());
+                    "Ignored unchanged payment notification for externalReference={} status={}",
+                    transaction.getExternalReference(),
+                    currentStatus);
             return;
         }
 
-        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-        if (paymentStatus == PaymentStatus.APPROVED) {
+        if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
             luckyNumberService.generateFor(transaction);
         }
         transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
-        publishPaymentApprovedEvent(transaction, paymentStatus);
+        publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
         LOGGER.info(
                 "Updated transaction externalReference={} to status={}",
                 transaction.getExternalReference(),
@@ -131,12 +137,13 @@ public class TransactionServiceImpl implements TransactionService {
         if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
             PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
             PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-            if (paymentStatus == PaymentStatus.APPROVED) {
+            PaymentStatus currentStatus = transaction.getStatus();
+            if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
                 luckyNumberService.generateFor(transaction);
             }
             transaction.markPayment(paymentStatus, payment.paymentId());
             transactionRepository.save(transaction);
-            publishPaymentApprovedEvent(transaction, paymentStatus);
+            publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
         }
 
         return new TransactionStatusResponse(
@@ -149,16 +156,23 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {
-        return switch (mercadoPagoStatus) {
+        if (!StringUtils.hasText(mercadoPagoStatus)) {
+            return PaymentStatus.PENDING;
+        }
+        return switch (mercadoPagoStatus.toLowerCase(Locale.ROOT)) {
             case "approved" -> PaymentStatus.APPROVED;
             case "rejected" -> PaymentStatus.REJECTED;
-            case "cancelled" -> PaymentStatus.CANCELLED;
+            case "cancelled", "canceled" -> PaymentStatus.CANCELLED;
+            case "refunded" -> PaymentStatus.REFUNDED;
+            case "charged_back" -> PaymentStatus.CHARGED_BACK;
+            case "in_mediation" -> PaymentStatus.IN_MEDIATION;
             default -> PaymentStatus.PENDING;
         };
     }
 
-    private void publishPaymentApprovedEvent(Transaction transaction, PaymentStatus paymentStatus) {
-        if (paymentStatus == PaymentStatus.APPROVED) {
+    private void publishPaymentApprovedEvent(
+            PaymentStatus previousStatus, Transaction transaction, PaymentStatus paymentStatus) {
+        if (paymentStatus == PaymentStatus.APPROVED && previousStatus != PaymentStatus.APPROVED) {
             applicationEventPublisher.publishEvent(new PaymentApprovedEvent(transaction.getExternalReference()));
         }
     }

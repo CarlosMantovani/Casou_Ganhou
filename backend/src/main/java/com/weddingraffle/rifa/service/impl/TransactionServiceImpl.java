@@ -98,7 +98,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void processPaymentNotification(String paymentId) {
+        LOGGER.info("Processing Mercado Pago payment notification paymentId={}", paymentId);
         PaymentProviderPayment payment = paymentProviderClient.getPayment(paymentId);
+        LOGGER.info(
+                "Mercado Pago payment notification resolved paymentId={} mercadoPagoStatus={} externalReference={}",
+                payment.paymentId(),
+                payment.status(),
+                payment.externalReference());
         Transaction transaction = transactionRepository
                 .findByExternalReference(payment.externalReference())
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
@@ -106,6 +112,13 @@ public class TransactionServiceImpl implements TransactionService {
         PaymentStatus currentStatus = transaction.getStatus();
         PaymentStatus paymentStatus = toPaymentStatus(payment.status());
         boolean paymentIdChanged = !Objects.equals(transaction.getMpPaymentId(), payment.paymentId());
+        LOGGER.info(
+                "Found transaction for Mercado Pago payment externalReference={} currentStatus={} mappedStatus={} currentPaymentId={} receivedPaymentId={}",
+                transaction.getExternalReference(),
+                currentStatus,
+                paymentStatus,
+                transaction.getMpPaymentId(),
+                payment.paymentId());
 
         if (currentStatus == paymentStatus && !paymentIdChanged) {
             LOGGER.info(
@@ -122,9 +135,11 @@ public class TransactionServiceImpl implements TransactionService {
         transactionRepository.save(transaction);
         publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
         LOGGER.info(
-                "Updated transaction externalReference={} to status={}",
+                "Saved transaction payment status externalReference={} previousStatus={} savedStatus={} paymentId={}",
                 transaction.getExternalReference(),
-                transaction.getStatus());
+                currentStatus,
+                transaction.getStatus(),
+                transaction.getMpPaymentId());
     }
 
     @Override

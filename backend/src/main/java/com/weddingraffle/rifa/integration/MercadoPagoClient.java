@@ -14,6 +14,8 @@ import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.exception.ExternalPaymentException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
@@ -22,7 +24,9 @@ import org.springframework.util.StringUtils;
 @Component
 public class MercadoPagoClient implements PaymentProviderClient {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoClient.class);
     private static final String ITEM_TITLE = "Lucky number";
+    private static final int ERROR_RESPONSE_LOG_LIMIT = 1_000;
 
     private final AppProperties appProperties;
     private final PaymentClient paymentClient;
@@ -62,12 +66,40 @@ public class MercadoPagoClient implements PaymentProviderClient {
                             multiplierExpression = "${app.mercado-pago.retry.multiplier}"))
     public PaymentProviderPayment getPayment(String paymentId) {
         try {
+            LOGGER.info("Fetching Mercado Pago payment paymentId={}", paymentId);
             Payment payment = paymentClient.get(Long.valueOf(paymentId));
+            LOGGER.info(
+                    "Fetched Mercado Pago payment paymentId={} status={} statusDetail={} externalReference={} paymentMethodId={} dateCreated={} dateApproved={} dateLastUpdated={}",
+                    payment.getId(),
+                    payment.getStatus(),
+                    payment.getStatusDetail(),
+                    payment.getExternalReference(),
+                    payment.getPaymentMethodId(),
+                    payment.getDateCreated(),
+                    payment.getDateApproved(),
+                    payment.getDateLastUpdated());
             return new PaymentProviderPayment(
                     String.valueOf(payment.getId()), payment.getExternalReference(), payment.getStatus());
-        } catch (MPApiException | MPException | NumberFormatException exception) {
+        } catch (MPApiException exception) {
+            LOGGER.warn(
+                    "Failed to fetch Mercado Pago payment paymentId={} statusCode={} responseBody={}",
+                    paymentId,
+                    exception.getStatusCode(),
+                    truncated(
+                            exception.getApiResponse() == null
+                                    ? null
+                                    : exception.getApiResponse().getContent()));
+            throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
+        } catch (MPException | NumberFormatException exception) {
             throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
         }
+    }
+
+    private static String truncated(String value) {
+        if (!StringUtils.hasText(value) || value.length() <= ERROR_RESPONSE_LOG_LIMIT) {
+            return value;
+        }
+        return value.substring(0, ERROR_RESPONSE_LOG_LIMIT) + "...";
     }
 
     private PreferenceRequest toPreferenceRequest(CheckoutPreferenceRequest request) {

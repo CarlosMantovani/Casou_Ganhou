@@ -8,12 +8,15 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class MercadoPagoWebhookSignatureService implements WebhookSignatureService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoWebhookSignatureService.class);
     private static final String HMAC_ALGORITHM = "HmacSHA256";
 
     private final AppProperties appProperties;
@@ -26,6 +29,7 @@ public class MercadoPagoWebhookSignatureService implements WebhookSignatureServi
     public void validate(String paymentId, String requestId, String signature) {
         String secret = appProperties.mercadoPago().webhookSecret();
         if (!StringUtils.hasText(secret)) {
+            LOGGER.info("Skipped Mercado Pago webhook signature validation because webhook secret is not configured.");
             return;
         }
         String timestamp = signatureValue(signature, "ts");
@@ -34,13 +38,21 @@ public class MercadoPagoWebhookSignatureService implements WebhookSignatureServi
                 || !StringUtils.hasText(requestId)
                 || !StringUtils.hasText(timestamp)
                 || !StringUtils.hasText(expectedSignature)) {
+            LOGGER.warn(
+                    "Rejected Mercado Pago webhook signature because required values are missing paymentIdPresent={} requestIdPresent={} timestampPresent={} signaturePresent={}",
+                    StringUtils.hasText(paymentId),
+                    StringUtils.hasText(requestId),
+                    StringUtils.hasText(timestamp),
+                    StringUtils.hasText(expectedSignature));
             throw new InvalidWebhookSignatureException();
         }
 
         String manifest = "id:%s;request-id:%s;ts:%s;".formatted(paymentId, requestId, timestamp);
         if (!MessageDigest.isEqual(hmacSha256(manifest, secret), hexToBytes(expectedSignature))) {
+            LOGGER.warn("Rejected Mercado Pago webhook signature because HMAC does not match paymentId={}", paymentId);
             throw new InvalidWebhookSignatureException();
         }
+        LOGGER.info("Validated Mercado Pago webhook signature paymentId={}", paymentId);
     }
 
     private static String signatureValue(String signature, String key) {

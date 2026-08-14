@@ -67,8 +67,8 @@ export function AdminDrawPage() {
                 {drawError ? (
                   <p className="mx-auto mt-6 max-w-sm rounded-lg border border-gold/20 bg-white/5 px-4 py-3 text-sm text-white/80" role="alert">
                     {drawError.status === 409
-                      ? 'Ainda não há números aprovados suficientes para realizar o sorteio.'
-                      : 'Não foi possível realizar o sorteio agora.'}
+                      ? 'Ainda nao ha numeros aprovados suficientes para realizar o sorteio.'
+                      : 'Nao foi possivel realizar o sorteio agora.'}
                   </p>
                 ) : null}
               </div>
@@ -82,7 +82,7 @@ export function AdminDrawPage() {
           <div className="w-full max-w-sm rounded-lg bg-cream p-6 text-charcoal shadow-soft">
             <h2 className="font-serif text-2xl font-bold">Confirmar sorteio?</h2>
             <p className="mt-3 text-sm leading-relaxed text-warm-gray">
-              O sorteio é idempotente no sistema: se já existir resultado, ele será exibido sem sortear novamente.
+              O sorteio e idempotente no sistema: se ja existir resultado, ele sera exibido sem sortear novamente.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -113,12 +113,12 @@ function WinnerResult({ result }: { result: RaffleDrawResponse }) {
     <div className="mt-16">
       <p className="text-sm font-bold uppercase tracking-[0.28em] text-gold">
         <PartyPopper aria-hidden="true" className="mr-2 inline h-4 w-4" />
-        Número vencedor
+        Numero vencedor
       </p>
       <h1 className="mt-8 font-serif text-[clamp(5rem,18vw,11rem)] font-bold leading-none text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
         {result.winningNumber}
       </h1>
-      <p className="mt-8 font-serif text-4xl font-bold">{result.winnerEmail}</p>
+      <p className="mt-8 font-serif text-4xl font-bold">{result.winnerName}</p>
       <p className="mt-3 text-sm text-white/50">
         Sorteado em {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(result.drawnAt))}
       </p>

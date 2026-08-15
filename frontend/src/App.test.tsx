@@ -118,6 +118,23 @@ describe('App', () => {
     expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
   });
 
+  it('requires name and phone before the quantity step', async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
+
+    await user.type(screen.getByLabelText('Nome'), 'Guest User');
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
+    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Telefone'), '44988549696');
+
+    expect(screen.getByLabelText('Telefone')).toHaveValue('(44) 98854-9696');
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled();
+  });
+
   it('shows quote values when quantity changes', async () => {
     const user = userEvent.setup();
     mockedTransactionService.quote
@@ -141,7 +158,7 @@ describe('App', () => {
     renderApp();
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
-    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.type(screen.getByLabelText('Telefone'), '11999999999');
     await user.type(screen.getByLabelText('E-mail (opcional)'), 'guest@example.com');
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findAllByText('R$ 10,00');
@@ -178,7 +195,7 @@ describe('App', () => {
     expect(mockedTransactionService.create).toHaveBeenCalledWith({
       email: 'guest@example.com',
       name: 'Guest User',
-      phone: '(11) 99999-9999',
+      phone: '11999999999',
       quantity: 1,
     });
     expect(assign).toHaveBeenCalledWith('https://checkout.example.com');

@@ -141,7 +141,6 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
-    expect(screen.getByText(/Cada telefone recebe uma bandeira/i)).toBeInTheDocument();
     expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();

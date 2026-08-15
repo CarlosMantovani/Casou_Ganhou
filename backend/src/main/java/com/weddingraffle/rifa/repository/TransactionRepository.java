@@ -20,16 +20,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             String name, String email, Pageable pageable);
 
     @Query(
-            """
-            select
-                t.participantFlagCode as code,
-                t.participantFlagName as name,
-                t.participantFlagEmoji as emoji,
-                sum(t.quantity) as totalNumbers
-            from RaffleTransaction t
-            where t.status = com.weddingraffle.rifa.entity.PaymentStatus.APPROVED
-            group by t.participantFlagCode, t.participantFlagName, t.participantFlagEmoji
-            order by sum(t.quantity) desc, t.participantFlagName asc
-            """)
+            value =
+                    """
+                    select
+                        participant_flag_code as code,
+                        participant_flag_name as name,
+                        participant_flag_emoji as emoji,
+                        cast(sum(quantity) as bigint) as "totalNumbers"
+                    from transaction
+                    where status = 'APPROVED'
+                    group by participant_flag_code, participant_flag_name, participant_flag_emoji
+                    order by sum(quantity) desc, participant_flag_name asc
+                    """,
+            nativeQuery = true)
     List<FlagRankingProjection> findApprovedFlagRanking(Pageable pageable);
 }

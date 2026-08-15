@@ -69,8 +69,7 @@ export function BuyNumbersPage() {
 
   return (
     <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
-      <div className="mx-auto grid w-full max-w-5xl gap-7 lg:grid-cols-[minmax(0,440px)_minmax(320px,1fr)] lg:items-start">
-        <div className="flex w-full max-w-[440px] flex-col gap-7 justify-self-center lg:justify-self-start">
+      <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7">
         <header className="text-center">
           <BrandMark />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
@@ -223,8 +222,6 @@ export function BuyNumbersPage() {
             </p>
           </section>
         )}
-        </div>
-
         <FlagRankingPanel
           isLoading={homeSummaryQuery.isLoading}
           ranking={homeSummaryQuery.data?.flagRanking ?? []}
@@ -236,21 +233,16 @@ export function BuyNumbersPage() {
 
 function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking: FlagRankingItem[] }) {
   return (
-    <aside className="lg:sticky lg:top-8">
+    <aside>
       <Card className="bg-white/90">
         <div className="space-y-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
             <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
             <p className="mt-2 text-sm leading-relaxed text-warm-gray">
-              Cada telefone recebe uma bandeira na primeira compra. O ranking soma os numeros comprados e aprovados por
-              todas as pessoas de cada bandeira.
+              A bandeira em primeiro lugar tambem ganhara um premio especial no dia do sorteio.
             </p>
           </div>
-
-          <p className="rounded-lg border border-gold/40 bg-gold/15 px-4 py-3 text-sm font-semibold leading-relaxed text-charcoal">
-            A bandeira em primeiro lugar tambem ganhara um premio especial no dia do sorteio.
-          </p>
 
           <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
             <table className="w-full text-left text-sm">

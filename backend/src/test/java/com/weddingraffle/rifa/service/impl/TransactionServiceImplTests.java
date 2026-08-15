@@ -83,7 +83,7 @@ class TransactionServiceImplTests {
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
         when(participantFlagService.resolveForPhone("11999999999"))
-                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "BR"));
+                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
 
         TransactionCreateResponse response = transactionService.create(
                 new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2));
@@ -113,6 +113,7 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getMpPreferenceId()).isEqualTo("preference-123");
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagName()).isEqualTo("Brasil");
+        assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
     }
 
     @Test

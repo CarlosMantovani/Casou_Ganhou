@@ -9,10 +9,14 @@ import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.stereotype.Service;
@@ -58,6 +62,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             try (PDPageContentStream content = new PDPageContentStream(document, page)) {
                 PDType1Font titleFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
                 PDType1Font textFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+                PDFont emojiFont = loadEmojiFont(document);
 
                 writeLine(content, titleFont, 20, 72, 720, "Presente Premiado");
                 writeLine(
@@ -67,9 +72,10 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                         72,
                         680,
                         "Obrigado pela sua contribuicao, " + transaction.getName() + ".");
-                writeLine(content, textFont, 13, 72, 655, "Seus numeros da sorte sao:");
+                writeParticipantFlag(content, textFont, emojiFont, transaction, 72, 655);
+                writeLine(content, textFont, 13, 72, 625, "Seus numeros da sorte sao:");
 
-                int y = 625;
+                int y = 595;
                 for (String luckyNumber : luckyNumbers) {
                     writeLine(content, titleFont, 16, 96, y, luckyNumber);
                     y -= 24;
@@ -85,12 +91,62 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         }
     }
 
-    private static void writeLine(
-            PDPageContentStream content, PDType1Font font, int fontSize, int x, int y, String text) throws IOException {
+    private static void writeLine(PDPageContentStream content, PDFont font, int fontSize, int x, int y, String text)
+            throws IOException {
+        boolean textBlockStarted = false;
         content.beginText();
-        content.setFont(font, fontSize);
-        content.newLineAtOffset(x, y);
-        content.showText(text);
-        content.endText();
+        textBlockStarted = true;
+        try {
+            content.setFont(font, fontSize);
+            content.newLineAtOffset(x, y);
+            content.showText(text);
+        } finally {
+            if (textBlockStarted) {
+                content.endText();
+            }
+        }
+    }
+
+    private static PDFont loadEmojiFont(PDDocument document) {
+        List<Path> candidates = List.of(
+                Path.of("C:\\Windows\\Fonts\\seguiemj.ttf"),
+                Path.of("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
+                Path.of("/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf"));
+
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate)) {
+                try {
+                    return PDType0Font.load(document, candidate.toFile());
+                } catch (IOException | RuntimeException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void writeParticipantFlag(
+            PDPageContentStream content, PDFont textFont, PDFont emojiFont, Transaction transaction, int x, int y)
+            throws IOException {
+        if (transaction.getParticipantFlagName() == null) {
+            return;
+        }
+
+        writeLine(content, textFont, 13, x, y, "Sua bandeira:");
+        if (emojiFont == null) {
+            writeLine(content, textFont, 13, x + 95, y, transaction.getParticipantFlagName());
+            return;
+        }
+
+        try {
+            if (transaction.getParticipantFlagEmoji() != null) {
+                writeLine(content, emojiFont, 14, x + 95, y, transaction.getParticipantFlagEmoji());
+                writeLine(content, textFont, 13, x + 125, y, transaction.getParticipantFlagName());
+                return;
+            }
+        } catch (IOException | RuntimeException exception) {
+            // Falls back to the flag name when the local PDF font cannot render the emoji glyph.
+        }
+        writeLine(content, textFont, 13, x + 95, y, transaction.getParticipantFlagName());
     }
 }

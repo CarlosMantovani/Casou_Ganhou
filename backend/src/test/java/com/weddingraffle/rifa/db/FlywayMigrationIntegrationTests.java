@@ -125,7 +125,7 @@ class FlywayMigrationIntegrationTests {
                     'external-reference-ranking-test',
                     'BRAZIL',
                     'Brasil',
-                    'BR'
+                    '🇧🇷'
                 )
                 """);
 

@@ -35,5 +35,7 @@ export interface TransactionStatusResponse {
   status: PaymentStatus;
   quantity: number;
   totalAmount: string;
+  participantFlagName: string;
+  participantFlagEmoji: string;
   luckyNumbers: string[];
 }

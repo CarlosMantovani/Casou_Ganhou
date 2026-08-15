@@ -11,18 +11,18 @@ import org.springframework.stereotype.Service;
 public class RandomParticipantFlagService implements ParticipantFlagService {
 
     private static final List<ParticipantFlag> FLAGS = List.of(
-            new ParticipantFlag("BRAZIL", "Brasil", "BR"),
-            new ParticipantFlag("ARGENTINA", "Argentina", "AR"),
-            new ParticipantFlag("JAPAN", "Japao", "JP"),
-            new ParticipantFlag("ITALY", "Italia", "IT"),
-            new ParticipantFlag("CANADA", "Canada", "CA"),
-            new ParticipantFlag("PORTUGAL", "Portugal", "PT"),
-            new ParticipantFlag("SPAIN", "Espanha", "ES"),
-            new ParticipantFlag("FRANCE", "Franca", "FR"),
-            new ParticipantFlag("GERMANY", "Alemanha", "DE"),
-            new ParticipantFlag("MEXICO", "Mexico", "MX"),
-            new ParticipantFlag("URUGUAY", "Uruguai", "UY"),
-            new ParticipantFlag("CHILE", "Chile", "CL"));
+            new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"),
+            new ParticipantFlag("ARGENTINA", "Argentina", "🇦🇷"),
+            new ParticipantFlag("JAPAN", "Japao", "🇯🇵"),
+            new ParticipantFlag("ITALY", "Italia", "🇮🇹"),
+            new ParticipantFlag("CANADA", "Canada", "🇨🇦"),
+            new ParticipantFlag("PORTUGAL", "Portugal", "🇵🇹"),
+            new ParticipantFlag("SPAIN", "Espanha", "🇪🇸"),
+            new ParticipantFlag("FRANCE", "Franca", "🇫🇷"),
+            new ParticipantFlag("GERMANY", "Alemanha", "🇩🇪"),
+            new ParticipantFlag("MEXICO", "Mexico", "🇲🇽"),
+            new ParticipantFlag("URUGUAY", "Uruguai", "🇺🇾"),
+            new ParticipantFlag("CHILE", "Chile", "🇨🇱"));
 
     private final TransactionRepository transactionRepository;
 

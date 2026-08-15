@@ -94,7 +94,7 @@ describe('App', () => {
       flagRanking: [
         {
           code: 'BRAZIL',
-          emoji: 'BR',
+          emoji: '🇧🇷',
           name: 'Brasil',
           totalNumbers: 12,
         },
@@ -143,6 +143,7 @@ describe('App', () => {
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
     expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByText('🇧🇷')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
   });
 
@@ -217,6 +218,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: true,
       luckyNumbers: ['00042', '12345'],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 2,
       status: 'APPROVED',
       totalAmount: '20.00',
@@ -226,6 +229,9 @@ describe('App', () => {
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('12345')).toBeInTheDocument();
+    expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
+    expect(screen.getByText('🇧🇷')).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
     expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
   });
 
@@ -234,6 +240,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: false,
       luckyNumbers: ['00042'],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 1,
       status: 'APPROVED',
       totalAmount: '10.00',
@@ -253,6 +261,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: false,
       luckyNumbers: [],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 1,
       status: 'PENDING',
       totalAmount: '10.00',

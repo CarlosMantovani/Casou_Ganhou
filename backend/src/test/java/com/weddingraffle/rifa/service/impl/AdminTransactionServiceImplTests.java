@@ -86,7 +86,7 @@ class AdminTransactionServiceImplTests {
     void createsApprovedCashTransactionWithLuckyNumbers() {
         AdminTransactionServiceImpl service = service();
         when(participantFlagService.resolveForPhone("11999999999"))
-                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "BR"));
+                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -106,6 +106,7 @@ class AdminTransactionServiceImplTests {
         var transactionCaptor = org.mockito.ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
+        assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
     }

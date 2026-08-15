@@ -157,6 +157,8 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
+                transaction.getParticipantFlagName(),
+                transaction.getParticipantFlagEmoji(),
                 luckyNumberService.findNumbers(transaction.getExternalReference()));
     }
 

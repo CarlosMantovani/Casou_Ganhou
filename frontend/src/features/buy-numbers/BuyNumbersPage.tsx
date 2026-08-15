@@ -278,7 +278,7 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
                         <td className="px-4 py-3">
                           <span className="flex items-center gap-3">
                             <span className="grid h-10 w-10 place-items-center rounded-full bg-blush text-lg">
-                              {countryCodeToFlag(item.emoji)}
+                              {renderFlagEmoji(item.emoji)}
                             </span>
                             <span>
                               <span className="block font-bold text-charcoal">{item.name}</span>
@@ -299,12 +299,12 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
   );
 }
 
-function countryCodeToFlag(countryCode: string) {
-  if (!/^[A-Z]{2}$/.test(countryCode)) {
-    return countryCode;
+function renderFlagEmoji(value: string) {
+  if (!/^[A-Z]{2}$/.test(value)) {
+    return value;
   }
 
-  return countryCode
+  return value
     .split('')
     .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
     .join('');

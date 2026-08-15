@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Gift, LogOut, ReceiptText, Search, Ticket } from 'lucide-react';
+import { ExternalLink, Gift, LogOut, ReceiptText, Search, Ticket } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -165,6 +165,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
             <th className="px-3 py-3 font-bold">Data</th>
             <th className="px-3 py-3 font-bold">Contato</th>
             <th className="px-3 py-3 font-bold">Metodo</th>
+            <th className="px-3 py-3 font-bold">Checkout</th>
             <th className="px-3 py-3 font-bold">Qtd.</th>
             <th className="px-3 py-3 font-bold">Total</th>
             <th className="px-3 py-3 font-bold">Status</th>
@@ -181,6 +182,21 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
                 <span className="block text-xs">{transaction.email || '-'}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
+              <td className="px-3 py-4">
+                {transaction.checkoutUrl ? (
+                  <a
+                    className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#DDD2CB] px-3 py-2 text-xs font-bold text-charcoal transition hover:bg-[#F8F1EB]"
+                    href={transaction.checkoutUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                    Abrir
+                  </a>
+                ) : (
+                  <span className="text-warm-gray">-</span>
+                )}
+              </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.quantity}</td>
               <td className="px-3 py-4 text-warm-gray">{formatCurrency(transaction.totalAmount)}</td>
               <td className="px-3 py-4">

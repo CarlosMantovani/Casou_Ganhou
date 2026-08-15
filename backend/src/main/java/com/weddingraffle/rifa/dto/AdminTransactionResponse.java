@@ -13,6 +13,7 @@ public record AdminTransactionResponse(
         String phone,
         String email,
         PaymentMethod paymentMethod,
+        String checkoutUrl,
         Integer quantity,
         BigDecimal totalAmount,
         PaymentStatus status,

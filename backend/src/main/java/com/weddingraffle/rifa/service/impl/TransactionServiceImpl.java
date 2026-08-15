@@ -87,7 +87,7 @@ public class TransactionServiceImpl implements TransactionService {
                 PaymentStatus.PENDING,
                 PaymentMethod.MERCADO_PAGO,
                 externalReference);
-        transaction.assignPreference(preference.preferenceId());
+        transaction.assignPreference(preference.preferenceId(), preference.checkoutUrl());
         transactionRepository.save(transaction);
 
         LOGGER.info("Created pending transaction with externalReference={}", externalReference);

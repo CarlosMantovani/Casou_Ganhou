@@ -9,6 +9,7 @@ export interface AdminTransactionResponse {
   phone: string;
   email: string | null;
   paymentMethod: PaymentMethod;
+  checkoutUrl: string | null;
   quantity: number;
   totalAmount: string;
   status: PaymentStatus;

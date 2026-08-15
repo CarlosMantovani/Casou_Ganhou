@@ -87,6 +87,7 @@ describe('App', () => {
           createdAt: '2026-08-14T18:00:00-03:00',
           email: 'guest@example.com',
           externalReference: 'external-reference',
+          checkoutUrl: 'https://checkout.example.com',
           luckyNumbers: ['00001', '00002'],
           name: 'Guest User',
           paymentMethod: 'MERCADO_PAGO',
@@ -275,6 +276,7 @@ describe('App', () => {
 
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Abrir/i })).toHaveAttribute('href', 'https://checkout.example.com');
     expect(screen.getByText('00001')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');

@@ -60,6 +60,7 @@ class AdminTransactionControllerTests {
                         "11999999999",
                         "guest@example.com",
                         PaymentMethod.MERCADO_PAGO,
+                        "https://checkout.example.com",
                         2,
                         new BigDecimal("20.00"),
                         PaymentStatus.APPROVED,
@@ -72,6 +73,7 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-08-14T18:00:00-03:00"))
                 .andExpect(jsonPath("$.content[0].name").value("Guest User"))
+                .andExpect(jsonPath("$.content[0].checkoutUrl").value("https://checkout.example.com"))
                 .andExpect(jsonPath("$.content[0].luckyNumbers[0]").value("00001"));
     }
 

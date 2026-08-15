@@ -116,6 +116,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPhone(),
                 transaction.getEmail(),
                 transaction.getPaymentMethod(),
+                transaction.getMpCheckoutUrl(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 transaction.getStatus(),

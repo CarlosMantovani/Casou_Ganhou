@@ -102,6 +102,7 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getTotalAmount()).isEqualByComparingTo("20.00");
         assertThat(transactionCaptor.getValue().getExternalReference()).isEqualTo(response.externalReference());
         assertThat(transactionCaptor.getValue().getMpPreferenceId()).isEqualTo("preference-123");
+        assertThat(transactionCaptor.getValue().getMpCheckoutUrl()).isEqualTo("https://checkout.example.com");
     }
 
     @Test

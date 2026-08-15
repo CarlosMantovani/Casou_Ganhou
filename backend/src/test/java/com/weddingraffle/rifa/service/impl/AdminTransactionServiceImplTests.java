@@ -45,6 +45,7 @@ class AdminTransactionServiceImplTests {
         AdminTransactionServiceImpl service = service();
         Transaction transaction =
                 new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external");
+        transaction.assignPreference("preference-123", "https://checkout.example.com");
         LuckyNumber first = new LuckyNumber("00001", "guest@example.com", transaction);
         LuckyNumber second = new LuckyNumber("00002", "guest@example.com", transaction);
         PageRequest pageable = PageRequest.of(0, 20);
@@ -56,6 +57,7 @@ class AdminTransactionServiceImplTests {
 
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.getContent().getFirst().externalReference()).isEqualTo("external");
+        assertThat(response.getContent().getFirst().checkoutUrl()).isEqualTo("https://checkout.example.com");
         assertThat(response.getContent().getFirst().luckyNumbers()).containsExactly("00001", "00002");
     }
 

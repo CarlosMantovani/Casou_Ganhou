@@ -57,6 +57,9 @@ public class Transaction {
 
     private String mpPreferenceId;
 
+    @Column(length = 2048)
+    private String mpCheckoutUrl;
+
     private OffsetDateTime confirmationEmailSentAt;
 
     private OffsetDateTime confirmationEmailFailedAt;
@@ -176,6 +179,10 @@ public class Transaction {
         return mpPreferenceId;
     }
 
+    public String getMpCheckoutUrl() {
+        return mpCheckoutUrl;
+    }
+
     public OffsetDateTime getConfirmationEmailSentAt() {
         return confirmationEmailSentAt;
     }
@@ -203,6 +210,11 @@ public class Transaction {
 
     public void assignPreference(String mpPreferenceId) {
         this.mpPreferenceId = mpPreferenceId;
+    }
+
+    public void assignPreference(String mpPreferenceId, String mpCheckoutUrl) {
+        this.mpPreferenceId = mpPreferenceId;
+        this.mpCheckoutUrl = mpCheckoutUrl;
     }
 
     public void markConfirmationEmailSent(OffsetDateTime sentAt) {

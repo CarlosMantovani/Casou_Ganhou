@@ -10,7 +10,9 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
+import { homeService } from '../../services/homeService';
 import { transactionService } from '../../services/transactionService';
+import type { FlagRankingItem } from '../../types/home';
 import { formatCurrency } from '../../utils/formatters';
 import { buyerSchema, type BuyerFormData } from './schemas';
 
@@ -32,6 +34,10 @@ export function BuyNumbersPage() {
     enabled: Boolean(buyer),
     queryKey: ['transaction-quote', buyer, quantity],
     queryFn: () => transactionService.quote({ ...buyer!, quantity }),
+  });
+  const homeSummaryQuery = useQuery({
+    queryKey: ['home-summary'],
+    queryFn: homeService.getSummary,
   });
 
   const createTransactionMutation = useMutation({
@@ -63,7 +69,8 @@ export function BuyNumbersPage() {
 
   return (
     <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
-      <div className="mx-auto flex w-full max-w-[440px] flex-col gap-7">
+      <div className="mx-auto grid w-full max-w-5xl gap-7 lg:grid-cols-[minmax(0,440px)_minmax(320px,1fr)] lg:items-start">
+        <div className="flex w-full max-w-[440px] flex-col gap-7 justify-self-center lg:justify-self-start">
         <header className="text-center">
           <BrandMark />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
@@ -216,7 +223,97 @@ export function BuyNumbersPage() {
             </p>
           </section>
         )}
+        </div>
+
+        <FlagRankingPanel
+          isLoading={homeSummaryQuery.isLoading}
+          ranking={homeSummaryQuery.data?.flagRanking ?? []}
+        />
       </div>
     </main>
   );
+}
+
+function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking: FlagRankingItem[] }) {
+  return (
+    <aside className="lg:sticky lg:top-8">
+      <Card className="bg-white/90">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
+            <p className="mt-2 text-sm leading-relaxed text-warm-gray">
+              Cada telefone recebe uma bandeira na primeira compra. O ranking soma os numeros comprados e aprovados por
+              todas as pessoas de cada bandeira.
+            </p>
+          </div>
+
+          <p className="rounded-lg border border-gold/40 bg-gold/15 px-4 py-3 text-sm font-semibold leading-relaxed text-charcoal">
+            A bandeira em primeiro lugar tambem ganhara um premio especial no dia do sorteio.
+          </p>
+
+          <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
+            <table className="w-full text-left text-sm">
+              <caption className="sr-only">Ranking das bandeiras por numeros aprovados</caption>
+              <thead className="bg-[#F8F1EB] text-xs uppercase text-warm-gray">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Pos.</th>
+                  <th className="px-4 py-3 font-bold">Bandeira</th>
+                  <th className="px-4 py-3 text-right font-bold">Numeros</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EEE6DF] bg-white">
+                {isLoading ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
+                      Carregando ranking...
+                    </td>
+                  </tr>
+                ) : null}
+
+                {!isLoading && ranking.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
+                      Nenhuma bandeira pontuou ainda.
+                    </td>
+                  </tr>
+                ) : null}
+
+                {!isLoading
+                  ? ranking.map((item, index) => (
+                      <tr key={item.code}>
+                        <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-3">
+                            <span className="grid h-10 w-10 place-items-center rounded-full bg-blush text-lg">
+                              {countryCodeToFlag(item.emoji)}
+                            </span>
+                            <span>
+                              <span className="block font-bold text-charcoal">{item.name}</span>
+                              <span className="block text-xs text-warm-gray">{item.code}</span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-terracotta">{item.totalNumbers}</td>
+                      </tr>
+                    ))
+                  : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    </aside>
+  );
+}
+
+function countryCodeToFlag(countryCode: string) {
+  if (!/^[A-Z]{2}$/.test(countryCode)) {
+    return countryCode;
+  }
+
+  return countryCode
+    .split('')
+    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+    .join('');
 }

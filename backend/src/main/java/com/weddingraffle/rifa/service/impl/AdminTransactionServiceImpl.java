@@ -12,6 +12,7 @@ import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
@@ -34,6 +35,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     private final TransactionRepository transactionRepository;
     private final LuckyNumberRepository luckyNumberRepository;
     private final LuckyNumberService luckyNumberService;
+    private final ParticipantFlagService participantFlagService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public AdminTransactionServiceImpl(
@@ -41,11 +43,13 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             TransactionRepository transactionRepository,
             LuckyNumberRepository luckyNumberRepository,
             LuckyNumberService luckyNumberService,
+            ParticipantFlagService participantFlagService,
             ApplicationEventPublisher applicationEventPublisher) {
         this.appProperties = appProperties;
         this.transactionRepository = transactionRepository;
         this.luckyNumberRepository = luckyNumberRepository;
         this.luckyNumberService = luckyNumberService;
+        this.participantFlagService = participantFlagService;
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
@@ -69,7 +73,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         BigDecimal unitPrice = appProperties.raffle().unitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
-        Transaction transaction = transactionRepository.save(new Transaction(
+        Transaction transaction = new Transaction(
                 name,
                 phone,
                 email,
@@ -78,7 +82,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 totalAmount,
                 PaymentStatus.APPROVED,
                 PaymentMethod.CASH,
-                UUID.randomUUID().toString()));
+                UUID.randomUUID().toString());
+        transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
+        transactionRepository.save(transaction);
         List<String> luckyNumbers = luckyNumberService.generateFor(transaction).stream()
                 .map(LuckyNumber::getNumber)
                 .sorted()

@@ -8,12 +8,14 @@ import static org.mockito.Mockito.when;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.entity.LuckyNumber;
+import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import java.math.BigDecimal;
 import java.util.List;
@@ -36,6 +38,9 @@ class AdminTransactionServiceImplTests {
 
     @Mock
     private LuckyNumberService luckyNumberService;
+
+    @Mock
+    private ParticipantFlagService participantFlagService;
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -80,6 +85,8 @@ class AdminTransactionServiceImplTests {
     @Test
     void createsApprovedCashTransactionWithLuckyNumbers() {
         AdminTransactionServiceImpl service = service();
+        when(participantFlagService.resolveForPhone("11999999999"))
+                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "BR"));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -96,7 +103,9 @@ class AdminTransactionServiceImplTests {
         assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001");
-        verify(transactionRepository).save(any(Transaction.class));
+        var transactionCaptor = org.mockito.ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
     }
@@ -107,6 +116,7 @@ class AdminTransactionServiceImplTests {
                 transactionRepository,
                 luckyNumberRepository,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
     }
 

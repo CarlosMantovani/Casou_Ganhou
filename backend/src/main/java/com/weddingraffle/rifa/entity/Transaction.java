@@ -57,6 +57,15 @@ public class Transaction {
 
     private String mpPreferenceId;
 
+    @Column(nullable = false, length = 50)
+    private String participantFlagCode;
+
+    @Column(nullable = false, length = 100)
+    private String participantFlagName;
+
+    @Column(nullable = false, length = 20)
+    private String participantFlagEmoji;
+
     private OffsetDateTime confirmationEmailSentAt;
 
     private OffsetDateTime confirmationEmailFailedAt;
@@ -176,6 +185,18 @@ public class Transaction {
         return mpPreferenceId;
     }
 
+    public String getParticipantFlagCode() {
+        return participantFlagCode;
+    }
+
+    public String getParticipantFlagName() {
+        return participantFlagName;
+    }
+
+    public String getParticipantFlagEmoji() {
+        return participantFlagEmoji;
+    }
+
     public OffsetDateTime getConfirmationEmailSentAt() {
         return confirmationEmailSentAt;
     }
@@ -203,6 +224,12 @@ public class Transaction {
 
     public void assignPreference(String mpPreferenceId) {
         this.mpPreferenceId = mpPreferenceId;
+    }
+
+    public void assignParticipantFlag(ParticipantFlag participantFlag) {
+        this.participantFlagCode = participantFlag.code();
+        this.participantFlagName = participantFlag.name();
+        this.participantFlagEmoji = participantFlag.emoji();
     }
 
     public void markConfirmationEmailSent(OffsetDateTime sentAt) {

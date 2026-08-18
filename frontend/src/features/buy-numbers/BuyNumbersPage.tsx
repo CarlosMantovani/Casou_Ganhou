@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, Minus, Plus } from 'lucide-react';
+import { CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -249,9 +250,20 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
             <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
-            <p className="mt-2 text-sm leading-relaxed text-warm-gray">
-              A bandeira em primeiro lugar também ganhará um prêmio especial no dia do sorteio.
-            </p>
+            <div className="mt-4 grid gap-2">
+              <FlagRule
+                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
+                text="Uma bandeira exclusiva por telefone."
+              />
+              <FlagRule
+                icon={<RotateCcw aria-hidden="true" className="h-4 w-4" />}
+                text="Novas compras somam pontos na mesma bandeira."
+              />
+              <FlagRule
+                icon={<Trophy aria-hidden="true" className="h-4 w-4" />}
+                text="A líder também ganhará um prêmio especial."
+              />
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
@@ -306,5 +318,14 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
         </div>
       </Card>
     </aside>
+  );
+}
+
+function FlagRule({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-blush/55 px-3 py-2 text-sm font-medium text-charcoal">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-terracotta">{icon}</span>
+      <span className="leading-snug">{text}</span>
+    </div>
   );
 }

@@ -171,7 +171,9 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
-    expect(screen.getByText(/primeiro lugar também ganhará um prêmio/i)).toBeInTheDocument();
+    expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
+    expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
+    expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();

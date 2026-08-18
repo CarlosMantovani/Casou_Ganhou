@@ -150,7 +150,6 @@ function RevealStage({ candidate }: { candidate: RaffleCandidateResponse | null 
           {candidate?.participantFlagName ? <span className="text-sm font-bold text-white/70">{candidate.participantFlagName}</span> : null}
         </div>
       </div>
-      <p className="mt-8 text-sm font-semibold uppercase tracking-[0.28em] text-white/55">Preparando a revelacao</p>
     </div>
   );
 }

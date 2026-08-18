@@ -144,13 +144,13 @@ export function AdminDashboardPage() {
           ) : null}
 
           {transactionsQuery.data ? (
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#EEE6DF] pt-4">
+            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-4">
               <p className="text-sm text-warm-gray">
                 Página {transactionsQuery.data.number + 1} de {Math.max(transactionsQuery.data.totalPages, 1)}
               </p>
               <div className="flex gap-2">
                 <button
-                  className="rounded-lg border border-[#DDD2CB] px-4 py-2 text-sm font-semibold text-charcoal disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-charcoal disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={transactionsQuery.data.first}
                   onClick={() => setPage((current) => Math.max(0, current - 1))}
                   type="button"
@@ -158,7 +158,7 @@ export function AdminDashboardPage() {
                   Anterior
                 </button>
                 <button
-                  className="rounded-lg border border-[#DDD2CB] px-4 py-2 text-sm font-semibold text-charcoal disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-charcoal disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={transactionsQuery.data.last}
                   onClick={() => setPage((current) => current + 1)}
                   type="button"
@@ -213,7 +213,7 @@ function TransactionTable({
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-[#E7DDD6] text-xs uppercase text-warm-gray">
+        <thead className="border-b border-line text-xs uppercase text-warm-gray">
           <tr>
             <th className="px-3 py-3 font-bold">Nome</th>
             <th className="px-3 py-3 font-bold">Data</th>
@@ -226,7 +226,7 @@ function TransactionTable({
             <th className="px-3 py-3 text-right font-bold">Ações</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#EEE6DF]">
+        <tbody className="divide-y divide-line">
           {transactions.map((transaction) => {
             const hasMoreLuckyNumbers = transaction.luckyNumbers.length > 8;
             const isExpanded = expandedTransactions.has(transaction.externalReference);
@@ -316,12 +316,12 @@ function TransactionTable({
 function StatusBadge({ status }: { status: AdminTransactionResponse['status'] }) {
   const styles = {
     APROVADO: 'bg-olive/15 text-olive',
-    PENDENTE: 'bg-gold/15 text-[#8A6A00]',
+    PENDENTE: 'bg-gold/15 text-ink-soft',
     REJEITADO: 'bg-terracotta/15 text-terracotta-dark',
     CANCELADO: 'bg-terracotta/15 text-terracotta-dark',
     ESTORNADO: 'bg-terracotta/15 text-terracotta-dark',
     CHARGEBACK: 'bg-terracotta/15 text-terracotta-dark',
-    EM_MEDIACAO: 'bg-gold/15 text-[#8A6A00]',
+    EM_MEDIACAO: 'bg-gold/15 text-ink-soft',
   };
 
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${styles[status]}`}>{status}</span>;

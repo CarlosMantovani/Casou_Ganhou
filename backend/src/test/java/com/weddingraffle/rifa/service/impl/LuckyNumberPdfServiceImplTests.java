@@ -48,8 +48,8 @@ class LuckyNumberPdfServiceImplTests {
     @Test
     void generatesMultiplePagesWithoutOmittingLuckyNumbers() throws IOException {
         LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
-        Transaction transaction =
-                new Transaction("guest@example.com", 200, new BigDecimal("2000.00"), PaymentStatus.APPROVED, "external");
+        Transaction transaction = new Transaction(
+                "guest@example.com", 200, new BigDecimal("2000.00"), PaymentStatus.APPROVED, "external");
         List<String> luckyNumbers = java.util.stream.IntStream.rangeClosed(1, 200)
                 .mapToObj(number -> String.format("%05d", number))
                 .toList();

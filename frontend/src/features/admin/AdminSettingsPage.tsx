@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CalendarClock, Save, Settings } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Heart, Save, Settings } from 'lucide-react';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -15,7 +15,39 @@ import {
   scheduledDrawSchema,
   type RaffleConfigFormData,
   type ScheduledDrawFormData,
+  type WeddingProfileFormData,
+  weddingProfileSchema,
 } from './schemas';
+
+const DEFAULT_WEDDING_PROFILE: WeddingProfileFormData = {
+  groomName: 'Jose Carlos',
+  brideName: 'Paula',
+  palette: {
+    ivory: '#F7F1E6',
+    ivoryDeep: '#F0E8D8',
+    ink: '#2B2419',
+    inkSoft: '#5B5140',
+    green: '#24402E',
+    greenDeep: '#152A1D',
+    wine: '#7A2E33',
+    gold: '#B8935A',
+    goldSoft: '#DCC79A',
+    line: '#D9CBAA',
+  },
+};
+
+const COLOR_FIELDS = [
+  { label: 'Fundo claro', name: 'ivory' },
+  { label: 'Fundo destaque', name: 'ivoryDeep' },
+  { label: 'Texto principal', name: 'ink' },
+  { label: 'Texto suave', name: 'inkSoft' },
+  { label: 'Verde', name: 'green' },
+  { label: 'Verde escuro', name: 'greenDeep' },
+  { label: 'Vinho', name: 'wine' },
+  { label: 'Dourado', name: 'gold' },
+  { label: 'Dourado suave', name: 'goldSoft' },
+  { label: 'Linhas', name: 'line' },
+] as const;
 
 export function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -39,6 +71,17 @@ export function AdminSettingsPage() {
     mode: 'onChange',
     resolver: zodResolver(scheduledDrawSchema),
   });
+  const {
+    control: weddingProfileControl,
+    formState: { errors: weddingProfileErrors, isValid: isWeddingProfileValid },
+    handleSubmit: handleWeddingProfileSubmit,
+    register: registerWeddingProfile,
+    reset: resetWeddingProfile,
+  } = useForm<WeddingProfileFormData>({
+    defaultValues: DEFAULT_WEDDING_PROFILE,
+    mode: 'onChange',
+    resolver: zodResolver(weddingProfileSchema),
+  });
 
   const configQuery = useQuery({
     queryKey: ['admin-raffle-config'],
@@ -49,8 +92,9 @@ export function AdminSettingsPage() {
     if (configQuery.data) {
       reset({ unitPrice: Number(configQuery.data.unitPrice) });
       resetScheduledDraw({ scheduledDrawAt: toDateTimeLocalValue(configQuery.data.scheduledDrawAt) });
+      resetWeddingProfile(configQuery.data.weddingProfile);
     }
-  }, [configQuery.data, reset, resetScheduledDraw]);
+  }, [configQuery.data, reset, resetScheduledDraw, resetWeddingProfile]);
 
   const updateUnitPriceMutation = useMutation({
     mutationFn: (data: RaffleConfigFormData) =>
@@ -71,6 +115,24 @@ export function AdminSettingsPage() {
       resetScheduledDraw({ scheduledDrawAt: toDateTimeLocalValue(data.scheduledDrawAt) });
     },
   });
+
+  const updateWeddingProfileMutation = useMutation({
+    mutationFn: (data: WeddingProfileFormData) =>
+      raffleConfigService.updateWeddingProfile({
+        groomName: data.groomName.trim(),
+        brideName: data.brideName.trim(),
+        palette: data.palette,
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['admin-raffle-config'], data);
+      resetWeddingProfile(data.weddingProfile);
+    },
+  });
+
+  const previewProfile = useWatch({
+    control: weddingProfileControl,
+    defaultValue: DEFAULT_WEDDING_PROFILE,
+  }) as WeddingProfileFormData;
 
   return (
     <main className="min-h-screen bg-cream text-charcoal">
@@ -187,6 +249,82 @@ export function AdminSettingsPage() {
               </Button>
             </form>
           </Card>
+
+          <Card>
+            <form
+              className="space-y-5"
+              onSubmit={handleWeddingProfileSubmit((data) => updateWeddingProfileMutation.mutate(data))}
+            >
+              <div>
+                <h2 className="font-serif text-2xl font-bold">Identidade dos noivos</h2>
+                <p className="mt-1 text-sm text-warm-gray">
+                  Esses dados aparecem na tela inicial e definem a paleta visual do evento.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextInput
+                  id="wedding-groom-name"
+                  label="Nome do noivo"
+                  error={weddingProfileErrors.groomName?.message}
+                  {...registerWeddingProfile('groomName')}
+                />
+                <TextInput
+                  id="wedding-bride-name"
+                  label="Nome da noiva"
+                  error={weddingProfileErrors.brideName?.message}
+                  {...registerWeddingProfile('brideName')}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {COLOR_FIELDS.map((field) => (
+                  <div className="grid grid-cols-[3rem_1fr] items-end gap-3" key={field.name}>
+                    <input
+                      aria-label={field.label}
+                      className="h-12 w-12 rounded-lg border border-line bg-white p-1"
+                      type="color"
+                      {...registerWeddingProfile(`palette.${field.name}`)}
+                    />
+                    <TextInput
+                      id={`wedding-color-${field.name}`}
+                      label={field.label}
+                      maxLength={7}
+                      error={weddingProfileErrors.palette?.[field.name]?.message}
+                      {...registerWeddingProfile(`palette.${field.name}`)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {updateWeddingProfileMutation.isSuccess ? (
+                <p
+                  className="rounded-lg border border-olive/20 bg-olive/10 px-4 py-3 text-sm font-semibold text-olive"
+                  role="status"
+                >
+                  Identidade atualizada com sucesso.
+                </p>
+              ) : null}
+
+              {updateWeddingProfileMutation.isError ? (
+                <p
+                  className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark"
+                  role="alert"
+                >
+                  Não foi possível atualizar a identidade dos noivos.
+                </p>
+              ) : null}
+
+              <Button
+                disabled={!isWeddingProfileValid || configQuery.isLoading}
+                isLoading={updateWeddingProfileMutation.isPending}
+                type="submit"
+              >
+                <Save aria-hidden="true" className="h-5 w-5" />
+                Salvar identidade
+              </Button>
+            </form>
+          </Card>
         </div>
 
         <Card className="bg-blush shadow-none">
@@ -226,6 +364,29 @@ export function AdminSettingsPage() {
                   {configQuery.data.scheduledDrawAt
                     ? formatDateTime(configQuery.data.scheduledDrawAt)
                     : 'Ainda não configurado'}
+                </p>
+              </div>
+
+              <div
+                className="rounded-lg border px-4 py-5 text-center"
+                style={{
+                  backgroundColor: previewProfile.palette.ivory,
+                  borderColor: previewProfile.palette.line,
+                  color: previewProfile.palette.ink,
+                }}
+              >
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: previewProfile.palette.gold }}>
+                  Prévia da tela inicial
+                </p>
+                <p className="mt-3 font-serif text-3xl font-bold leading-tight" style={{ color: previewProfile.palette.green }}>
+                  {previewProfile.groomName}
+                  <Heart
+                    aria-hidden="true"
+                    className="mx-2 mb-1 inline-block h-6 w-6"
+                    style={{ color: previewProfile.palette.wine }}
+                    strokeWidth={1.5}
+                  />
+                  {previewProfile.brideName}
                 </p>
               </div>
             </div>

@@ -9,6 +9,8 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.FlagRankingResponse;
 import com.weddingraffle.rifa.dto.HomeSummaryResponse;
+import com.weddingraffle.rifa.dto.WeddingPaletteResponse;
+import com.weddingraffle.rifa.dto.WeddingProfileResponse;
 import com.weddingraffle.rifa.service.PublicHomeService;
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,11 +42,19 @@ class PublicHomeControllerTests {
         when(publicHomeService.getSummary())
                 .thenReturn(new HomeSummaryResponse(
                         java.time.OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
+                        new WeddingProfileResponse(
+                                "Jose Carlos",
+                                "Paula",
+                                new WeddingPaletteResponse(
+                                        "#F7F1E6", "#F0E8D8", "#2B2419", "#5B5140", "#24402E", "#152A1D", "#7A2E33",
+                                        "#B8935A", "#DCC79A", "#D9CBAA")),
                         List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12))));
 
         mockMvc.perform(get("/public/home-summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"))
+                .andExpect(jsonPath("$.weddingProfile.groomName").value("Jose Carlos"))
+                .andExpect(jsonPath("$.weddingProfile.brideName").value("Paula"))
                 .andExpect(jsonPath("$.flagRanking[0].code").value("BRAZIL"))
                 .andExpect(jsonPath("$.flagRanking[0].name").value("Brasil"))
                 .andExpect(jsonPath("$.flagRanking[0].totalNumbers").value(12));

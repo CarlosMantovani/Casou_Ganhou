@@ -1,6 +1,9 @@
 package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.dto.RaffleConfigResponse;
+import com.weddingraffle.rifa.dto.WeddingPaletteResponse;
+import com.weddingraffle.rifa.dto.WeddingProfileResponse;
+import com.weddingraffle.rifa.dto.WeddingProfileUpdateRequest;
 import com.weddingraffle.rifa.entity.RaffleConfig;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.repository.RaffleConfigRepository;
@@ -50,6 +53,27 @@ public class RaffleConfigServiceImpl implements RaffleConfigService {
         return saveAndRefresh(config);
     }
 
+    @Override
+    @Transactional
+    public RaffleConfigResponse updateWeddingProfile(WeddingProfileUpdateRequest request) {
+        RaffleConfig config = getCurrentConfig();
+        var palette = request.palette();
+        config.updateWeddingProfile(
+                request.groomName().trim(),
+                request.brideName().trim(),
+                palette.ivory(),
+                palette.ivoryDeep(),
+                palette.ink(),
+                palette.inkSoft(),
+                palette.green(),
+                palette.greenDeep(),
+                palette.wine(),
+                palette.gold(),
+                palette.goldSoft(),
+                palette.line());
+        return saveAndRefresh(config);
+    }
+
     private RaffleConfigResponse saveAndRefresh(RaffleConfig config) {
         raffleConfigRepository.saveAndFlush(config);
         entityManager.refresh(config);
@@ -63,6 +87,24 @@ public class RaffleConfigServiceImpl implements RaffleConfigService {
     }
 
     private static RaffleConfigResponse toResponse(RaffleConfig config) {
-        return new RaffleConfigResponse(config.getUnitPrice(), config.getScheduledDrawAt(), config.getUpdatedAt());
+        return new RaffleConfigResponse(
+                config.getUnitPrice(), config.getScheduledDrawAt(), toWeddingProfile(config), config.getUpdatedAt());
+    }
+
+    public static WeddingProfileResponse toWeddingProfile(RaffleConfig config) {
+        return new WeddingProfileResponse(
+                config.getGroomName(),
+                config.getBrideName(),
+                new WeddingPaletteResponse(
+                        config.getColorIvory(),
+                        config.getColorIvoryDeep(),
+                        config.getColorInk(),
+                        config.getColorInkSoft(),
+                        config.getColorGreen(),
+                        config.getColorGreenDeep(),
+                        config.getColorWine(),
+                        config.getColorGold(),
+                        config.getColorGoldSoft(),
+                        config.getColorLine()));
     }
 }

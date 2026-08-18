@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.RaffleConfigResponse;
+import com.weddingraffle.rifa.dto.WeddingPaletteResponse;
+import com.weddingraffle.rifa.dto.WeddingProfileResponse;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -48,7 +50,10 @@ class RaffleConfigControllerTests {
     void getConfigReturnsCurrentUnitPriceForAdmin() throws Exception {
         when(raffleConfigService.getConfig())
                 .thenReturn(new RaffleConfigResponse(
-                        new BigDecimal("10.00"), null, OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
+                        new BigDecimal("10.00"),
+                        null,
+                        weddingProfile(),
+                        OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
 
         mockMvc.perform(get("/admin/raffle-config").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
@@ -77,7 +82,10 @@ class RaffleConfigControllerTests {
     void updateUnitPriceReturnsUpdatedConfigForAdmin() throws Exception {
         when(raffleConfigService.updateUnitPrice(any()))
                 .thenReturn(new RaffleConfigResponse(
-                        new BigDecimal("15.00"), null, OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
+                        new BigDecimal("15.00"),
+                        null,
+                        weddingProfile(),
+                        OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
 
         mockMvc.perform(put("/admin/raffle-config/unit-price")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,6 +101,7 @@ class RaffleConfigControllerTests {
                 .thenReturn(new RaffleConfigResponse(
                         new BigDecimal("10.00"),
                         OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
+                        weddingProfile(),
                         OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
 
         mockMvc.perform(put("/admin/raffle-config/scheduled-at")
@@ -101,6 +110,52 @@ class RaffleConfigControllerTests {
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"));
+    }
+
+    @Test
+    void updateWeddingProfileReturnsUpdatedConfigForAdmin() throws Exception {
+        when(raffleConfigService.updateWeddingProfile(any()))
+                .thenReturn(new RaffleConfigResponse(
+                        new BigDecimal("10.00"),
+                        null,
+                        weddingProfile(),
+                        OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
+
+        mockMvc.perform(put("/admin/raffle-config/wedding-profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {
+                                  "groomName": "Jose Carlos",
+                                  "brideName": "Paula",
+                                  "palette": {
+                                    "ivory": "#F7F1E6",
+                                    "ivoryDeep": "#F0E8D8",
+                                    "ink": "#2B2419",
+                                    "inkSoft": "#5B5140",
+                                    "green": "#24402E",
+                                    "greenDeep": "#152A1D",
+                                    "wine": "#7A2E33",
+                                    "gold": "#B8935A",
+                                    "goldSoft": "#DCC79A",
+                                    "line": "#D9CBAA"
+                                  }
+                                }
+                                """)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weddingProfile.groomName").value("Jose Carlos"))
+                .andExpect(jsonPath("$.weddingProfile.brideName").value("Paula"))
+                .andExpect(jsonPath("$.weddingProfile.palette.green").value("#24402E"));
+    }
+
+    private static WeddingProfileResponse weddingProfile() {
+        return new WeddingProfileResponse(
+                "Jose Carlos",
+                "Paula",
+                new WeddingPaletteResponse(
+                        "#F7F1E6", "#F0E8D8", "#2B2419", "#5B5140", "#24402E", "#152A1D", "#7A2E33", "#B8935A",
+                        "#DCC79A", "#D9CBAA"));
     }
 
     @TestConfiguration

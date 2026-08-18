@@ -61,7 +61,7 @@ export function PaymentReturnPage() {
             </div>
           </div>
 
-          <Card className="border border-[#EEE6DF] bg-white/90 text-center shadow-none">
+          <Card className="border border-line bg-white/90 text-center shadow-none">
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Sua bandeira</p>
             <div className="mt-3 flex items-center justify-center gap-3">
               <span className="grid h-14 w-14 place-items-center rounded-full bg-blush">
@@ -109,7 +109,7 @@ export function PaymentReturnPage() {
 
 function EmailConfirmationCard() {
   return (
-    <Card className="border border-[#EEE6DF] bg-cream text-left shadow-none">
+    <Card className="border border-line bg-cream text-left shadow-none">
       <div className="flex gap-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-terracotta">
           <Check aria-hidden="true" className="h-5 w-5" />

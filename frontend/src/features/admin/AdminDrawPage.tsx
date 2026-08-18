@@ -44,7 +44,7 @@ export function AdminDrawPage() {
   const isRevealing = drawMutation.isPending;
 
   return (
-    <main className="min-h-screen bg-[#1B1714] px-6 py-8 text-white">
+    <main className="min-h-screen bg-green-deep px-6 py-8 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-3xl flex-col">
         <a className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-white/70 hover:text-white" href="/admin">
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function AdminDrawPage() {
             </p>
             <div className="mt-6 flex gap-3">
               <button
-                className="min-h-11 flex-1 rounded-lg border border-[#DDD2CB] px-4 py-2 text-sm font-semibold"
+                className="min-h-11 flex-1 rounded-lg border border-line px-4 py-2 text-sm font-semibold"
                 onClick={() => setIsConfirming(false)}
                 type="button"
               >
@@ -139,12 +139,12 @@ function RevealStage({ candidate }: { candidate: RaffleCandidateResponse | null 
         <Sparkles aria-hidden="true" className="mr-2 inline h-4 w-4" />
         Sorteando entre os números
       </p>
-      <div className="mx-auto mt-8 grid h-52 w-52 place-items-center rounded-full border border-gold/35 bg-white/5 shadow-[0_0_60px_rgba(201,162,39,0.16)]">
+      <div className="mx-auto mt-8 grid h-52 w-52 place-items-center rounded-full border border-gold/35 bg-white/5 shadow-[0_0_60px_rgba(184,147,90,0.16)]">
         <div className="grid place-items-center gap-3">
           {candidate?.participantFlagEmoji ? (
             <FlagEmoji className="h-12 w-12" emoji={candidate.participantFlagEmoji} />
           ) : null}
-          <span className="font-serif text-6xl font-bold text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
+          <span className="font-serif text-6xl font-bold text-gold drop-shadow-[0_0_30px_rgba(184,147,90,0.35)]">
             {candidate?.luckyNumber ?? '-----'}
           </span>
           {candidate?.participantFlagName ? <span className="text-sm font-bold text-white/70">{candidate.participantFlagName}</span> : null}
@@ -161,7 +161,7 @@ function WinnerResult({ result }: { result: RaffleDrawResponse }) {
         <PartyPopper aria-hidden="true" className="mr-2 inline h-4 w-4" />
         Número vencedor
       </p>
-      <h1 className="mt-8 font-serif text-[clamp(5rem,18vw,11rem)] font-bold leading-none text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
+      <h1 className="mt-8 font-serif text-[clamp(5rem,18vw,11rem)] font-bold leading-none text-gold drop-shadow-[0_0_30px_rgba(184,147,90,0.35)]">
         {result.winningNumber}
       </h1>
       {result.participantFlagEmoji && result.participantFlagName ? (

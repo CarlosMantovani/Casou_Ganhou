@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
+import { CreditCard, Flag, Heart, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -15,10 +15,28 @@ import { publicMessages } from '../../content/messages';
 import { homeService } from '../../services/homeService';
 import { transactionService } from '../../services/transactionService';
 import type { FlagRankingItem } from '../../types/home';
+import type { WeddingProfile } from '../../types/admin';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { CountdownPanel } from './CountdownPanel';
 import { buyerSchema, type BuyerFormData } from './schemas';
+
+const DEFAULT_WEDDING_PROFILE: WeddingProfile = {
+  groomName: 'Jose Carlos',
+  brideName: 'Paula',
+  palette: {
+    ivory: '#F7F1E6',
+    ivoryDeep: '#F0E8D8',
+    ink: '#2B2419',
+    inkSoft: '#5B5140',
+    green: '#24402E',
+    greenDeep: '#152A1D',
+    wine: '#7A2E33',
+    gold: '#B8935A',
+    goldSoft: '#DCC79A',
+    line: '#D9CBAA',
+  },
+};
 
 export function BuyNumbersPage() {
   const [buyer, setBuyer] = useState<BuyerFormData | null>(null);
@@ -70,12 +88,14 @@ export function BuyNumbersPage() {
   const currentStep: 1 | 2 = buyer ? 2 : 1;
   const unitPrice = quoteQuery.data?.unitPrice;
   const totalAmount = quoteQuery.data?.totalAmount;
+  const weddingProfile = homeSummaryQuery.data?.weddingProfile ?? DEFAULT_WEDDING_PROFILE;
 
   return (
-    <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
+    <main className="min-h-screen px-6 pb-16 pt-10 text-charcoal" style={{ backgroundColor: weddingProfile.palette.ivory }}>
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7">
         <header className="text-center">
           <BrandMark />
+          <WeddingCoupleHeading profile={weddingProfile} />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
             Participe do sorteio e faça parte deste presente especial para o casal.
           </p>
@@ -196,7 +216,7 @@ export function BuyNumbersPage() {
                     {quoteQuery.isLoading ? 'Atualizando...' : unitPrice ? formatCurrency(unitPrice) : '-'}
                   </dd>
                 </div>
-                <div className="h-px bg-[#DCBFB5]" />
+                <div className="h-px bg-line" />
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-base font-bold">Total</dt>
                   <dd className="font-serif text-3xl font-bold text-terracotta">
@@ -242,6 +262,21 @@ export function BuyNumbersPage() {
   );
 }
 
+function WeddingCoupleHeading({ profile }: { profile: WeddingProfile }) {
+  return (
+    <h1 className="mt-5 font-serif text-4xl font-bold leading-tight sm:text-5xl" style={{ color: profile.palette.green }}>
+      {profile.groomName}
+      <Heart
+        aria-hidden="true"
+        className="mx-2 mb-1 inline-block h-7 w-7"
+        style={{ color: profile.palette.wine }}
+        strokeWidth={1.5}
+      />
+      {profile.brideName}
+    </h1>
+  );
+}
+
 function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking: FlagRankingItem[] }) {
   return (
     <aside>
@@ -268,13 +303,13 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
 
           <div className="grid gap-2 sm:hidden">
             {isLoading ? (
-              <p className="rounded-lg bg-[#F8F1EB] px-4 py-6 text-center text-sm text-warm-gray">
+              <p className="rounded-lg bg-ivory-deep px-4 py-6 text-center text-sm text-warm-gray">
                 Carregando ranking...
               </p>
             ) : null}
 
             {!isLoading && ranking.length === 0 ? (
-              <p className="rounded-lg bg-[#F8F1EB] px-4 py-6 text-center text-sm text-warm-gray">
+              <p className="rounded-lg bg-ivory-deep px-4 py-6 text-center text-sm text-warm-gray">
                 Nenhuma bandeira pontuou ainda.
               </p>
             ) : null}
@@ -282,7 +317,7 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
             {!isLoading
               ? ranking.map((item, index) => (
                   <div
-                    className="flex min-w-0 items-center gap-3 rounded-lg border border-[#E7DDD6] bg-white px-3 py-3"
+                    className="flex min-w-0 items-center gap-3 rounded-lg border border-line bg-white px-3 py-3"
                     key={item.code}
                   >
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blush text-xs font-bold text-terracotta">
@@ -304,17 +339,17 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
               : null}
           </div>
 
-          <div className="hidden overflow-hidden rounded-lg border border-[#E7DDD6] sm:block">
+          <div className="hidden overflow-hidden rounded-lg border border-line sm:block">
             <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">Ranking das bandeiras por números aprovados</caption>
-              <thead className="bg-[#F8F1EB] text-xs uppercase text-warm-gray">
+              <thead className="bg-ivory-deep text-xs uppercase text-warm-gray">
                 <tr>
                   <th className="w-16 px-4 py-3 font-bold">Pos.</th>
                   <th className="px-4 py-3 font-bold">Bandeira</th>
                   <th className="w-24 px-4 py-3 text-right font-bold">Números</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#EEE6DF] bg-white">
+              <tbody className="divide-y divide-line bg-white">
                 {isLoading ? (
                   <tr>
                     <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>

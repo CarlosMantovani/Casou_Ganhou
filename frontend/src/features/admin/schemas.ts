@@ -36,7 +36,27 @@ export const scheduledDrawSchema = z.object({
   scheduledDrawAt: z.string().min(1, 'Informe a data e horário do sorteio.'),
 });
 
+const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Informe uma cor em hexadecimal.');
+
+export const weddingProfileSchema = z.object({
+  groomName: z.string().trim().min(1, 'Informe o nome do noivo.').max(120, 'Informe no maximo 120 caracteres.'),
+  brideName: z.string().trim().min(1, 'Informe o nome da noiva.').max(120, 'Informe no maximo 120 caracteres.'),
+  palette: z.object({
+    ivory: hexColorSchema,
+    ivoryDeep: hexColorSchema,
+    ink: hexColorSchema,
+    inkSoft: hexColorSchema,
+    green: hexColorSchema,
+    greenDeep: hexColorSchema,
+    wine: hexColorSchema,
+    gold: hexColorSchema,
+    goldSoft: hexColorSchema,
+    line: hexColorSchema,
+  }),
+});
+
 export type AdminLoginFormData = z.infer<typeof adminLoginSchema>;
 export type CashPaymentFormData = z.infer<typeof cashPaymentSchema>;
 export type RaffleConfigFormData = z.infer<typeof raffleConfigSchema>;
 export type ScheduledDrawFormData = z.infer<typeof scheduledDrawSchema>;
+export type WeddingProfileFormData = z.infer<typeof weddingProfileSchema>;

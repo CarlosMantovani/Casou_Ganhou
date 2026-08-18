@@ -54,6 +54,7 @@ vi.mock('./services/raffleConfigService', () => ({
     getConfig: vi.fn(),
     updateScheduledDrawAt: vi.fn(),
     updateUnitPrice: vi.fn(),
+    updateWeddingProfile: vi.fn(),
   },
 }));
 
@@ -64,6 +65,22 @@ const mockedAdminTransactionService = vi.mocked(adminTransactionService);
 const mockedRaffleService = vi.mocked(raffleService);
 const mockedRaffleConfigService = vi.mocked(raffleConfigService);
 const originalLocation = window.location;
+const weddingProfile = {
+  brideName: 'Paula',
+  groomName: 'Jose Carlos',
+  palette: {
+    gold: '#B8935A',
+    goldSoft: '#DCC79A',
+    green: '#24402E',
+    greenDeep: '#152A1D',
+    ink: '#2B2419',
+    inkSoft: '#5B5140',
+    ivory: '#F7F1E6',
+    ivoryDeep: '#F0E8D8',
+    line: '#D9CBAA',
+    wine: '#7A2E33',
+  },
+};
 
 function renderApp(path = '/') {
   window.history.pushState({}, '', path);
@@ -104,6 +121,7 @@ describe('App', () => {
     );
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: null,
+      weddingProfile,
       flagRanking: [
         {
           code: 'BRAZIL',
@@ -138,6 +156,7 @@ describe('App', () => {
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
       unitPrice: '10.00',
+      weddingProfile,
       updatedAt: '2026-08-14T18:00:00-03:00',
     });
     mockedRaffleService.getEligibleNumbers.mockResolvedValue([
@@ -170,18 +189,20 @@ describe('App', () => {
   it('renders the public flag ranking on the purchase page', async () => {
     renderApp();
 
+    expect(await screen.findByRole('heading', { name: /Jose Carlos.*Paula/ })).toBeInTheDocument();
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
     expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
     expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
     expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
-    expect(await screen.findByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
+    expect((await screen.findAllByText('Brasil')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: '🇧🇷' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('12').length).toBeGreaterThan(0);
   });
 
   it('renders the public countdown when scheduled draw date is configured', async () => {
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: '2026-09-06T02:00:00Z',
+      weddingProfile,
       flagRanking: [],
     });
 
@@ -461,7 +482,7 @@ describe('App', () => {
           paymentMethod: 'CASH',
           phone: '11999999999',
           quantity: 1,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '10.00',
         },
       ],
@@ -477,9 +498,9 @@ describe('App', () => {
     try {
       renderApp('/admin');
 
-      await user.click(await screen.findByRole('button', { name: 'Excluir transacao de Cash Guest' }));
+      await user.click(await screen.findByRole('button', { name: 'Excluir transação de Cash Guest' }));
 
-      expect(confirm).toHaveBeenCalledWith('Excluir a transacao em dinheiro de Cash Guest?');
+      expect(confirm).toHaveBeenCalledWith('Excluir a transação em dinheiro de Cash Guest?');
       await waitFor(() =>
         expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
       );
@@ -543,6 +564,7 @@ describe('App', () => {
     mockedRaffleConfigService.updateUnitPrice.mockResolvedValue({
       scheduledDrawAt: null,
       unitPrice: '15.00',
+      weddingProfile,
       updatedAt: '2026-08-14T18:05:00-03:00',
     });
 
@@ -568,6 +590,7 @@ describe('App', () => {
     mockedRaffleConfigService.updateScheduledDrawAt.mockResolvedValue({
       scheduledDrawAt: '2026-09-05T23:00:00.000Z',
       unitPrice: '10.00',
+      weddingProfile,
       updatedAt: '2026-08-14T18:05:00-03:00',
     });
 

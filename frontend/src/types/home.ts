@@ -1,3 +1,5 @@
+import type { WeddingProfile } from './admin';
+
 export interface FlagRankingItem {
   code: string;
   name: string;
@@ -7,5 +9,6 @@ export interface FlagRankingItem {
 
 export interface HomeSummaryResponse {
   scheduledDrawAt: string | null;
+  weddingProfile: WeddingProfile;
   flagRanking: FlagRankingItem[];
 }

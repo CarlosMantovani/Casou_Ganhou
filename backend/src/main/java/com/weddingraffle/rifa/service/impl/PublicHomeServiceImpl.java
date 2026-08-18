@@ -35,6 +35,7 @@ public class PublicHomeServiceImpl implements PublicHomeService {
         var config = raffleConfigRepository
                 .findById(RaffleConfig.SINGLETON_ID)
                 .orElseThrow(() -> new ResourceNotFoundException("Raffle config not found."));
-        return new HomeSummaryResponse(config.getScheduledDrawAt(), flagRanking);
+        return new HomeSummaryResponse(
+                config.getScheduledDrawAt(), RaffleConfigServiceImpl.toWeddingProfile(config), flagRanking);
     }
 }

@@ -57,17 +57,17 @@ function CountdownItem({ label, value }: { label: string; value: number }) {
 function getUrgencyLevel(diffMs: number) {
   if (diffMs <= URGENCY_THRESHOLDS.fiveMinutes) {
     return {
-      cardClassName: 'bg-[#3B0D0D] ring-2 ring-terracotta',
+      cardClassName: 'bg-green-deep ring-2 ring-gold',
       eyebrowClassName: 'text-gold',
       message: 'Últimos 5 minutos para garantir seus números.',
-      messageClassName: 'animate-pulse bg-terracotta text-white',
+      messageClassName: 'animate-pulse bg-wine text-white',
       title: 'Última chamada',
     };
   }
 
   if (diffMs <= URGENCY_THRESHOLDS.fifteenMinutes) {
     return {
-      cardClassName: 'bg-[#5C1515]',
+      cardClassName: 'bg-wine',
       eyebrowClassName: 'text-gold',
       message: 'Faltam menos de 15 minutos para o sorteio.',
       messageClassName: 'bg-white/15 text-white',
@@ -77,7 +77,7 @@ function getUrgencyLevel(diffMs: number) {
 
   if (diffMs <= URGENCY_THRESHOLDS.thirtyMinutes) {
     return {
-      cardClassName: 'bg-terracotta-dark',
+      cardClassName: 'bg-green',
       eyebrowClassName: 'text-white',
       message: 'Faltam menos de 30 minutos. Não deixe para depois.',
       messageClassName: 'bg-white/15 text-white',

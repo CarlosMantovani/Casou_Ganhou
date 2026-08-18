@@ -3,6 +3,7 @@ package com.weddingraffle.rifa.controller;
 import com.weddingraffle.rifa.dto.RaffleConfigResponse;
 import com.weddingraffle.rifa.dto.ScheduledDrawAtUpdateRequest;
 import com.weddingraffle.rifa.dto.UnitPriceUpdateRequest;
+import com.weddingraffle.rifa.dto.WeddingProfileUpdateRequest;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -40,5 +41,12 @@ public class RaffleConfigController {
     public ResponseEntity<RaffleConfigResponse> updateScheduledDrawAt(
             @Valid @RequestBody ScheduledDrawAtUpdateRequest request) {
         return ResponseEntity.ok(raffleConfigService.updateScheduledDrawAt(request.scheduledDrawAt()));
+    }
+
+    @Operation(summary = "Update wedding profile")
+    @PutMapping("/wedding-profile")
+    public ResponseEntity<RaffleConfigResponse> updateWeddingProfile(
+            @Valid @RequestBody WeddingProfileUpdateRequest request) {
+        return ResponseEntity.ok(raffleConfigService.updateWeddingProfile(request));
     }
 }

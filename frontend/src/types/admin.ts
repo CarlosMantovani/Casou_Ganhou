@@ -51,6 +51,7 @@ export interface RaffleCandidateResponse {
 export interface RaffleConfigResponse {
   unitPrice: string;
   scheduledDrawAt: string | null;
+  weddingProfile: WeddingProfile;
   updatedAt: string | null;
 }
 
@@ -61,3 +62,24 @@ export interface UnitPriceUpdateRequest {
 export interface ScheduledDrawAtUpdateRequest {
   scheduledDrawAt: string;
 }
+
+export interface WeddingPalette {
+  ivory: string;
+  ivoryDeep: string;
+  ink: string;
+  inkSoft: string;
+  green: string;
+  greenDeep: string;
+  wine: string;
+  gold: string;
+  goldSoft: string;
+  line: string;
+}
+
+export interface WeddingProfile {
+  groomName: string;
+  brideName: string;
+  palette: WeddingPalette;
+}
+
+export type WeddingProfileUpdateRequest = WeddingProfile;

@@ -26,7 +26,6 @@ export function BuyNumbersPage() {
     formState: { errors, isValid },
     handleSubmit,
     register,
-    setValue,
   } = useForm<BuyerFormData>({
     defaultValues: { email: '', name: '', phone: '' },
     mode: 'onChange',
@@ -49,8 +48,6 @@ export function BuyNumbersPage() {
       window.location.assign(response.checkoutUrl);
     },
   });
-
-  const phoneInput = register('phone');
 
   const onSubmitBuyer = (data: BuyerFormData) => {
     setBuyer({
@@ -112,17 +109,13 @@ export function BuyNumbersPage() {
                 inputMode="tel"
                 label="Telefone"
                 maxLength={15}
-                name={phoneInput.name}
-                onChange={(event) =>
-                  setValue('phone', formatPhoneNumber(event.target.value), {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
-                onBlur={phoneInput.onBlur}
                 placeholder="(11) 99999-9999"
-                ref={phoneInput.ref}
                 type="tel"
+                {...register('phone', {
+                  onChange: (event) => {
+                    event.target.value = formatPhoneNumber(event.target.value);
+                  },
+                })}
               />
 
               <TextInput

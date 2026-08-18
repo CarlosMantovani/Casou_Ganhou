@@ -1,6 +1,5 @@
 package com.weddingraffle.rifa.service.impl;
 
-import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
@@ -18,6 +17,7 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
+import com.weddingraffle.rifa.service.RaffleConfigService;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
@@ -36,7 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
-    private final AppProperties appProperties;
+    private final RaffleConfigService raffleConfigService;
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
@@ -44,13 +44,13 @@ public class TransactionServiceImpl implements TransactionService {
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public TransactionServiceImpl(
-            AppProperties appProperties,
+            RaffleConfigService raffleConfigService,
             TransactionRepository transactionRepository,
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
             ParticipantFlagService participantFlagService,
             ApplicationEventPublisher applicationEventPublisher) {
-        this.appProperties = appProperties;
+        this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
@@ -63,7 +63,7 @@ public class TransactionServiceImpl implements TransactionService {
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
-        BigDecimal unitPrice = appProperties.raffle().unitPrice();
+        BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
         return new TransactionQuoteResponse(name, phone, email, request.quantity(), unitPrice, totalAmount);
     }
@@ -75,7 +75,7 @@ public class TransactionServiceImpl implements TransactionService {
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
         String externalReference = UUID.randomUUID().toString();
-        BigDecimal unitPrice = appProperties.raffle().unitPrice();
+        BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(

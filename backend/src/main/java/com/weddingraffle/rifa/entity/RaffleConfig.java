@@ -50,4 +50,8 @@ public class RaffleConfig {
     public void updateUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
     }
+
+    public void updateScheduledDrawAt(OffsetDateTime scheduledDrawAt) {
+        this.scheduledDrawAt = scheduledDrawAt;
+    }
 }

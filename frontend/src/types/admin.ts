@@ -49,3 +49,7 @@ export interface RaffleConfigResponse {
 export interface UnitPriceUpdateRequest {
   unitPrice: string;
 }
+
+export interface ScheduledDrawAtUpdateRequest {
+  scheduledDrawAt: string;
+}

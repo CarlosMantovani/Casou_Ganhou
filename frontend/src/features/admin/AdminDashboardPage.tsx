@@ -62,7 +62,7 @@ export function AdminDashboardPage() {
               href="/admin/settings"
             >
               <Settings aria-hidden="true" className="h-4 w-4" />
-              Configuracoes
+              Configurações
             </a>
             <a
               className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal transition hover:bg-gold/90"
@@ -85,9 +85,9 @@ export function AdminDashboardPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-8">
         <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Transacoes nesta pagina" value={String(transactions.length)} />
-          <MetricCard label="Numeros aprovados nesta pagina" value={String(soldNumbersCount)} />
-          <MetricCard label="Receita aprovada nesta pagina" value={formatCurrency(approvedAmount)} />
+          <MetricCard label="Transações nesta página" value={String(transactions.length)} />
+          <MetricCard label="Números aprovados nesta página" value={String(soldNumbersCount)} />
+          <MetricCard label="Receita aprovada nesta página" value={formatCurrency(approvedAmount)} />
         </div>
 
         <Card className="mt-6 overflow-hidden">
@@ -109,16 +109,16 @@ export function AdminDashboardPage() {
             </div>
           </form>
 
-          {transactionsQuery.isLoading ? <p className="py-10 text-center text-sm text-warm-gray">Carregando transacoes...</p> : null}
+          {transactionsQuery.isLoading ? <p className="py-10 text-center text-sm text-warm-gray">Carregando transações...</p> : null}
 
           {transactionsQuery.isError ? (
             <p className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
-              Nao foi possivel carregar as transacoes.
+              Não foi possível carregar as transações.
             </p>
           ) : null}
 
           {!transactionsQuery.isLoading && !transactionsQuery.isError && transactions.length === 0 ? (
-            <p className="py-10 text-center text-sm text-warm-gray">Nenhuma transacao encontrada.</p>
+            <p className="py-10 text-center text-sm text-warm-gray">Nenhuma transação encontrada.</p>
           ) : null}
 
           {transactions.length > 0 ? <TransactionTable transactions={transactions} /> : null}
@@ -126,7 +126,7 @@ export function AdminDashboardPage() {
           {transactionsQuery.data ? (
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#EEE6DF] pt-4">
               <p className="text-sm text-warm-gray">
-                Pagina {transactionsQuery.data.number + 1} de {Math.max(transactionsQuery.data.totalPages, 1)}
+                Página {transactionsQuery.data.number + 1} de {Math.max(transactionsQuery.data.totalPages, 1)}
               </p>
               <div className="flex gap-2">
                 <button
@@ -143,7 +143,7 @@ export function AdminDashboardPage() {
                   onClick={() => setPage((current) => current + 1)}
                   type="button"
                 >
-                  Proxima
+                  Próxima
                 </button>
               </div>
             </div>
@@ -188,11 +188,11 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
             <th className="px-3 py-3 font-bold">Nome</th>
             <th className="px-3 py-3 font-bold">Data</th>
             <th className="px-3 py-3 font-bold">Contato</th>
-            <th className="px-3 py-3 font-bold">Metodo</th>
+            <th className="px-3 py-3 font-bold">Método</th>
             <th className="px-3 py-3 font-bold">Qtd.</th>
             <th className="px-3 py-3 font-bold">Total</th>
             <th className="px-3 py-3 font-bold">Status</th>
-            <th className="px-3 py-3 font-bold">Numeros</th>
+            <th className="px-3 py-3 font-bold">Números</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EEE6DF]">

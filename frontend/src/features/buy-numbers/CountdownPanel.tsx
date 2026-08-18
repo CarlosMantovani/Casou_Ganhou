@@ -59,9 +59,9 @@ function getUrgencyLevel(diffMs: number) {
     return {
       cardClassName: 'bg-[#3B0D0D] ring-2 ring-terracotta',
       eyebrowClassName: 'text-gold',
-      message: 'Ultimos 5 minutos para garantir seus numeros.',
+      message: 'Últimos 5 minutos para garantir seus números.',
       messageClassName: 'animate-pulse bg-terracotta text-white',
-      title: 'Ultima chamada',
+      title: 'Última chamada',
     };
   }
 
@@ -79,7 +79,7 @@ function getUrgencyLevel(diffMs: number) {
     return {
       cardClassName: 'bg-terracotta-dark',
       eyebrowClassName: 'text-white',
-      message: 'Faltam menos de 30 minutos. Nao deixe para depois.',
+      message: 'Faltam menos de 30 minutos. Não deixe para depois.',
       messageClassName: 'bg-white/15 text-white',
       title: 'Pouco tempo restante',
     };
@@ -91,7 +91,7 @@ function getUrgencyLevel(diffMs: number) {
       eyebrowClassName: 'text-white',
       message: 'Falta menos de 1 hora para o sorteio.',
       messageClassName: 'bg-white/15 text-white',
-      title: 'O sorteio esta chegando',
+      title: 'O sorteio está chegando',
     };
   }
 

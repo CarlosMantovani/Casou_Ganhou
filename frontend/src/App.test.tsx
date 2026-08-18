@@ -161,16 +161,16 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
     await user.type(screen.getByLabelText('E-mail (opcional)'), 'invalid');
 
-    expect(await screen.findByText('Informe um e-mail valido.')).toBeInTheDocument();
+    expect(await screen.findByText('Informe um e-mail válido.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
   });
 
   it('renders the public flag ranking on the purchase page', async () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
-    expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
+    expect(screen.getByText(/primeiro lugar também ganhará um prêmio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
@@ -199,8 +199,8 @@ describe('App', () => {
     try {
       render(<CountdownPanel scheduledDrawAt="2026-09-06T02:00:00Z" />);
 
-      expect(screen.getByText('Ultima chamada')).toBeInTheDocument();
-      expect(screen.getByText('Ultimos 5 minutos para garantir seus numeros.')).toBeInTheDocument();
+      expect(screen.getByText('Última chamada')).toBeInTheDocument();
+      expect(screen.getByText('Últimos 5 minutos para garantir seus números.')).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -215,7 +215,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
 
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Telefone'), '44988549696');
 
@@ -308,7 +308,7 @@ describe('App', () => {
     expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
+    expect(screen.getByText('Confirmação enviada por e-mail')).toBeInTheDocument();
   });
 
   it('renders pdf download when approved payment has no email', async () => {
@@ -325,7 +325,7 @@ describe('App', () => {
 
     renderApp('/payment-return/success?external_reference=external-reference');
 
-    expect(await screen.findByText('Baixe seus numeros agora')).toBeInTheDocument();
+    expect(await screen.findByText('Baixe seus números agora')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
       'href',
       'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
@@ -347,13 +347,13 @@ describe('App', () => {
     renderApp('/payment-return/pending?external_reference=external-reference');
 
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
-    expect(screen.getByText(/numeros serao gerados assim que a confirmacao/i)).toBeInTheDocument();
+    expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
   });
 
   it('renders a friendly error when external reference is missing', () => {
     renderApp('/payment-return/success');
 
-    expect(screen.getByText('Nao foi possivel localizar sua compra')).toBeInTheDocument();
+    expect(screen.getByText('Não foi possível localizar sua compra')).toBeInTheDocument();
   });
 
   it('redirects protected admin route to login without session', async () => {
@@ -503,17 +503,17 @@ describe('App', () => {
 
     renderApp('/admin/settings');
 
-    expect(await screen.findByText('Preco unitario')).toBeInTheDocument();
+    expect(await screen.findByText('Preço unitário')).toBeInTheDocument();
     expect(await screen.findByText('R$ 10,00')).toBeInTheDocument();
 
-    await user.clear(screen.getByLabelText('Valor por numero'));
-    await user.type(screen.getByLabelText('Valor por numero'), '15');
-    await user.click(screen.getByRole('button', { name: /Salvar preco/i }));
+    await user.clear(screen.getByLabelText('Valor por número'));
+    await user.type(screen.getByLabelText('Valor por número'), '15');
+    await user.click(screen.getByRole('button', { name: /Salvar preço/i }));
 
     await waitFor(() =>
       expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({ unitPrice: '15.00' }),
     );
-    expect(await screen.findByText('Preco atualizado com sucesso.')).toBeInTheDocument();
+    expect(await screen.findByText('Preço atualizado com sucesso.')).toBeInTheDocument();
     expect(screen.getByText('R$ 15,00')).toBeInTheDocument();
   });
 
@@ -530,7 +530,7 @@ describe('App', () => {
 
     expect(await screen.findByText('Data do sorteio')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Data e horario'), '2026-09-05T20:00');
+    await user.type(screen.getByLabelText('Data e horário'), '2026-09-05T20:00');
     await user.click(screen.getByRole('button', { name: /Salvar data/i }));
 
     await waitFor(() =>
@@ -572,7 +572,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Sortear vencedor' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar' }));
 
-    expect(await screen.findByText('Sorteando entre os numeros')).toBeInTheDocument();
+    expect(await screen.findByText('Sorteando entre os números')).toBeInTheDocument();
     expect(mockedRaffleService.getEligibleNumbers).toHaveBeenCalledTimes(1);
 
     await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 7000 });

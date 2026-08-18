@@ -63,7 +63,7 @@ export function AdminCashPaymentPage() {
           <form className="space-y-5" onSubmit={handleSubmit((data) => createCashMutation.mutate(data))}>
             <div>
               <h1 className="font-serif text-2xl font-bold">Registrar pagamento</h1>
-              <p className="mt-1 text-sm text-warm-gray">Os numeros sao gerados imediatamente apos confirmar.</p>
+              <p className="mt-1 text-sm text-warm-gray">Os números são gerados imediatamente após confirmar.</p>
             </div>
 
             <TextInput id="cash-name" label="Nome" placeholder="Nome do convidado" error={errors.name?.message} {...register('name')} />
@@ -108,7 +108,7 @@ export function AdminCashPaymentPage() {
 
             {createCashMutation.isError ? (
               <p className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
-                Nao foi possivel registrar o pagamento.
+                Não foi possível registrar o pagamento.
               </p>
             ) : null}
 
@@ -171,7 +171,7 @@ export function AdminCashPaymentPage() {
               <div>
                 <ReceiptText aria-hidden="true" className="mx-auto h-12 w-12 text-terracotta" />
                 <p className="mt-4 text-sm leading-relaxed text-warm-gray">
-                  Depois de confirmar, os numeros aparecerao aqui para entrega ao convidado.
+                  Depois de confirmar, os números aparecerão aqui para entrega ao convidado.
                 </p>
               </div>
             </div>

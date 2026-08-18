@@ -8,6 +8,7 @@ import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { StepProgress } from '../../components/brand/StepProgress';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { FlagEmoji } from '../../components/ui/FlagEmoji';
 import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
 import { homeService } from '../../services/homeService';
@@ -277,8 +278,8 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
                         <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
                         <td className="px-4 py-3">
                           <span className="flex items-center gap-3">
-                            <span className="emoji-font grid h-10 w-10 place-items-center rounded-full bg-blush text-lg">
-                              {renderFlagEmoji(item.emoji)}
+                            <span className="grid h-10 w-10 place-items-center rounded-full bg-blush">
+                              <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
                             </span>
                             <span>
                               <span className="block font-bold text-charcoal">{item.name}</span>
@@ -297,15 +298,4 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
       </Card>
     </aside>
   );
-}
-
-function renderFlagEmoji(value: string) {
-  if (!/^[A-Z]{2}$/.test(value)) {
-    return value;
-  }
-
-  return value
-    .split('')
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join('');
 }

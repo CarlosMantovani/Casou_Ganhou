@@ -143,7 +143,7 @@ describe('App', () => {
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
     expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByText('🇧🇷')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
   });
 
@@ -230,7 +230,7 @@ describe('App', () => {
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('12345')).toBeInTheDocument();
     expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
-    expect(screen.getByText('🇧🇷')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('Brasil')).toBeInTheDocument();
     expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
   });

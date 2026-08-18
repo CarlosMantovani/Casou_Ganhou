@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,7 @@ const EMPTY_TRANSACTIONS: AdminTransactionResponse[] = [];
 
 export function AdminDashboardPage() {
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
@@ -23,6 +24,13 @@ export function AdminDashboardPage() {
   const transactionsQuery = useQuery({
     queryKey: ['admin-transactions', submittedQueryFilter, page],
     queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE }),
+  });
+  const deleteCashTransactionMutation = useMutation({
+    mutationFn: (externalReference: string) =>
+      adminTransactionService.deleteCashTransaction(externalReference),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
+    },
   });
 
   const transactions = transactionsQuery.data?.content ?? EMPTY_TRANSACTIONS;
@@ -121,7 +129,19 @@ export function AdminDashboardPage() {
             <p className="py-10 text-center text-sm text-warm-gray">Nenhuma transação encontrada.</p>
           ) : null}
 
-          {transactions.length > 0 ? <TransactionTable transactions={transactions} /> : null}
+          {transactions.length > 0 ? (
+            <TransactionTable
+              deletingExternalReference={deleteCashTransactionMutation.variables ?? null}
+              isDeleting={deleteCashTransactionMutation.isPending}
+              onDeleteCashTransaction={(transaction) => {
+                const confirmed = window.confirm(`Excluir a transação em dinheiro de ${transaction.name}?`);
+                if (confirmed) {
+                  deleteCashTransactionMutation.mutate(transaction.externalReference);
+                }
+              }}
+              transactions={transactions}
+            />
+          ) : null}
 
           {transactionsQuery.data ? (
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#EEE6DF] pt-4">
@@ -163,7 +183,17 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TransactionTable({ transactions }: { transactions: AdminTransactionResponse[] }) {
+function TransactionTable({
+  deletingExternalReference,
+  isDeleting,
+  onDeleteCashTransaction,
+  transactions,
+}: {
+  deletingExternalReference: string | null;
+  isDeleting: boolean;
+  onDeleteCashTransaction: (transaction: AdminTransactionResponse) => void;
+  transactions: AdminTransactionResponse[];
+}) {
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(() => new Set());
 
   const toggleTransaction = (externalReference: string) => {
@@ -193,6 +223,7 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
             <th className="px-3 py-3 font-bold">Total</th>
             <th className="px-3 py-3 font-bold">Status</th>
             <th className="px-3 py-3 font-bold">Números</th>
+            <th className="px-3 py-3 text-right font-bold">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EEE6DF]">
@@ -254,6 +285,24 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
                     className={`mt-2 h-4 w-4 text-terracotta transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                   />
                 ) : null}
+              </td>
+              <td className="px-3 py-4 text-right">
+                {transaction.paymentMethod === 'CASH' ? (
+                  <button
+                    aria-label={`Excluir transação de ${transaction.name}`}
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-terracotta/30 px-3 py-2 text-xs font-bold text-terracotta-dark transition hover:bg-blush disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isDeleting && deletingExternalReference === transaction.externalReference}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteCashTransaction(transaction);
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span className="text-warm-gray">-</span>
+                )}
               </td>
             </tr>
             );

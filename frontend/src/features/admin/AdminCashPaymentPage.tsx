@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ChevronDown, Download, ReceiptText } from 'lucide-react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -16,10 +16,10 @@ import { cashPaymentSchema, type CashPaymentFormData } from './schemas';
 export function AdminCashPaymentPage() {
   const [isLuckyNumberListExpanded, setIsLuckyNumberListExpanded] = useState(false);
   const {
+    control,
     formState: { errors, isValid },
     handleSubmit,
     register,
-    setValue,
   } = useForm<CashPaymentFormData>({
     defaultValues: { email: '', name: '', phone: '', quantity: 1 },
     mode: 'onChange',
@@ -36,7 +36,6 @@ export function AdminCashPaymentPage() {
       }),
     onSuccess: () => setIsLuckyNumberListExpanded(false),
   });
-  const phoneInput = register('phone');
   const createdLuckyNumbers = createCashMutation.data?.luckyNumbers ?? [];
   const hasMoreLuckyNumbers = createdLuckyNumbers.length > 8;
   const displayedLuckyNumbers = isLuckyNumberListExpanded ? createdLuckyNumbers : createdLuckyNumbers.slice(0, 8);
@@ -68,23 +67,22 @@ export function AdminCashPaymentPage() {
 
             <TextInput id="cash-name" label="Nome" placeholder="Nome do convidado" error={errors.name?.message} {...register('name')} />
 
-            <TextInput
-              id="cash-phone"
-              label="Telefone"
-              placeholder="(11) 99999-9999"
-              maxLength={15}
-              inputMode="tel"
-              type="tel"
-              error={errors.phone?.message}
-              name={phoneInput.name}
-              onBlur={phoneInput.onBlur}
-              onChange={(event) =>
-                setValue('phone', formatPhoneNumber(event.target.value), {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
-              ref={phoneInput.ref}
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <TextInput
+                  id="cash-phone"
+                  label="Telefone"
+                  placeholder="(11) 99999-9999"
+                  maxLength={15}
+                  inputMode="tel"
+                  type="tel"
+                  error={errors.phone?.message}
+                  {...field}
+                  onChange={(event) => field.onChange(formatPhoneNumber(event.target.value))}
+                />
+              )}
             />
 
             <TextInput

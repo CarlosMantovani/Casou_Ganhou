@@ -15,6 +15,7 @@ import { homeService } from '../../services/homeService';
 import { transactionService } from '../../services/transactionService';
 import type { FlagRankingItem } from '../../types/home';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { buyerSchema, type BuyerFormData } from './schemas';
 
 export function BuyNumbersPage() {
@@ -25,6 +26,7 @@ export function BuyNumbersPage() {
     formState: { errors, isValid },
     handleSubmit,
     register,
+    setValue,
   } = useForm<BuyerFormData>({
     defaultValues: { email: '', name: '', phone: '' },
     mode: 'onChange',
@@ -48,10 +50,12 @@ export function BuyNumbersPage() {
     },
   });
 
+  const phoneInput = register('phone');
+
   const onSubmitBuyer = (data: BuyerFormData) => {
     setBuyer({
       name: data.name.trim(),
-      phone: data.phone.trim(),
+      phone: normalizePhoneNumber(data.phone),
       email: data.email?.trim() || undefined,
     });
   };
@@ -107,9 +111,18 @@ export function BuyNumbersPage() {
                 id="buyer-phone"
                 inputMode="tel"
                 label="Telefone"
+                maxLength={15}
+                name={phoneInput.name}
+                onChange={(event) =>
+                  setValue('phone', formatPhoneNumber(event.target.value), {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+                onBlur={phoneInput.onBlur}
                 placeholder="(11) 99999-9999"
+                ref={phoneInput.ref}
                 type="tel"
-                {...register('phone')}
               />
 
               <TextInput

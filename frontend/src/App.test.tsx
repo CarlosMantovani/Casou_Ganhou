@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { App } from './App';
+import { CountdownPanel } from './features/buy-numbers/CountdownPanel';
 import { adminTransactionService } from './services/adminTransactionService';
 import { createAdminSession, storeAdminSession } from './services/adminSession';
 import { authService } from './services/authService';
@@ -164,17 +165,32 @@ describe('App', () => {
 
   it('renders the public countdown when scheduled draw date is configured', async () => {
     mockedHomeService.getSummary.mockResolvedValue({
-      scheduledDrawAt: '2026-09-05T20:00:00-03:00',
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
       flagRanking: [],
     });
 
     renderApp();
 
     expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.getByText('Tempo restante')).toBeInTheDocument();
     expect(screen.getByText('Dias')).toBeInTheDocument();
     expect(screen.getByText('Horas')).toBeInTheDocument();
     expect(screen.getByText('Min.')).toBeInTheDocument();
     expect(screen.getByText('Seg.')).toBeInTheDocument();
+  });
+
+  it('shows the final urgency message when draw is less than five minutes away', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-06T01:56:00Z'));
+
+    try {
+      render(<CountdownPanel scheduledDrawAt="2026-09-06T02:00:00Z" />);
+
+      expect(screen.getByText('Ultima chamada')).toBeInTheDocument();
+      expect(screen.getByText('Ultimos 5 minutos para garantir seus numeros.')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('requires name and phone before the quantity step', async () => {

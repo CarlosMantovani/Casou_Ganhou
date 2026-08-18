@@ -13,8 +13,7 @@ export function fromDateTimeLocalValue(value: string) {
 }
 
 export function getCountdownParts(target: string, now = new Date()) {
-  const targetDate = new Date(target);
-  const diffMs = Math.max(0, targetDate.getTime() - now.getTime());
+  const diffMs = getCountdownMs(target, now);
   const totalSeconds = Math.floor(diffMs / 1000);
 
   const days = Math.floor(totalSeconds / 86_400);
@@ -23,4 +22,15 @@ export function getCountdownParts(target: string, now = new Date()) {
   const seconds = totalSeconds % 60;
 
   return { days, hours, minutes, seconds };
+}
+
+export function getCountdownMs(target: string, now = new Date()) {
+  const targetDate = new Date(target);
+  if (Number.isNaN(targetDate.getTime())) return 0;
+
+  return Math.max(0, targetDate.getTime() - now.getTime());
+}
+
+export function isValidDateTime(value: string) {
+  return !Number.isNaN(new Date(value).getTime());
 }

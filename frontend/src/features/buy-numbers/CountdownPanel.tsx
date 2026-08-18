@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 
 import { Card } from '../../components/ui/Card';
-import { getCountdownParts } from '../../utils/dateTime';
+import { getCountdownMs, getCountdownParts, isValidDateTime } from '../../utils/dateTime';
+import { formatDateTime } from '../../utils/formatters';
+
+const URGENCY_THRESHOLDS = {
+  oneHour: 60 * 60 * 1000,
+  thirtyMinutes: 30 * 60 * 1000,
+  fifteenMinutes: 15 * 60 * 1000,
+  fiveMinutes: 5 * 60 * 1000,
+};
 
 export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | null }) {
   const [, setTick] = useState(0);
@@ -13,19 +21,25 @@ export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | 
     return () => window.clearInterval(intervalId);
   }, [scheduledDrawAt]);
 
-  if (!scheduledDrawAt) return null;
+  if (!scheduledDrawAt || !isValidDateTime(scheduledDrawAt)) return null;
 
   const countdown = getCountdownParts(scheduledDrawAt);
+  const urgency = getUrgencyLevel(getCountdownMs(scheduledDrawAt));
 
   return (
-    <Card className="bg-charcoal text-center text-white shadow-none">
-      <p className="text-xs font-bold uppercase tracking-wide text-gold">Contagem para o sorteio</p>
+    <Card className={`${urgency.cardClassName} text-center text-white shadow-none transition-colors`}>
+      <p className={`text-xs font-bold uppercase tracking-wide ${urgency.eyebrowClassName}`}>Contagem para o sorteio</p>
+      <h2 className="mt-2 font-serif text-2xl font-bold">{urgency.title}</h2>
+      <p className="mt-2 text-xs font-semibold text-white/70">Sorteio em {formatDateTime(scheduledDrawAt)}</p>
       <div className="mt-4 grid grid-cols-4 gap-2">
         <CountdownItem label="Dias" value={countdown.days} />
         <CountdownItem label="Horas" value={countdown.hours} />
         <CountdownItem label="Min." value={countdown.minutes} />
         <CountdownItem label="Seg." value={countdown.seconds} />
       </div>
+      <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${urgency.messageClassName}`}>
+        {urgency.message}
+      </p>
     </Card>
   );
 }
@@ -37,4 +51,54 @@ function CountdownItem({ label, value }: { label: string; value: number }) {
       <span className="mt-1 block text-[11px] font-semibold uppercase text-white/60">{label}</span>
     </div>
   );
+}
+
+function getUrgencyLevel(diffMs: number) {
+  if (diffMs <= URGENCY_THRESHOLDS.fiveMinutes) {
+    return {
+      cardClassName: 'bg-[#3B0D0D] ring-2 ring-terracotta',
+      eyebrowClassName: 'text-gold',
+      message: 'Ultimos 5 minutos para garantir seus numeros.',
+      messageClassName: 'animate-pulse bg-terracotta text-white',
+      title: 'Ultima chamada',
+    };
+  }
+
+  if (diffMs <= URGENCY_THRESHOLDS.fifteenMinutes) {
+    return {
+      cardClassName: 'bg-[#5C1515]',
+      eyebrowClassName: 'text-gold',
+      message: 'Faltam menos de 15 minutos para o sorteio.',
+      messageClassName: 'bg-white/15 text-white',
+      title: 'Reta final',
+    };
+  }
+
+  if (diffMs <= URGENCY_THRESHOLDS.thirtyMinutes) {
+    return {
+      cardClassName: 'bg-terracotta-dark',
+      eyebrowClassName: 'text-white',
+      message: 'Faltam menos de 30 minutos. Nao deixe para depois.',
+      messageClassName: 'bg-white/15 text-white',
+      title: 'Pouco tempo restante',
+    };
+  }
+
+  if (diffMs <= URGENCY_THRESHOLDS.oneHour) {
+    return {
+      cardClassName: 'bg-terracotta',
+      eyebrowClassName: 'text-white',
+      message: 'Falta menos de 1 hora para o sorteio.',
+      messageClassName: 'bg-white/15 text-white',
+      title: 'O sorteio esta chegando',
+    };
+  }
+
+  return {
+    cardClassName: 'bg-charcoal',
+    eyebrowClassName: 'text-gold',
+    message: 'Acompanhe o tempo restante e escolha seus numeros com antecedencia.',
+    messageClassName: 'bg-white/10 text-white/80',
+    title: 'Tempo restante',
+  };
 }

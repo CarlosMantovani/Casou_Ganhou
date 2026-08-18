@@ -504,7 +504,7 @@ describe('App', () => {
     expect(await screen.findByText('Sorteando entre os numeros')).toBeInTheDocument();
     expect(mockedRaffleService.getEligibleNumbers).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 6000 });
+    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 9500 });
     expect(await screen.findByText('00042')).toBeInTheDocument();
-  }, 8000);
+  }, 11000);
 });

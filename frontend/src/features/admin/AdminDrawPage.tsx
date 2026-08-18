@@ -7,7 +7,7 @@ import { raffleService } from '../../services/raffleService';
 import type { ApiError } from '../../types/api';
 import type { RaffleDrawResponse } from '../../types/admin';
 
-const REVEAL_DURATION_MS = 4500;
+const REVEAL_DURATION_MS = 8000;
 const REVEAL_TICK_MS = 75;
 
 export function AdminDrawPage() {
@@ -27,10 +27,10 @@ export function AdminDrawPage() {
       return raffleService.draw();
     },
     onMutate: () => {
+      setIsConfirming(false);
       setRevealNumber(null);
     },
     onSuccess: () => {
-      setIsConfirming(false);
       void resultQuery.refetch();
     },
     onSettled: () => {

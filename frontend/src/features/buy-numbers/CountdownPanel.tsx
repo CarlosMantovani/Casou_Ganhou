@@ -36,9 +36,11 @@ export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | 
         <CountdownItem label="Min." value={countdown.minutes} />
         <CountdownItem label="Seg." value={countdown.seconds} />
       </div>
-      <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${urgency.messageClassName}`}>
-        {urgency.message}
-      </p>
+      {urgency.message ? (
+        <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${urgency.messageClassName}`}>
+          {urgency.message}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -96,7 +98,7 @@ function getUrgencyLevel(diffMs: number) {
   return {
     cardClassName: 'bg-charcoal',
     eyebrowClassName: 'text-gold',
-    message: 'Acompanhe o tempo restante e escolha seus numeros com antecedencia.',
+    message: null,
     messageClassName: 'bg-white/10 text-white/80',
     title: 'Tempo restante',
   };

@@ -76,7 +76,7 @@ export function BuyNumbersPage() {
         <header className="text-center">
           <BrandMark />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
-            Participe do sorteio e faca parte deste presente especial para o casal.
+            Participe do sorteio e faça parte deste presente especial para o casal.
           </p>
           <div className="mt-6">
             <GoldDivider />
@@ -91,8 +91,8 @@ export function BuyNumbersPage() {
           <Card>
             <form className="space-y-5" onSubmit={handleSubmit(onSubmitBuyer)}>
               <div>
-                <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos comecar!</h1>
-                <p className="mt-1 text-sm text-warm-gray">Informe seus dados para escolher seus numeros.</p>
+                <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos começar!</h1>
+                <p className="mt-1 text-sm text-warm-gray">Informe seus dados para escolher seus números.</p>
               </div>
 
               <TextInput
@@ -124,7 +124,7 @@ export function BuyNumbersPage() {
               <TextInput
                 autoComplete="email"
                 error={errors.email?.message}
-                helper="Informe seu e-mail para receber os numeros automaticamente, ou deixe em branco e baixe um PDF ao final."
+                helper="Informe seu e-mail para receber os números automaticamente, ou deixe em branco e baixe um PDF ao final."
                 id="buyer-email"
                 inputMode="email"
                 label="E-mail (opcional)"
@@ -142,7 +142,7 @@ export function BuyNumbersPage() {
           <section className="space-y-4" aria-labelledby="quantity-title">
             <div className="text-center">
               <h1 className="font-serif text-lg text-charcoal" id="quantity-title">
-                Quantos numeros voce quer?
+                Quantos números você quer?
               </h1>
               <button
                 className="mt-2 text-xs font-semibold text-terracotta underline underline-offset-4"
@@ -167,7 +167,7 @@ export function BuyNumbersPage() {
 
                 <div className="min-w-24 text-center">
                   <span className="block font-serif text-7xl font-bold leading-none text-charcoal">{quantity}</span>
-                  <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'numero' : 'numeros'}</span>
+                  <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'número' : 'números'}</span>
                 </div>
 
                 <button
@@ -186,11 +186,11 @@ export function BuyNumbersPage() {
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-sm text-warm-gray">Quantidade</dt>
                   <dd className="text-sm font-semibold">
-                    {quantity} {quantity === 1 ? 'numero' : 'numeros'}
+                    {quantity} {quantity === 1 ? 'número' : 'números'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-sm text-warm-gray">Valor unitario</dt>
+                  <dt className="text-sm text-warm-gray">Valor unitário</dt>
                   <dd className="text-sm font-semibold">
                     {quoteQuery.isLoading ? 'Atualizando...' : unitPrice ? formatCurrency(unitPrice) : '-'}
                   </dd>
@@ -228,7 +228,7 @@ export function BuyNumbersPage() {
             </Button>
 
             <p className="px-2 text-center text-xs leading-relaxed text-warm-gray">
-              Voce sera redirecionado ao Mercado Pago para concluir o pagamento com seguranca.
+              Você será redirecionado ao Mercado Pago para concluir o pagamento com segurança.
             </p>
           </section>
         )}
@@ -250,18 +250,18 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
             <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
             <p className="mt-2 text-sm leading-relaxed text-warm-gray">
-              A bandeira em primeiro lugar tambem ganhara um premio especial no dia do sorteio.
+              A bandeira em primeiro lugar também ganhará um prêmio especial no dia do sorteio.
             </p>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
             <table className="w-full text-left text-sm">
-              <caption className="sr-only">Ranking das bandeiras por numeros aprovados</caption>
+              <caption className="sr-only">Ranking das bandeiras por números aprovados</caption>
               <thead className="bg-[#F8F1EB] text-xs uppercase text-warm-gray">
                 <tr>
                   <th className="px-4 py-3 font-bold">Pos.</th>
                   <th className="px-4 py-3 font-bold">Bandeira</th>
-                  <th className="px-4 py-3 text-right font-bold">Numeros</th>
+                  <th className="px-4 py-3 text-right font-bold">Números</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEE6DF] bg-white">

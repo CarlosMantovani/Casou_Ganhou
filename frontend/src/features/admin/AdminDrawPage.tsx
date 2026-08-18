@@ -75,8 +75,8 @@ export function AdminDrawPage() {
                 {drawError ? (
                   <p className="mx-auto mt-6 max-w-sm rounded-lg border border-gold/20 bg-white/5 px-4 py-3 text-sm text-white/80" role="alert">
                     {drawError.status === 409
-                      ? 'Ainda nao ha numeros aprovados suficientes para realizar o sorteio.'
-                      : 'Nao foi possivel realizar o sorteio agora.'}
+                      ? 'Ainda não há números aprovados suficientes para realizar o sorteio.'
+                      : 'Não foi possível realizar o sorteio agora.'}
                   </p>
                 ) : null}
               </div>
@@ -93,8 +93,8 @@ export function AdminDrawPage() {
             {!isRevealing && result && drawError ? (
               <p className="mx-auto mt-6 max-w-sm rounded-lg border border-gold/20 bg-white/5 px-4 py-3 text-sm text-white/80" role="alert">
                 {drawError.status === 409
-                  ? 'Ainda nao ha numeros aprovados suficientes para realizar o sorteio.'
-                  : 'Nao foi possivel realizar o sorteio agora.'}
+                  ? 'Ainda não há números aprovados suficientes para realizar o sorteio.'
+                  : 'Não foi possível realizar o sorteio agora.'}
               </p>
             ) : null}
           </div>
@@ -106,7 +106,7 @@ export function AdminDrawPage() {
           <div className="w-full max-w-sm rounded-lg bg-cream p-6 text-charcoal shadow-soft">
             <h2 className="font-serif text-2xl font-bold">Confirmar sorteio?</h2>
             <p className="mt-3 text-sm leading-relaxed text-warm-gray">
-              A tela vai passar pelos numeros concorrentes antes de revelar o vencedor.
+              A tela vai passar pelos números concorrentes antes de revelar o vencedor.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -137,7 +137,7 @@ function RevealStage({ candidate }: { candidate: RaffleCandidateResponse | null 
     <div className="mt-16">
       <p className="text-sm font-bold uppercase tracking-[0.28em] text-gold">
         <Sparkles aria-hidden="true" className="mr-2 inline h-4 w-4" />
-        Sorteando entre os numeros
+        Sorteando entre os números
       </p>
       <div className="mx-auto mt-8 grid h-52 w-52 place-items-center rounded-full border border-gold/35 bg-white/5 shadow-[0_0_60px_rgba(201,162,39,0.16)]">
         <div className="grid place-items-center gap-3">
@@ -159,7 +159,7 @@ function WinnerResult({ result }: { result: RaffleDrawResponse }) {
     <div className="mt-16">
       <p className="text-sm font-bold uppercase tracking-[0.28em] text-gold">
         <PartyPopper aria-hidden="true" className="mr-2 inline h-4 w-4" />
-        Numero vencedor
+        Número vencedor
       </p>
       <h1 className="mt-8 font-serif text-[clamp(5rem,18vw,11rem)] font-bold leading-none text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
         {result.winningNumber}

@@ -62,7 +62,7 @@ class LuckyNumberPdfServiceImplTests {
             String text = new PDFTextStripper().getText(document);
 
             assertThat(document.getNumberOfPages()).isGreaterThan(1);
-            assertThat(text).contains("200 numeros gerados", "Numeros da sorte - continuacao");
+            assertThat(text).contains("200 números gerados", "Números da sorte - continuação");
             assertThat(text).containsSubsequence(luckyNumbers);
         }
     }

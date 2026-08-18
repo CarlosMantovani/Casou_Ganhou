@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save, Settings } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Save, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -8,8 +8,14 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { raffleConfigService } from '../../services/raffleConfigService';
+import { fromDateTimeLocalValue, toDateTimeLocalValue } from '../../utils/dateTime';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
-import { raffleConfigSchema, type RaffleConfigFormData } from './schemas';
+import {
+  raffleConfigSchema,
+  scheduledDrawSchema,
+  type RaffleConfigFormData,
+  type ScheduledDrawFormData,
+} from './schemas';
 
 export function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -23,6 +29,16 @@ export function AdminSettingsPage() {
     mode: 'onChange',
     resolver: zodResolver(raffleConfigSchema),
   });
+  const {
+    formState: { errors: scheduledDrawErrors, isValid: isScheduledDrawValid },
+    handleSubmit: handleScheduledDrawSubmit,
+    register: registerScheduledDraw,
+    reset: resetScheduledDraw,
+  } = useForm<ScheduledDrawFormData>({
+    defaultValues: { scheduledDrawAt: '' },
+    mode: 'onChange',
+    resolver: zodResolver(scheduledDrawSchema),
+  });
 
   const configQuery = useQuery({
     queryKey: ['admin-raffle-config'],
@@ -32,8 +48,9 @@ export function AdminSettingsPage() {
   useEffect(() => {
     if (configQuery.data) {
       reset({ unitPrice: Number(configQuery.data.unitPrice) });
+      resetScheduledDraw({ scheduledDrawAt: toDateTimeLocalValue(configQuery.data.scheduledDrawAt) });
     }
-  }, [configQuery.data, reset]);
+  }, [configQuery.data, reset, resetScheduledDraw]);
 
   const updateUnitPriceMutation = useMutation({
     mutationFn: (data: RaffleConfigFormData) =>
@@ -41,6 +58,17 @@ export function AdminSettingsPage() {
     onSuccess: (data) => {
       queryClient.setQueryData(['admin-raffle-config'], data);
       reset({ unitPrice: Number(data.unitPrice) });
+    },
+  });
+
+  const updateScheduledDrawMutation = useMutation({
+    mutationFn: (data: ScheduledDrawFormData) =>
+      raffleConfigService.updateScheduledDrawAt({
+        scheduledDrawAt: fromDateTimeLocalValue(data.scheduledDrawAt),
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['admin-raffle-config'], data);
+      resetScheduledDraw({ scheduledDrawAt: toDateTimeLocalValue(data.scheduledDrawAt) });
     },
   });
 
@@ -62,43 +90,104 @@ export function AdminSettingsPage() {
       </header>
 
       <section className="mx-auto grid max-w-4xl gap-6 px-6 py-8 md:grid-cols-[1fr_0.9fr]">
-        <Card>
-          <form className="space-y-5" onSubmit={handleSubmit((data) => updateUnitPriceMutation.mutate(data))}>
-            <div>
-              <h1 className="font-serif text-2xl font-bold">Preco unitario</h1>
-              <p className="mt-1 text-sm text-warm-gray">
-                O novo valor passa a valer apenas para novas cotacoes e novas transacoes.
-              </p>
-            </div>
+        <div className="space-y-6">
+          <Card>
+            <form className="space-y-5" onSubmit={handleSubmit((data) => updateUnitPriceMutation.mutate(data))}>
+              <div>
+                <h1 className="font-serif text-2xl font-bold">Preco unitario</h1>
+                <p className="mt-1 text-sm text-warm-gray">
+                  O novo valor passa a valer apenas para novas cotacoes e novas transacoes.
+                </p>
+              </div>
 
-            <TextInput
-              id="raffle-unit-price"
-              label="Valor por numero"
-              min="0.01"
-              step="0.01"
-              type="number"
-              error={errors.unitPrice?.message}
-              {...register('unitPrice')}
-            />
+              <TextInput
+                id="raffle-unit-price"
+                label="Valor por numero"
+                min="0.01"
+                step="0.01"
+                type="number"
+                error={errors.unitPrice?.message}
+                {...register('unitPrice')}
+              />
 
-            {updateUnitPriceMutation.isSuccess ? (
-              <p className="rounded-lg border border-olive/20 bg-olive/10 px-4 py-3 text-sm font-semibold text-olive" role="status">
-                Preco atualizado com sucesso.
-              </p>
-            ) : null}
+              {updateUnitPriceMutation.isSuccess ? (
+                <p
+                  className="rounded-lg border border-olive/20 bg-olive/10 px-4 py-3 text-sm font-semibold text-olive"
+                  role="status"
+                >
+                  Preco atualizado com sucesso.
+                </p>
+              ) : null}
 
-            {updateUnitPriceMutation.isError ? (
-              <p className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
-                Nao foi possivel atualizar o preco.
-              </p>
-            ) : null}
+              {updateUnitPriceMutation.isError ? (
+                <p
+                  className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark"
+                  role="alert"
+                >
+                  Nao foi possivel atualizar o preco.
+                </p>
+              ) : null}
 
-            <Button disabled={!isValid || configQuery.isLoading} isLoading={updateUnitPriceMutation.isPending} type="submit">
-              <Save aria-hidden="true" className="h-5 w-5" />
-              Salvar preco
-            </Button>
-          </form>
-        </Card>
+              <Button
+                disabled={!isValid || configQuery.isLoading}
+                isLoading={updateUnitPriceMutation.isPending}
+                type="submit"
+              >
+                <Save aria-hidden="true" className="h-5 w-5" />
+                Salvar preco
+              </Button>
+            </form>
+          </Card>
+
+          <Card>
+            <form
+              className="space-y-5"
+              onSubmit={handleScheduledDrawSubmit((data) => updateScheduledDrawMutation.mutate(data))}
+            >
+              <div>
+                <h2 className="font-serif text-2xl font-bold">Data do sorteio</h2>
+                <p className="mt-1 text-sm text-warm-gray">
+                  Essa data alimenta a contagem regressiva exibida na tela inicial.
+                </p>
+              </div>
+
+              <TextInput
+                id="raffle-scheduled-draw-at"
+                label="Data e horario"
+                type="datetime-local"
+                error={scheduledDrawErrors.scheduledDrawAt?.message}
+                {...registerScheduledDraw('scheduledDrawAt')}
+              />
+
+              {updateScheduledDrawMutation.isSuccess ? (
+                <p
+                  className="rounded-lg border border-olive/20 bg-olive/10 px-4 py-3 text-sm font-semibold text-olive"
+                  role="status"
+                >
+                  Data do sorteio atualizada com sucesso.
+                </p>
+              ) : null}
+
+              {updateScheduledDrawMutation.isError ? (
+                <p
+                  className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark"
+                  role="alert"
+                >
+                  Nao foi possivel atualizar a data do sorteio.
+                </p>
+              ) : null}
+
+              <Button
+                disabled={!isScheduledDrawValid || configQuery.isLoading}
+                isLoading={updateScheduledDrawMutation.isPending}
+                type="submit"
+              >
+                <CalendarClock aria-hidden="true" className="h-5 w-5" />
+                Salvar data
+              </Button>
+            </form>
+          </Card>
+        </div>
 
         <Card className="bg-blush shadow-none">
           {configQuery.isLoading ? (
@@ -126,8 +215,19 @@ export function AdminSettingsPage() {
               </div>
 
               {configQuery.data.updatedAt ? (
-                <p className="text-xs text-warm-gray">Ultima atualizacao: {formatDateTime(configQuery.data.updatedAt)}</p>
+                <p className="text-xs text-warm-gray">
+                  Ultima atualizacao: {formatDateTime(configQuery.data.updatedAt)}
+                </p>
               ) : null}
+
+              <div className="rounded-lg bg-white/70 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-warm-gray">Sorteio</p>
+                <p className="mt-2 text-sm font-semibold text-charcoal">
+                  {configQuery.data.scheduledDrawAt
+                    ? formatDateTime(configQuery.data.scheduledDrawAt)
+                    : 'Ainda nao configurado'}
+                </p>
+              </div>
             </div>
           ) : null}
         </Card>

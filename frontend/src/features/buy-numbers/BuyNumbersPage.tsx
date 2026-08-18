@@ -16,6 +16,7 @@ import { transactionService } from '../../services/transactionService';
 import type { FlagRankingItem } from '../../types/home';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
+import { CountdownPanel } from './CountdownPanel';
 import { buyerSchema, type BuyerFormData } from './schemas';
 
 export function BuyNumbersPage() {
@@ -81,6 +82,8 @@ export function BuyNumbersPage() {
             <GoldDivider />
           </div>
         </header>
+
+        <CountdownPanel scheduledDrawAt={homeSummaryQuery.data?.scheduledDrawAt ?? null} />
 
         <StepProgress currentStep={currentStep} />
 

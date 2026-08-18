@@ -7,6 +7,7 @@ import com.weddingraffle.rifa.repository.RaffleConfigRepository;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,18 @@ public class RaffleConfigServiceImpl implements RaffleConfigService {
     public RaffleConfigResponse updateUnitPrice(BigDecimal unitPrice) {
         RaffleConfig config = getCurrentConfig();
         config.updateUnitPrice(unitPrice);
+        return saveAndRefresh(config);
+    }
+
+    @Override
+    @Transactional
+    public RaffleConfigResponse updateScheduledDrawAt(OffsetDateTime scheduledDrawAt) {
+        RaffleConfig config = getCurrentConfig();
+        config.updateScheduledDrawAt(scheduledDrawAt);
+        return saveAndRefresh(config);
+    }
+
+    private RaffleConfigResponse saveAndRefresh(RaffleConfig config) {
         raffleConfigRepository.saveAndFlush(config);
         entityManager.refresh(config);
         return toResponse(config);

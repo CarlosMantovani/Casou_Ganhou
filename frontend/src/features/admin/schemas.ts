@@ -32,6 +32,11 @@ export const raffleConfigSchema = z.object({
     .refine((value) => Math.round(value * 100) === value * 100, 'Informe no maximo 2 casas decimais.'),
 });
 
+export const scheduledDrawSchema = z.object({
+  scheduledDrawAt: z.string().min(1, 'Informe a data e horario do sorteio.'),
+});
+
 export type AdminLoginFormData = z.infer<typeof adminLoginSchema>;
 export type CashPaymentFormData = z.infer<typeof cashPaymentSchema>;
 export type RaffleConfigFormData = z.infer<typeof raffleConfigSchema>;
+export type ScheduledDrawFormData = z.infer<typeof scheduledDrawSchema>;

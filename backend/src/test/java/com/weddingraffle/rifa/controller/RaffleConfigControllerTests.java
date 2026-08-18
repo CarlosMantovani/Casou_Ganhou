@@ -87,6 +87,22 @@ class RaffleConfigControllerTests {
                 .andExpect(jsonPath("$.unitPrice").value(15.00));
     }
 
+    @Test
+    void updateScheduledDrawAtReturnsUpdatedConfigForAdmin() throws Exception {
+        when(raffleConfigService.updateScheduledDrawAt(any()))
+                .thenReturn(new RaffleConfigResponse(
+                        new BigDecimal("10.00"),
+                        OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
+                        OffsetDateTime.parse("2026-08-14T18:00:00-03:00")));
+
+        mockMvc.perform(put("/admin/raffle-config/scheduled-at")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scheduledDrawAt\":\"2026-09-05T20:00:00-03:00\"}")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"));
+    }
+
     @TestConfiguration
     static class TestConfig {
 

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { App } from './App';
+import { CountdownPanel } from './features/buy-numbers/CountdownPanel';
 import { adminTransactionService } from './services/adminTransactionService';
 import { createAdminSession, storeAdminSession } from './services/adminSession';
 import { authService } from './services/authService';
@@ -49,6 +50,7 @@ vi.mock('./services/raffleService', () => ({
 vi.mock('./services/raffleConfigService', () => ({
   raffleConfigService: {
     getConfig: vi.fn(),
+    updateScheduledDrawAt: vi.fn(),
     updateUnitPrice: vi.fn(),
   },
 }));
@@ -159,6 +161,36 @@ describe('App', () => {
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
+  });
+
+  it('renders the public countdown when scheduled draw date is configured', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.getByText('Tempo restante')).toBeInTheDocument();
+    expect(screen.getByText('Dias')).toBeInTheDocument();
+    expect(screen.getByText('Horas')).toBeInTheDocument();
+    expect(screen.getByText('Min.')).toBeInTheDocument();
+    expect(screen.getByText('Seg.')).toBeInTheDocument();
+  });
+
+  it('shows the final urgency message when draw is less than five minutes away', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-06T01:56:00Z'));
+
+    try {
+      render(<CountdownPanel scheduledDrawAt="2026-09-06T02:00:00Z" />);
+
+      expect(screen.getByText('Ultima chamada')).toBeInTheDocument();
+      expect(screen.getByText('Ultimos 5 minutos para garantir seus numeros.')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('requires name and phone before the quantity step', async () => {
@@ -470,6 +502,30 @@ describe('App', () => {
     );
     expect(await screen.findByText('Preco atualizado com sucesso.')).toBeInTheDocument();
     expect(screen.getByText('R$ 15,00')).toBeInTheDocument();
+  });
+
+  it('updates scheduled draw date from admin settings', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedRaffleConfigService.updateScheduledDrawAt.mockResolvedValue({
+      scheduledDrawAt: '2026-09-05T23:00:00.000Z',
+      unitPrice: '10.00',
+      updatedAt: '2026-08-14T18:05:00-03:00',
+    });
+
+    renderApp('/admin/settings');
+
+    expect(await screen.findByText('Data do sorteio')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Data e horario'), '2026-09-05T20:00');
+    await user.click(screen.getByRole('button', { name: /Salvar data/i }));
+
+    await waitFor(() =>
+      expect(mockedRaffleConfigService.updateScheduledDrawAt).toHaveBeenCalledWith({
+        scheduledDrawAt: '2026-09-05T23:00:00.000Z',
+      }),
+    );
+    expect(await screen.findByText('Data do sorteio atualizada com sucesso.')).toBeInTheDocument();
   });
 
   it('renders existing raffle result without drawing again', async () => {

@@ -38,11 +38,13 @@ class PublicHomeControllerTests {
     @Test
     void returnsHomeSummaryWithoutAuthentication() throws Exception {
         when(publicHomeService.getSummary())
-                .thenReturn(
-                        new HomeSummaryResponse(null, List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12))));
+                .thenReturn(new HomeSummaryResponse(
+                        java.time.OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
+                        List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12))));
 
         mockMvc.perform(get("/public/home-summary"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"))
                 .andExpect(jsonPath("$.flagRanking[0].code").value("BRAZIL"))
                 .andExpect(jsonPath("$.flagRanking[0].name").value("Brasil"))
                 .andExpect(jsonPath("$.flagRanking[0].totalNumbers").value(12));

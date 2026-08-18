@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Download, ReceiptText, Ticket } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, ReceiptText } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '../../components/ui/Button';
@@ -9,13 +10,16 @@ import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
 import { transactionService } from '../../services/transactionService';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { cashPaymentSchema, type CashPaymentFormData } from './schemas';
 
 export function AdminCashPaymentPage() {
+  const [isLuckyNumberListExpanded, setIsLuckyNumberListExpanded] = useState(false);
   const {
     formState: { errors, isValid },
     handleSubmit,
     register,
+    setValue,
   } = useForm<CashPaymentFormData>({
     defaultValues: { email: '', name: '', phone: '', quantity: 1 },
     mode: 'onChange',
@@ -26,11 +30,16 @@ export function AdminCashPaymentPage() {
     mutationFn: (data: CashPaymentFormData) =>
       adminTransactionService.createCashTransaction({
         name: data.name.trim(),
-        phone: data.phone.trim(),
+        phone: normalizePhoneNumber(data.phone),
         email: data.email?.trim() || undefined,
         quantity: data.quantity,
       }),
+    onSuccess: () => setIsLuckyNumberListExpanded(false),
   });
+  const phoneInput = register('phone');
+  const createdLuckyNumbers = createCashMutation.data?.luckyNumbers ?? [];
+  const hasMoreLuckyNumbers = createdLuckyNumbers.length > 8;
+  const displayedLuckyNumbers = isLuckyNumberListExpanded ? createdLuckyNumbers : createdLuckyNumbers.slice(0, 8);
 
   return (
     <main className="min-h-screen bg-cream text-charcoal">
@@ -63,10 +72,19 @@ export function AdminCashPaymentPage() {
               id="cash-phone"
               label="Telefone"
               placeholder="(11) 99999-9999"
+              maxLength={15}
               inputMode="tel"
               type="tel"
               error={errors.phone?.message}
-              {...register('phone')}
+              name={phoneInput.name}
+              onBlur={phoneInput.onBlur}
+              onChange={(event) =>
+                setValue('phone', formatPhoneNumber(event.target.value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+              ref={phoneInput.ref}
             />
 
             <TextInput
@@ -110,14 +128,35 @@ export function AdminCashPaymentPage() {
                 <p className="mt-1 text-sm text-warm-gray">{formatCurrency(createCashMutation.data.totalAmount)}</p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {createCashMutation.data.luckyNumbers.map((number) => (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-gold px-3 py-2 text-sm font-bold text-charcoal" key={number}>
-                    <Ticket aria-hidden="true" className="h-4 w-4" />
-                    {number}
-                  </span>
-                ))}
-              </div>
+              <button
+                aria-expanded={hasMoreLuckyNumbers ? isLuckyNumberListExpanded : undefined}
+                className={`w-full rounded-lg border border-gold/40 bg-white/55 p-3 text-left ${
+                  hasMoreLuckyNumbers ? 'cursor-pointer transition hover:bg-white/80' : 'cursor-default'
+                }`}
+                disabled={!hasMoreLuckyNumbers}
+                onClick={() => setIsLuckyNumberListExpanded((current) => !current)}
+                type="button"
+              >
+                <div className="grid w-full grid-cols-4 gap-2">
+                  {displayedLuckyNumbers.map((number) => (
+                    <span
+                      className="flex min-w-0 items-center justify-center whitespace-nowrap rounded-md bg-gold px-2 py-1.5 font-mono text-xs font-bold tabular-nums text-charcoal"
+                      key={number}
+                      title={number}
+                    >
+                      {number}
+                    </span>
+                  ))}
+                </div>
+                {hasMoreLuckyNumbers ? (
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`mx-auto mt-3 h-4 w-4 text-terracotta transition-transform ${
+                      isLuckyNumberListExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                ) : null}
+              </button>
 
               <a
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"

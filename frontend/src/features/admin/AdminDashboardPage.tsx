@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Gift, LogOut, ReceiptText, Search, Settings, Ticket } from 'lucide-react';
+import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -8,6 +8,7 @@ import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
 import type { AdminTransactionResponse } from '../../types/admin';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { formatPhoneNumber } from '../../utils/phone';
 import { useAuth } from './AuthContext';
 
 const PAGE_SIZE = 20;
@@ -163,6 +164,22 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 function TransactionTable({ transactions }: { transactions: AdminTransactionResponse[] }) {
+  const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(() => new Set());
+
+  const toggleTransaction = (externalReference: string) => {
+    setExpandedTransactions((current) => {
+      const next = new Set(current);
+
+      if (next.has(externalReference)) {
+        next.delete(externalReference);
+      } else {
+        next.add(externalReference);
+      }
+
+      return next;
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left text-sm">
@@ -179,12 +196,34 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EEE6DF]">
-          {transactions.map((transaction) => (
-            <tr key={transaction.externalReference}>
+          {transactions.map((transaction) => {
+            const hasMoreLuckyNumbers = transaction.luckyNumbers.length > 8;
+            const isExpanded = expandedTransactions.has(transaction.externalReference);
+            const displayedLuckyNumbers = isExpanded ? transaction.luckyNumbers : transaction.luckyNumbers.slice(0, 8);
+
+            return (
+            <tr
+              aria-expanded={hasMoreLuckyNumbers ? isExpanded : undefined}
+              className={hasMoreLuckyNumbers ? 'cursor-pointer hover:bg-blush/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-terracotta' : undefined}
+              key={transaction.externalReference}
+              onClick={hasMoreLuckyNumbers ? () => toggleTransaction(transaction.externalReference) : undefined}
+              onKeyDown={
+                hasMoreLuckyNumbers
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleTransaction(transaction.externalReference);
+                      }
+                    }
+                  : undefined
+              }
+              role={hasMoreLuckyNumbers ? 'button' : undefined}
+              tabIndex={hasMoreLuckyNumbers ? 0 : undefined}
+            >
               <td className="px-3 py-4 font-medium text-charcoal">{transaction.name}</td>
               <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">
-                <span className="block">{transaction.phone}</span>
+                <span className="block">{formatPhoneNumber(transaction.phone) || '-'}</span>
                 <span className="block text-xs">{transaction.email || '-'}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
@@ -193,12 +232,15 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
               <td className="px-3 py-4">
                 <StatusBadge status={transaction.status} />
               </td>
-              <td className="px-3 py-4">
-                {transaction.luckyNumbers.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {transaction.luckyNumbers.map((number) => (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-gold/20 px-2 py-1 text-xs font-bold text-charcoal" key={number}>
-                        <Ticket aria-hidden="true" className="h-3 w-3" />
+              <td className="w-80 min-w-80 px-3 py-4">
+                {displayedLuckyNumbers.length > 0 ? (
+                  <div className="grid w-full grid-cols-4 gap-2">
+                    {displayedLuckyNumbers.map((number) => (
+                      <span
+                        className="flex min-w-0 items-center justify-center whitespace-nowrap rounded-md bg-gold/20 px-2 py-1 font-mono text-xs font-bold tabular-nums text-charcoal"
+                        key={number}
+                        title={number}
+                      >
                         {number}
                       </span>
                     ))}
@@ -206,9 +248,16 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
                 ) : (
                   <span className="text-warm-gray">-</span>
                 )}
+                {hasMoreLuckyNumbers ? (
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`mt-2 h-4 w-4 text-terracotta transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  />
+                ) : null}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { AdminCashPaymentPage } from './AdminCashPaymentPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AdminDrawPage } from './AdminDrawPage';
+import { AdminSettingsPage } from './AdminSettingsPage';
 import { AdminLoginPage } from './AdminLoginPage';
 
 export default function AdminApp() {
@@ -44,6 +45,10 @@ function AdminRoutes() {
 
   if (path === '/admin/cash-payment') {
     return <AdminCashPaymentPage />;
+  }
+
+  if (path === '/admin/settings') {
+    return <AdminSettingsPage />;
   }
 
   return (

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
@@ -22,6 +21,7 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
+import com.weddingraffle.rifa.service.RaffleConfigService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -48,17 +48,21 @@ class TransactionServiceImplTests {
     private ParticipantFlagService participantFlagService;
 
     @Mock
+    private RaffleConfigService raffleConfigService;
+
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     @Test
     void calculatesQuoteFromConfiguredUnitPrice() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
                 participantFlagService,
                 applicationEventPublisher);
+        when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
 
         TransactionQuoteResponse response = transactionService.quote(
                 new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3));
@@ -74,12 +78,13 @@ class TransactionServiceImplTests {
     @Test
     void createsPendingTransactionWithCheckoutPreference() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
                 participantFlagService,
                 applicationEventPublisher);
+        when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
         when(participantFlagService.resolveForPhone("11999999999"))
@@ -119,7 +124,7 @@ class TransactionServiceImplTests {
     @Test
     void processesApprovedPaymentNotification() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -146,7 +151,7 @@ class TransactionServiceImplTests {
     @Test
     void processesRejectedPaymentNotificationWithoutGeneratingLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -170,7 +175,7 @@ class TransactionServiceImplTests {
     @Test
     void ignoresDuplicateNotificationForApprovedTransaction() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -194,7 +199,7 @@ class TransactionServiceImplTests {
     @Test
     void updatesApprovedTransactionWhenPaymentIsRefundedWithoutGeneratingLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -219,7 +224,7 @@ class TransactionServiceImplTests {
     @Test
     void mapsChargebackAndMediationStatusesWithoutGeneratingLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -254,7 +259,7 @@ class TransactionServiceImplTests {
     @Test
     void returnsCurrentStatusWithLuckyNumbers() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -279,7 +284,7 @@ class TransactionServiceImplTests {
     @Test
     void statusFallbackPublishesEventWhenPaymentBecomesApproved() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
@@ -300,21 +305,5 @@ class TransactionServiceImplTests {
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
-    }
-
-    private static AppProperties appProperties() {
-        return new AppProperties(
-                "http://localhost:5173",
-                new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
-                new AppProperties.Raffle(new BigDecimal("10.00"), "00000", "99999"),
-                new AppProperties.MercadoPago(
-                        "token",
-                        "http://localhost:8080/payments/webhook",
-                        "",
-                        "http://localhost:5173/payment-return/success",
-                        "http://localhost:5173/payment-return/failure",
-                        "http://localhost:5173/payment-return/pending",
-                        new AppProperties.Retry(3, 500, 2)),
-                new AppProperties.Mail("no-reply@example.com"));
     }
 }

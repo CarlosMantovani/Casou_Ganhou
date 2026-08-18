@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Gift, LogOut, ReceiptText, Search, Ticket } from 'lucide-react';
+import { Gift, LogOut, ReceiptText, Search, Settings, Ticket } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -55,6 +55,13 @@ export function AdminDashboardPage() {
             >
               <ReceiptText aria-hidden="true" className="h-4 w-4" />
               Dinheiro
+            </a>
+            <a
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+              href="/admin/settings"
+            >
+              <Settings aria-hidden="true" className="h-4 w-4" />
+              Configuracoes
             </a>
             <a
               className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal transition hover:bg-gold/90"

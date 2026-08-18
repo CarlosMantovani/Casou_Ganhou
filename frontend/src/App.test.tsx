@@ -331,6 +331,7 @@ describe('App', () => {
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
+    expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
@@ -338,6 +339,49 @@ describe('App', () => {
     await waitFor(() =>
       expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
     );
+  });
+
+  it('expands and collapses transaction lucky numbers above the initial limit', async () => {
+    const user = userEvent.setup();
+    const luckyNumbers = Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(5, '0'));
+    mockedAdminTransactionService.list.mockResolvedValue({
+      content: [
+        {
+          createdAt: '2026-08-14T18:00:00-03:00',
+          email: 'guest@example.com',
+          externalReference: 'external-reference',
+          luckyNumbers,
+          name: 'Guest User',
+          paymentMethod: 'MERCADO_PAGO',
+          phone: '11999999999',
+          quantity: 10,
+          status: 'APPROVED',
+          totalAmount: '100.00',
+        },
+      ],
+      first: true,
+      last: true,
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+
+    renderApp('/admin');
+
+    const transactionRow = await screen.findByRole('button', { name: /Guest User/ });
+    expect(screen.getByText('00008')).toBeInTheDocument();
+    expect(screen.queryByText('00009')).not.toBeInTheDocument();
+
+    await user.click(transactionRow);
+
+    expect(screen.getByText('00009')).toBeInTheDocument();
+    expect(screen.getByText('00010')).toBeInTheDocument();
+
+    await user.click(transactionRow);
+
+    expect(screen.queryByText('00009')).not.toBeInTheDocument();
   });
 
   it('registers an admin cash payment and shows pdf link', async () => {

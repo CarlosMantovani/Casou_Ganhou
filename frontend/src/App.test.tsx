@@ -171,6 +171,7 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
+    expect(screen.getByText(/cada telefone recebe uma bandeira exclusiva/i)).toBeInTheDocument();
     expect(screen.getByText(/primeiro lugar também ganhará um prêmio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();

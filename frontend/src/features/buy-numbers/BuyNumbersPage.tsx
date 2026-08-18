@@ -250,6 +250,10 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
             <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
             <p className="mt-2 text-sm leading-relaxed text-warm-gray">
+              Cada telefone recebe uma bandeira exclusiva. Novas compras com o mesmo telefone acumulam pontos para a
+              mesma bandeira.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-warm-gray">
               A bandeira em primeiro lugar também ganhará um prêmio especial no dia do sorteio.
             </p>
           </div>

@@ -6,6 +6,7 @@ import { App } from './App';
 import { adminTransactionService } from './services/adminTransactionService';
 import { createAdminSession, storeAdminSession } from './services/adminSession';
 import { authService } from './services/authService';
+import { homeService } from './services/homeService';
 import { raffleService } from './services/raffleService';
 import { transactionService } from './services/transactionService';
 
@@ -15,6 +16,12 @@ vi.mock('./services/transactionService', () => ({
     getLuckyNumbersPdfUrl: vi.fn(),
     getStatus: vi.fn(),
     quote: vi.fn(),
+  },
+}));
+
+vi.mock('./services/homeService', () => ({
+  homeService: {
+    getSummary: vi.fn(),
   },
 }));
 
@@ -39,6 +46,7 @@ vi.mock('./services/raffleService', () => ({
 }));
 
 const mockedTransactionService = vi.mocked(transactionService);
+const mockedHomeService = vi.mocked(homeService);
 const mockedAuthService = vi.mocked(authService);
 const mockedAdminTransactionService = vi.mocked(adminTransactionService);
 const mockedRaffleService = vi.mocked(raffleService);
@@ -81,6 +89,17 @@ describe('App', () => {
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
       'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
     );
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: null,
+      flagRanking: [
+        {
+          code: 'BRAZIL',
+          emoji: '🇧🇷',
+          name: 'Brasil',
+          totalNumbers: 12,
+        },
+      ],
+    });
     mockedAdminTransactionService.list.mockResolvedValue({
       content: [
         {
@@ -116,6 +135,16 @@ describe('App', () => {
     expect(await screen.findByText('Informe um e-mail valido.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+  });
+
+  it('renders the public flag ranking on the purchase page', async () => {
+    renderApp();
+
+    expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
+    expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
+    expect(await screen.findByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
   });
 
   it('requires name and phone before the quantity step', async () => {
@@ -206,6 +235,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: true,
       luckyNumbers: ['00042', '12345'],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 2,
       status: 'APPROVED',
       totalAmount: '20.00',
@@ -215,6 +246,9 @@ describe('App', () => {
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('12345')).toBeInTheDocument();
+    expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
     expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
   });
 
@@ -223,6 +257,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: false,
       luckyNumbers: ['00042'],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 1,
       status: 'APPROVED',
       totalAmount: '10.00',
@@ -242,6 +278,8 @@ describe('App', () => {
       externalReference: 'external-reference',
       emailProvided: false,
       luckyNumbers: [],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       quantity: 1,
       status: 'PENDING',
       totalAmount: '10.00',

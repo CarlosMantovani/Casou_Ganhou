@@ -58,6 +58,7 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
+            assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
         }
     }
 
@@ -93,6 +94,56 @@ class FlywayMigrationIntegrationTests {
                 "select exists (select 1 from admin_user where username = 'admin' and char_length(password_hash) = 60)")) {
             resultSet.next();
             return resultSet.getBoolean(1);
+        }
+    }
+
+    private static boolean approvedFlagRankingQueryWorks(Statement statement) throws SQLException {
+        statement.executeUpdate(
+                """
+                insert into transaction (
+                    name,
+                    phone,
+                    email,
+                    quantity,
+                    total_amount,
+                    unit_price,
+                    status,
+                    payment_method,
+                    external_reference,
+                    participant_flag_code,
+                    participant_flag_name,
+                    participant_flag_emoji
+                ) values (
+                    'Test Buyer',
+                    '44999999999',
+                    'buyer@example.com',
+                    3,
+                    30.00,
+                    10.00,
+                    'APPROVED',
+                    'CASH',
+                    'external-reference-ranking-test',
+                    'BRAZIL',
+                    'Brasil',
+                    '🇧🇷'
+                )
+                """);
+
+        try (ResultSet resultSet = statement.executeQuery(
+                """
+                select
+                    participant_flag_code as code,
+                    participant_flag_name as name,
+                    participant_flag_emoji as emoji,
+                    cast(sum(quantity) as bigint) as total_numbers
+                from transaction
+                where status = 'APPROVED'
+                group by participant_flag_code, participant_flag_name, participant_flag_emoji
+                order by sum(quantity) desc, participant_flag_name asc
+                """)) {
+            return resultSet.next()
+                    && "BRAZIL".equals(resultSet.getString("code"))
+                    && resultSet.getLong("total_numbers") == 3L;
         }
     }
 }

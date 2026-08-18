@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/transactions/{externalReference}/lucky-numbers.pdf")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/public/home-summary")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/payments/webhook")
                         .permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS)

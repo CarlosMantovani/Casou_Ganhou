@@ -16,6 +16,7 @@ import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
@@ -39,6 +40,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
+    private final ParticipantFlagService participantFlagService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public TransactionServiceImpl(
@@ -46,11 +48,13 @@ public class TransactionServiceImpl implements TransactionService {
             TransactionRepository transactionRepository,
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
+            ParticipantFlagService participantFlagService,
             ApplicationEventPublisher applicationEventPublisher) {
         this.appProperties = appProperties;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
+        this.participantFlagService = participantFlagService;
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
@@ -87,6 +91,7 @@ public class TransactionServiceImpl implements TransactionService {
                 PaymentStatus.PENDING,
                 PaymentMethod.MERCADO_PAGO,
                 externalReference);
+        transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
         transaction.assignPreference(preference.preferenceId());
         transactionRepository.save(transaction);
 
@@ -152,6 +157,8 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
+                transaction.getParticipantFlagName(),
+                transaction.getParticipantFlagEmoji(),
                 luckyNumberService.findNumbers(transaction.getExternalReference()));
     }
 

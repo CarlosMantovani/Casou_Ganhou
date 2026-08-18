@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { Card } from '../../components/ui/Card';
+import { FlagEmoji } from '../../components/ui/FlagEmoji';
 import { publicMessages } from '../../content/messages';
 import { transactionService } from '../../services/transactionService';
 
@@ -59,6 +60,16 @@ export function PaymentReturnPage() {
               <GoldDivider />
             </div>
           </div>
+
+          <Card className="border border-[#EEE6DF] bg-white/90 text-center shadow-none">
+            <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Sua bandeira</p>
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-blush">
+                <FlagEmoji className="h-9 w-9" emoji={transaction.participantFlagEmoji} />
+              </span>
+              <span className="font-serif text-2xl font-bold text-charcoal">{transaction.participantFlagName}</span>
+            </div>
+          </Card>
 
           <Card className="border border-gold/30 text-center">
             <h2 className="font-serif text-lg font-semibold">Seus numeros da sorte</h2>

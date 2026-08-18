@@ -8,9 +8,12 @@ import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { StepProgress } from '../../components/brand/StepProgress';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { FlagEmoji } from '../../components/ui/FlagEmoji';
 import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
+import { homeService } from '../../services/homeService';
 import { transactionService } from '../../services/transactionService';
+import type { FlagRankingItem } from '../../types/home';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { buyerSchema, type BuyerFormData } from './schemas';
@@ -34,6 +37,10 @@ export function BuyNumbersPage() {
     enabled: Boolean(buyer),
     queryKey: ['transaction-quote', buyer, quantity],
     queryFn: () => transactionService.quote({ ...buyer!, quantity }),
+  });
+  const homeSummaryQuery = useQuery({
+    queryKey: ['home-summary'],
+    queryFn: homeService.getSummary,
   });
 
   const createTransactionMutation = useMutation({
@@ -67,7 +74,7 @@ export function BuyNumbersPage() {
 
   return (
     <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
-      <div className="mx-auto flex w-full max-w-[440px] flex-col gap-7">
+      <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7">
         <header className="text-center">
           <BrandMark />
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
@@ -229,7 +236,79 @@ export function BuyNumbersPage() {
             </p>
           </section>
         )}
+        <FlagRankingPanel
+          isLoading={homeSummaryQuery.isLoading}
+          ranking={homeSummaryQuery.data?.flagRanking ?? []}
+        />
       </div>
     </main>
+  );
+}
+
+function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking: FlagRankingItem[] }) {
+  return (
+    <aside>
+      <Card className="bg-white/90">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
+            <p className="mt-2 text-sm leading-relaxed text-warm-gray">
+              A bandeira em primeiro lugar tambem ganhara um premio especial no dia do sorteio.
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
+            <table className="w-full text-left text-sm">
+              <caption className="sr-only">Ranking das bandeiras por numeros aprovados</caption>
+              <thead className="bg-[#F8F1EB] text-xs uppercase text-warm-gray">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Pos.</th>
+                  <th className="px-4 py-3 font-bold">Bandeira</th>
+                  <th className="px-4 py-3 text-right font-bold">Numeros</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EEE6DF] bg-white">
+                {isLoading ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
+                      Carregando ranking...
+                    </td>
+                  </tr>
+                ) : null}
+
+                {!isLoading && ranking.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
+                      Nenhuma bandeira pontuou ainda.
+                    </td>
+                  </tr>
+                ) : null}
+
+                {!isLoading
+                  ? ranking.map((item, index) => (
+                      <tr key={item.code}>
+                        <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-3">
+                            <span className="grid h-10 w-10 place-items-center rounded-full bg-blush">
+                              <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
+                            </span>
+                            <span>
+                              <span className="block font-bold text-charcoal">{item.name}</span>
+                              <span className="block text-xs text-warm-gray">{item.code}</span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-terracotta">{item.totalNumbers}</td>
+                      </tr>
+                    ))
+                  : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    </aside>
   );
 }

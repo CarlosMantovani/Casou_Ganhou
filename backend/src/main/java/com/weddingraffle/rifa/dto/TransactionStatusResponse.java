@@ -10,4 +10,6 @@ public record TransactionStatusResponse(
         PaymentStatus status,
         Integer quantity,
         BigDecimal totalAmount,
+        String participantFlagName,
+        String participantFlagEmoji,
         List<String> luckyNumbers) {}

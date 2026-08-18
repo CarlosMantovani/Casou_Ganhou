@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
@@ -31,6 +32,7 @@ class LuckyNumberPdfServiceImplTests {
         LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
         Transaction transaction =
                 new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external");
+        transaction.assignParticipantFlag(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
 

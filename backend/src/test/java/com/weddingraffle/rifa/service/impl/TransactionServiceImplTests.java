@@ -11,6 +11,7 @@ import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
@@ -19,6 +20,7 @@ import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,6 +45,9 @@ class TransactionServiceImplTests {
     private LuckyNumberService luckyNumberService;
 
     @Mock
+    private ParticipantFlagService participantFlagService;
+
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     @Test
@@ -52,6 +57,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
 
         TransactionQuoteResponse response = transactionService.quote(
@@ -72,9 +78,12 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
+        when(participantFlagService.resolveForPhone("11999999999"))
+                .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
 
         TransactionCreateResponse response = transactionService.create(
                 new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2));
@@ -102,6 +111,9 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getTotalAmount()).isEqualByComparingTo("20.00");
         assertThat(transactionCaptor.getValue().getExternalReference()).isEqualTo(response.externalReference());
         assertThat(transactionCaptor.getValue().getMpPreferenceId()).isEqualTo("preference-123");
+        assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
+        assertThat(transactionCaptor.getValue().getParticipantFlagName()).isEqualTo("Brasil");
+        assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
     }
 
     @Test
@@ -111,6 +123,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
@@ -137,6 +150,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
@@ -160,6 +174,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
@@ -183,6 +198,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
@@ -207,6 +223,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction chargebackTransaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
@@ -241,6 +258,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
@@ -265,6 +283,7 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
+                participantFlagService,
                 applicationEventPublisher);
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");

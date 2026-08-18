@@ -13,6 +13,7 @@ import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.service.RaffleService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -59,6 +60,17 @@ class RaffleControllerTests {
         mockMvc.perform(get("/raffle/result").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.winningNumber").value("00001"));
+    }
+
+    @Test
+    void eligibleNumbersReturnsNumbersForAdmin() throws Exception {
+        when(raffleService.listEligibleNumbers()).thenReturn(List.of("00001", "00002"));
+
+        mockMvc.perform(get("/raffle/eligible-numbers")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("00001"))
+                .andExpect(jsonPath("$[1]").value("00002"));
     }
 
     @TestConfiguration

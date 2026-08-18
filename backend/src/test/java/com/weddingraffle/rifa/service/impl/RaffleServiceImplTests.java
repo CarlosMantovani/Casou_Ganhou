@@ -2,13 +2,11 @@ package com.weddingraffle.rifa.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentStatus;
-import com.weddingraffle.rifa.entity.RaffleDraw;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
@@ -50,7 +48,6 @@ class RaffleServiceImplTests {
                 "external");
         LuckyNumber first = new LuckyNumber("00001", "guest@example.com", approvedTransaction);
         LuckyNumber second = new LuckyNumber("00002", "guest@example.com", approvedTransaction);
-        when(raffleDrawRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
         when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(first, second));
         when(raffleWinnerSelector.selectIndex(2)).thenReturn(1);
         when(raffleDrawRepository.save(org.mockito.ArgumentMatchers.any()))
@@ -64,24 +61,34 @@ class RaffleServiceImplTests {
     }
 
     @Test
-    void drawReturnsExistingResultWithoutDrawingAgain() {
+    void drawCanCreateANewResultWhenAResultAlreadyExists() {
         RaffleServiceImpl raffleService =
                 new RaffleServiceImpl(raffleDrawRepository, luckyNumberRepository, raffleWinnerSelector);
-        RaffleDraw existingDraw = new RaffleDraw("00001", "guest@example.com");
-        when(raffleDrawRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(existingDraw));
+        Transaction approvedTransaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                "guest@example.com",
+                1,
+                new BigDecimal("10.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.MERCADO_PAGO,
+                "external");
+        LuckyNumber luckyNumber = new LuckyNumber("00003", "guest@example.com", approvedTransaction);
+        when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(luckyNumber));
+        when(raffleWinnerSelector.selectIndex(1)).thenReturn(0);
+        when(raffleDrawRepository.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = raffleService.draw();
 
-        assertThat(response.winningNumber()).isEqualTo("00001");
-        verify(luckyNumberRepository, never()).findEligibleForDraw(PaymentStatus.APPROVED);
-        verify(raffleDrawRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        assertThat(response.winningNumber()).isEqualTo("00003");
+        verify(raffleDrawRepository).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void drawFailsWhenThereAreNoEligibleLuckyNumbers() {
         RaffleServiceImpl raffleService =
                 new RaffleServiceImpl(raffleDrawRepository, luckyNumberRepository, raffleWinnerSelector);
-        when(raffleDrawRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
         when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of());
 
         assertThatThrownBy(raffleService::draw).isInstanceOf(InvalidRaffleStateException.class);
@@ -91,8 +98,28 @@ class RaffleServiceImplTests {
     void getResultFailsWhenResultDoesNotExist() {
         RaffleServiceImpl raffleService =
                 new RaffleServiceImpl(raffleDrawRepository, luckyNumberRepository, raffleWinnerSelector);
-        when(raffleDrawRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
+        when(raffleDrawRepository.findFirstByOrderByIdDesc()).thenReturn(Optional.empty());
 
         assertThatThrownBy(raffleService::getResult).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void listEligibleNumbersReturnsApprovedLuckyNumbersOnly() {
+        RaffleServiceImpl raffleService =
+                new RaffleServiceImpl(raffleDrawRepository, luckyNumberRepository, raffleWinnerSelector);
+        Transaction approvedTransaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                "guest@example.com",
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.MERCADO_PAGO,
+                "external");
+        LuckyNumber first = new LuckyNumber("00001", "guest@example.com", approvedTransaction);
+        LuckyNumber second = new LuckyNumber("00002", "guest@example.com", approvedTransaction);
+        when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(first, second));
+
+        assertThat(raffleService.listEligibleNumbers()).containsExactly("00001", "00002");
     }
 }

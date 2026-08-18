@@ -33,31 +33,38 @@ public class RaffleServiceImpl implements RaffleService {
     @Override
     @Transactional
     public RaffleDrawResponse draw() {
-        return raffleDrawRepository
-                .findFirstByOrderByIdAsc()
-                .map(this::toResponse)
-                .orElseGet(this::drawNewWinner);
+        return drawNewWinner();
     }
 
     @Override
     @Transactional(readOnly = true)
     public RaffleDrawResponse getResult() {
         return raffleDrawRepository
-                .findFirstByOrderByIdAsc()
+                .findFirstByOrderByIdDesc()
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Raffle result not found."));
     }
 
-    private RaffleDrawResponse drawNewWinner() {
-        List<LuckyNumber> eligibleLuckyNumbers = luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED);
-        if (eligibleLuckyNumbers.isEmpty()) {
-            throw new InvalidRaffleStateException("No eligible lucky numbers for draw.");
-        }
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> listEligibleNumbers() {
+        return getEligibleLuckyNumbers().stream().map(LuckyNumber::getNumber).toList();
+    }
 
+    private RaffleDrawResponse drawNewWinner() {
+        List<LuckyNumber> eligibleLuckyNumbers = getEligibleLuckyNumbers();
         LuckyNumber winner = eligibleLuckyNumbers.get(raffleWinnerSelector.selectIndex(eligibleLuckyNumbers.size()));
         RaffleDraw raffleDraw = raffleDrawRepository.save(
                 new RaffleDraw(winner.getNumber(), winner.getTransaction().getName(), winner.getEmail()));
         return toResponse(raffleDraw);
+    }
+
+    private List<LuckyNumber> getEligibleLuckyNumbers() {
+        List<LuckyNumber> eligibleLuckyNumbers = luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED);
+        if (eligibleLuckyNumbers.isEmpty()) {
+            throw new InvalidRaffleStateException("No eligible lucky numbers for draw.");
+        }
+        return eligibleLuckyNumbers;
     }
 
     private RaffleDrawResponse toResponse(RaffleDraw raffleDraw) {

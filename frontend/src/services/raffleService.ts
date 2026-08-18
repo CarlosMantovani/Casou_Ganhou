@@ -11,4 +11,9 @@ export const raffleService = {
     const response = await apiClient.get<RaffleDrawResponse>('/raffle/result');
     return response.data;
   },
+
+  async getEligibleNumbers(): Promise<string[]> {
+    const response = await apiClient.get<string[]>('/raffle/eligible-numbers');
+    return response.data;
+  },
 };

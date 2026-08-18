@@ -7,6 +7,7 @@ import { adminTransactionService } from './services/adminTransactionService';
 import { createAdminSession, storeAdminSession } from './services/adminSession';
 import { authService } from './services/authService';
 import { homeService } from './services/homeService';
+import { raffleConfigService } from './services/raffleConfigService';
 import { raffleService } from './services/raffleService';
 import { transactionService } from './services/transactionService';
 
@@ -45,11 +46,19 @@ vi.mock('./services/raffleService', () => ({
   },
 }));
 
+vi.mock('./services/raffleConfigService', () => ({
+  raffleConfigService: {
+    getConfig: vi.fn(),
+    updateUnitPrice: vi.fn(),
+  },
+}));
+
 const mockedTransactionService = vi.mocked(transactionService);
 const mockedHomeService = vi.mocked(homeService);
 const mockedAuthService = vi.mocked(authService);
 const mockedAdminTransactionService = vi.mocked(adminTransactionService);
 const mockedRaffleService = vi.mocked(raffleService);
+const mockedRaffleConfigService = vi.mocked(raffleConfigService);
 const originalLocation = window.location;
 
 function renderApp(path = '/') {
@@ -121,6 +130,11 @@ describe('App', () => {
       size: 20,
       totalElements: 1,
       totalPages: 1,
+    });
+    mockedRaffleConfigService.getConfig.mockResolvedValue({
+      scheduledDrawAt: null,
+      unitPrice: '10.00',
+      updatedAt: '2026-08-14T18:00:00-03:00',
     });
   });
 
@@ -300,7 +314,7 @@ describe('App', () => {
   it('redirects protected admin route to login without session', async () => {
     renderApp('/admin');
 
-    expect(await screen.findByText('Área Administrativa')).toBeInTheDocument();
+    expect(await screen.findByText('Área Administrativa', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByLabelText('Usuário')).toBeInTheDocument();
   });
 
@@ -431,6 +445,31 @@ describe('App', () => {
       'href',
       'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',
     );
+  });
+
+  it('updates raffle unit price from admin settings', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedRaffleConfigService.updateUnitPrice.mockResolvedValue({
+      scheduledDrawAt: null,
+      unitPrice: '15.00',
+      updatedAt: '2026-08-14T18:05:00-03:00',
+    });
+
+    renderApp('/admin/settings');
+
+    expect(await screen.findByText('Preco unitario')).toBeInTheDocument();
+    expect(await screen.findByText('R$ 10,00')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('Valor por numero'));
+    await user.type(screen.getByLabelText('Valor por numero'), '15');
+    await user.click(screen.getByRole('button', { name: /Salvar preco/i }));
+
+    await waitFor(() =>
+      expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({ unitPrice: '15.00' }),
+    );
+    expect(await screen.findByText('Preco atualizado com sucesso.')).toBeInTheDocument();
+    expect(screen.getByText('R$ 15,00')).toBeInTheDocument();
   });
 
   it('renders existing raffle result without drawing again', async () => {

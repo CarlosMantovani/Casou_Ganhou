@@ -39,3 +39,13 @@ export interface RaffleDrawResponse {
   winnerName: string;
   drawnAt: string;
 }
+
+export interface RaffleConfigResponse {
+  unitPrice: string;
+  scheduledDrawAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface UnitPriceUpdateRequest {
+  unitPrice: string;
+}

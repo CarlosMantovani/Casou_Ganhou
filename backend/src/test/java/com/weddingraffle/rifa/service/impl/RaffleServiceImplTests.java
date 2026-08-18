@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.weddingraffle.rifa.entity.LuckyNumber;
+import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
@@ -48,6 +49,7 @@ class RaffleServiceImplTests {
                 "external");
         LuckyNumber first = new LuckyNumber("00001", "guest@example.com", approvedTransaction);
         LuckyNumber second = new LuckyNumber("00002", "guest@example.com", approvedTransaction);
+        approvedTransaction.assignParticipantFlag(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(first, second));
         when(raffleWinnerSelector.selectIndex(2)).thenReturn(1);
         when(raffleDrawRepository.save(org.mockito.ArgumentMatchers.any()))
@@ -57,6 +59,8 @@ class RaffleServiceImplTests {
 
         assertThat(response.winningNumber()).isEqualTo("00002");
         assertThat(response.winnerName()).isEqualTo("Guest User");
+        assertThat(response.participantFlagName()).isEqualTo("Brasil");
+        assertThat(response.participantFlagEmoji()).isEqualTo("🇧🇷");
         assertThat(response.drawnAt()).isNotNull();
     }
 
@@ -74,6 +78,7 @@ class RaffleServiceImplTests {
                 com.weddingraffle.rifa.entity.PaymentMethod.MERCADO_PAGO,
                 "external");
         LuckyNumber luckyNumber = new LuckyNumber("00003", "guest@example.com", approvedTransaction);
+        approvedTransaction.assignParticipantFlag(new ParticipantFlag("CANADA", "Canada", "🇨🇦"));
         when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(luckyNumber));
         when(raffleWinnerSelector.selectIndex(1)).thenReturn(0);
         when(raffleDrawRepository.save(org.mockito.ArgumentMatchers.any()))
@@ -82,6 +87,7 @@ class RaffleServiceImplTests {
         var response = raffleService.draw();
 
         assertThat(response.winningNumber()).isEqualTo("00003");
+        assertThat(response.participantFlagName()).isEqualTo("Canada");
         verify(raffleDrawRepository).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -118,8 +124,14 @@ class RaffleServiceImplTests {
                 "external");
         LuckyNumber first = new LuckyNumber("00001", "guest@example.com", approvedTransaction);
         LuckyNumber second = new LuckyNumber("00002", "guest@example.com", approvedTransaction);
+        approvedTransaction.assignParticipantFlag(new ParticipantFlag("JAPAN", "Japao", "🇯🇵"));
         when(luckyNumberRepository.findEligibleForDraw(PaymentStatus.APPROVED)).thenReturn(List.of(first, second));
 
-        assertThat(raffleService.listEligibleNumbers()).containsExactly("00001", "00002");
+        assertThat(raffleService.listEligibleNumbers())
+                .extracting("luckyNumber")
+                .containsExactly("00001", "00002");
+        assertThat(raffleService.listEligibleNumbers())
+                .extracting("participantFlagName")
+                .containsExactly("Japao", "Japao");
     }
 }

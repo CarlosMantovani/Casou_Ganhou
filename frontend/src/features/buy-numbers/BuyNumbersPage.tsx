@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, Minus, Plus } from 'lucide-react';
+import { CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -249,19 +250,68 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Disputa das bandeiras</p>
             <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
-            <p className="mt-2 text-sm leading-relaxed text-warm-gray">
-              A bandeira em primeiro lugar também ganhará um prêmio especial no dia do sorteio.
-            </p>
+            <div className="mt-4 grid gap-2">
+              <FlagRule
+                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
+                text="Uma bandeira exclusiva por telefone."
+              />
+              <FlagRule
+                icon={<RotateCcw aria-hidden="true" className="h-4 w-4" />}
+                text="Novas compras somam pontos na mesma bandeira."
+              />
+              <FlagRule
+                icon={<Trophy aria-hidden="true" className="h-4 w-4" />}
+                text="A líder também ganhará um prêmio especial."
+              />
+            </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[#E7DDD6]">
-            <table className="w-full text-left text-sm">
+          <div className="grid gap-2 sm:hidden">
+            {isLoading ? (
+              <p className="rounded-lg bg-[#F8F1EB] px-4 py-6 text-center text-sm text-warm-gray">
+                Carregando ranking...
+              </p>
+            ) : null}
+
+            {!isLoading && ranking.length === 0 ? (
+              <p className="rounded-lg bg-[#F8F1EB] px-4 py-6 text-center text-sm text-warm-gray">
+                Nenhuma bandeira pontuou ainda.
+              </p>
+            ) : null}
+
+            {!isLoading
+              ? ranking.map((item, index) => (
+                  <div
+                    className="flex min-w-0 items-center gap-3 rounded-lg border border-[#E7DDD6] bg-white px-3 py-3"
+                    key={item.code}
+                  >
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blush text-xs font-bold text-terracotta">
+                      {index + 1}
+                    </span>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush">
+                      <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-bold text-charcoal">{item.name}</span>
+                      <span className="block truncate text-xs text-warm-gray">{item.code}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block font-bold text-terracotta">{item.totalNumbers}</span>
+                      <span className="block text-[11px] font-semibold uppercase text-warm-gray">números</span>
+                    </span>
+                  </div>
+                ))
+              : null}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-lg border border-[#E7DDD6] sm:block">
+            <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">Ranking das bandeiras por números aprovados</caption>
               <thead className="bg-[#F8F1EB] text-xs uppercase text-warm-gray">
                 <tr>
-                  <th className="px-4 py-3 font-bold">Pos.</th>
+                  <th className="w-16 px-4 py-3 font-bold">Pos.</th>
                   <th className="px-4 py-3 font-bold">Bandeira</th>
-                  <th className="px-4 py-3 text-right font-bold">Números</th>
+                  <th className="w-24 px-4 py-3 text-right font-bold">Números</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEE6DF] bg-white">
@@ -285,14 +335,14 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
                   ? ranking.map((item, index) => (
                       <tr key={item.code}>
                         <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
-                        <td className="px-4 py-3">
+                        <td className="min-w-0 px-4 py-3">
                           <span className="flex items-center gap-3">
                             <span className="grid h-10 w-10 place-items-center rounded-full bg-blush">
                               <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
                             </span>
-                            <span>
-                              <span className="block font-bold text-charcoal">{item.name}</span>
-                              <span className="block text-xs text-warm-gray">{item.code}</span>
+                            <span className="min-w-0">
+                              <span className="block truncate font-bold text-charcoal">{item.name}</span>
+                              <span className="block truncate text-xs text-warm-gray">{item.code}</span>
                             </span>
                           </span>
                         </td>
@@ -306,5 +356,14 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
         </div>
       </Card>
     </aside>
+  );
+}
+
+function FlagRule({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-blush/55 px-3 py-2 text-sm font-medium text-charcoal">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-terracotta">{icon}</span>
+      <span className="leading-snug">{text}</span>
+    </div>
   );
 }

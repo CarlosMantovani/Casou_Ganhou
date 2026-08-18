@@ -3,6 +3,7 @@ package com.weddingraffle.rifa.service.impl;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
@@ -100,7 +101,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPhone(),
                 transaction.getEmail(),
                 transaction.getPaymentMethod(),
-                transaction.getStatus(),
+                PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 luckyNumbers);
@@ -141,7 +142,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPaymentMethod(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
-                transaction.getStatus(),
+                PaymentStatusResponse.from(transaction.getStatus()),
                 numbersByTransaction.getOrDefault(transaction, List.of()));
     }
 }

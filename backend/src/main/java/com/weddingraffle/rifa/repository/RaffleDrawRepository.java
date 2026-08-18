@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface RaffleDrawRepository extends JpaRepository<RaffleDraw, Long> {
 
     Optional<RaffleDraw> findFirstByOrderByIdAsc();
+
+    Optional<RaffleDraw> findFirstByOrderByIdDesc();
 }

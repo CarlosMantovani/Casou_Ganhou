@@ -74,7 +74,7 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/admin/raffle-config/scheduled-at")
                         .hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/raffle/result", "/transactions")
+                        .requestMatchers(HttpMethod.GET, "/raffle/result", "/raffle/eligible-numbers", "/transactions")
                         .hasRole("ADMIN")
                         .anyRequest()
                         .denyAll())

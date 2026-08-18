@@ -35,7 +35,7 @@ export function AdminDashboardPage() {
 
   const transactions = transactionsQuery.data?.content ?? EMPTY_TRANSACTIONS;
   const approvedTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.status === 'APPROVED'),
+    () => transactions.filter((transaction) => transaction.status === 'APROVADO'),
     [transactions],
   );
   const soldNumbersCount = approvedTransactions.reduce((total, transaction) => total + transaction.luckyNumbers.length, 0);
@@ -315,10 +315,13 @@ function TransactionTable({
 
 function StatusBadge({ status }: { status: AdminTransactionResponse['status'] }) {
   const styles = {
-    APPROVED: 'bg-olive/15 text-olive',
-    PENDING: 'bg-gold/15 text-[#8A6A00]',
-    REJECTED: 'bg-terracotta/15 text-terracotta-dark',
-    CANCELLED: 'bg-terracotta/15 text-terracotta-dark',
+    APROVADO: 'bg-olive/15 text-olive',
+    PENDENTE: 'bg-gold/15 text-[#8A6A00]',
+    REJEITADO: 'bg-terracotta/15 text-terracotta-dark',
+    CANCELADO: 'bg-terracotta/15 text-terracotta-dark',
+    ESTORNADO: 'bg-terracotta/15 text-terracotta-dark',
+    CHARGEBACK: 'bg-terracotta/15 text-terracotta-dark',
+    EM_MEDIACAO: 'bg-gold/15 text-[#8A6A00]',
   };
 
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${styles[status]}`}>{status}</span>;

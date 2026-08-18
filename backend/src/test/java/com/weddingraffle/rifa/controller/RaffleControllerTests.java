@@ -9,10 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
+import com.weddingraffle.rifa.dto.RaffleCandidateResponse;
 import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.service.RaffleService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -44,12 +46,15 @@ class RaffleControllerTests {
 
     @Test
     void drawReturnsWinnerForAdmin() throws Exception {
-        when(raffleService.draw()).thenReturn(new RaffleDrawResponse("00001", "Guest User", OffsetDateTime.now()));
+        when(raffleService.draw())
+                .thenReturn(new RaffleDrawResponse("00001", "Guest User", OffsetDateTime.now(), "Brasil", "🇧🇷"));
 
         mockMvc.perform(post("/raffle/draw").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.winningNumber").value("00001"))
-                .andExpect(jsonPath("$.winnerName").value("Guest User"));
+                .andExpect(jsonPath("$.winnerName").value("Guest User"))
+                .andExpect(jsonPath("$.participantFlagName").value("Brasil"))
+                .andExpect(jsonPath("$.participantFlagEmoji").value("🇧🇷"));
     }
 
     @Test
@@ -59,6 +64,22 @@ class RaffleControllerTests {
         mockMvc.perform(get("/raffle/result").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.winningNumber").value("00001"));
+    }
+
+    @Test
+    void eligibleNumbersReturnsNumbersForAdmin() throws Exception {
+        when(raffleService.listEligibleNumbers())
+                .thenReturn(List.of(
+                        new RaffleCandidateResponse("00001", "Brasil", "🇧🇷"),
+                        new RaffleCandidateResponse("00002", "Canada", "🇨🇦")));
+
+        mockMvc.perform(get("/raffle/eligible-numbers")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].luckyNumber").value("00001"))
+                .andExpect(jsonPath("$[0].participantFlagName").value("Brasil"))
+                .andExpect(jsonPath("$[0].participantFlagEmoji").value("🇧🇷"))
+                .andExpect(jsonPath("$[1].luckyNumber").value("00002"));
     }
 
     @TestConfiguration

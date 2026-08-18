@@ -4,6 +4,7 @@ import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,7 @@ public interface LuckyNumberRepository extends JpaRepository<LuckyNumber, Long> 
     List<LuckyNumber> findByTransactionInOrderByNumberAsc(List<Transaction> transactions);
 
     void deleteByTransaction(Transaction transaction);
+    Optional<LuckyNumber> findByNumber(String number);
 
     @Query(
             """

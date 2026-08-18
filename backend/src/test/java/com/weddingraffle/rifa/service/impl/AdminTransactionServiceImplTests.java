@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
@@ -107,7 +108,7 @@ class AdminTransactionServiceImplTests {
         assertThat(response.phone()).isEqualTo("11999999999");
         assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
-        assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001");
         var transactionCaptor = org.mockito.ArgumentCaptor.forClass(Transaction.class);

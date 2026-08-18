@@ -1,4 +1,4 @@
-export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type PaymentStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO' | 'CANCELADO' | 'ESTORNADO' | 'CHARGEBACK' | 'EM_MEDIACAO';
 
 export interface TransactionQuoteRequest {
   name: string;

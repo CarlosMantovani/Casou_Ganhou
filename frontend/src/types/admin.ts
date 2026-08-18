@@ -38,6 +38,14 @@ export interface RaffleDrawResponse {
   winningNumber: string;
   winnerName: string;
   drawnAt: string;
+  participantFlagName?: string | null;
+  participantFlagEmoji?: string | null;
+}
+
+export interface RaffleCandidateResponse {
+  luckyNumber: string;
+  participantFlagName: string;
+  participantFlagEmoji: string;
 }
 
 export interface RaffleConfigResponse {

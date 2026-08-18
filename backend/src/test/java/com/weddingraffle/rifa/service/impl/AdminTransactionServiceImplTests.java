@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
@@ -17,6 +16,7 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.PaymentApprovedEvent;
+import com.weddingraffle.rifa.service.RaffleConfigService;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,6 +41,9 @@ class AdminTransactionServiceImplTests {
 
     @Mock
     private ParticipantFlagService participantFlagService;
+
+    @Mock
+    private RaffleConfigService raffleConfigService;
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -87,6 +90,7 @@ class AdminTransactionServiceImplTests {
         AdminTransactionServiceImpl service = service();
         when(participantFlagService.resolveForPhone("11999999999"))
                 .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
+        when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -113,27 +117,11 @@ class AdminTransactionServiceImplTests {
 
     private AdminTransactionServiceImpl service() {
         return new AdminTransactionServiceImpl(
-                appProperties(),
+                raffleConfigService,
                 transactionRepository,
                 luckyNumberRepository,
                 luckyNumberService,
                 participantFlagService,
                 applicationEventPublisher);
-    }
-
-    private static AppProperties appProperties() {
-        return new AppProperties(
-                "http://localhost:5173",
-                new AppProperties.Jwt("01234567890123456789012345678901", 3600, "raffle-api-test"),
-                new AppProperties.Raffle(new BigDecimal("10.00"), "00000", "99999"),
-                new AppProperties.MercadoPago(
-                        "token",
-                        "http://localhost:8080/payments/webhook",
-                        "",
-                        "http://localhost:5173/payment-return/success",
-                        "http://localhost:5173/payment-return/failure",
-                        "http://localhost:5173/payment-return/pending",
-                        new AppProperties.Retry(3, 500, 2)),
-                new AppProperties.Mail("no-reply@example.com"));
     }
 }

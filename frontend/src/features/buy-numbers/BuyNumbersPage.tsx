@@ -277,7 +277,7 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
                         <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
                         <td className="px-4 py-3">
                           <span className="flex items-center gap-3">
-                            <span className="grid h-10 w-10 place-items-center rounded-full bg-blush text-lg">
+                            <span className="emoji-font grid h-10 w-10 place-items-center rounded-full bg-blush text-lg">
                               {renderFlagEmoji(item.emoji)}
                             </span>
                             <span>

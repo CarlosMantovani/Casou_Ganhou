@@ -63,7 +63,7 @@ export function PaymentReturnPage() {
           <Card className="border border-[#EEE6DF] bg-white/90 text-center shadow-none">
             <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Sua bandeira</p>
             <div className="mt-3 flex items-center justify-center gap-3">
-              <span className="grid h-14 w-14 place-items-center rounded-full bg-blush text-3xl">
+              <span className="emoji-font grid h-14 w-14 place-items-center rounded-full bg-blush text-3xl">
                 {transaction.participantFlagEmoji}
               </span>
               <span className="font-serif text-2xl font-bold text-charcoal">{transaction.participantFlagName}</span>

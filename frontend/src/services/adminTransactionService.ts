@@ -25,4 +25,8 @@ export const adminTransactionService = {
     const response = await apiClient.post<CashTransactionCreateResponse>('/transactions/cash', request);
     return response.data;
   },
+
+  async deleteCashTransaction(externalReference: string): Promise<void> {
+    await apiClient.delete(`/transactions/${externalReference}`);
+  },
 };

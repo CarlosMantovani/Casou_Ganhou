@@ -1,9 +1,11 @@
 package com.weddingraffle.rifa.service.impl;
 
+import com.weddingraffle.rifa.dto.RaffleCandidateResponse;
 import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.RaffleDraw;
+import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
@@ -47,8 +49,8 @@ public class RaffleServiceImpl implements RaffleService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<String> listEligibleNumbers() {
-        return getEligibleLuckyNumbers().stream().map(LuckyNumber::getNumber).toList();
+    public List<RaffleCandidateResponse> listEligibleNumbers() {
+        return getEligibleLuckyNumbers().stream().map(this::toCandidateResponse).toList();
     }
 
     private RaffleDrawResponse drawNewWinner() {
@@ -56,7 +58,7 @@ public class RaffleServiceImpl implements RaffleService {
         LuckyNumber winner = eligibleLuckyNumbers.get(raffleWinnerSelector.selectIndex(eligibleLuckyNumbers.size()));
         RaffleDraw raffleDraw = raffleDrawRepository.save(
                 new RaffleDraw(winner.getNumber(), winner.getTransaction().getName(), winner.getEmail()));
-        return toResponse(raffleDraw);
+        return toResponse(raffleDraw, winner.getTransaction());
     }
 
     private List<LuckyNumber> getEligibleLuckyNumbers() {
@@ -68,7 +70,25 @@ public class RaffleServiceImpl implements RaffleService {
     }
 
     private RaffleDrawResponse toResponse(RaffleDraw raffleDraw) {
+        return luckyNumberRepository
+                .findByNumber(raffleDraw.getWinningNumber())
+                .map(luckyNumber -> toResponse(raffleDraw, luckyNumber.getTransaction()))
+                .orElseGet(() -> new RaffleDrawResponse(
+                        raffleDraw.getWinningNumber(), raffleDraw.getWinnerName(), raffleDraw.getDrawnAt()));
+    }
+
+    private RaffleDrawResponse toResponse(RaffleDraw raffleDraw, Transaction transaction) {
         return new RaffleDrawResponse(
-                raffleDraw.getWinningNumber(), raffleDraw.getWinnerName(), raffleDraw.getDrawnAt());
+                raffleDraw.getWinningNumber(),
+                raffleDraw.getWinnerName(),
+                raffleDraw.getDrawnAt(),
+                transaction.getParticipantFlagName(),
+                transaction.getParticipantFlagEmoji());
+    }
+
+    private RaffleCandidateResponse toCandidateResponse(LuckyNumber luckyNumber) {
+        Transaction transaction = luckyNumber.getTransaction();
+        return new RaffleCandidateResponse(
+                luckyNumber.getNumber(), transaction.getParticipantFlagName(), transaction.getParticipantFlagEmoji());
     }
 }

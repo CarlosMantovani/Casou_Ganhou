@@ -139,7 +139,18 @@ describe('App', () => {
       unitPrice: '10.00',
       updatedAt: '2026-08-14T18:00:00-03:00',
     });
-    mockedRaffleService.getEligibleNumbers.mockResolvedValue(['00001', '00042']);
+    mockedRaffleService.getEligibleNumbers.mockResolvedValue([
+      {
+        luckyNumber: '00001',
+        participantFlagEmoji: 'ðŸ‡§ðŸ‡·',
+        participantFlagName: 'Brasil',
+      },
+      {
+        luckyNumber: '00042',
+        participantFlagEmoji: 'ðŸ‡¨ðŸ‡¦',
+        participantFlagName: 'Canada',
+      },
+    ]);
   });
 
   it('blocks invalid email before the quantity step', async () => {
@@ -504,7 +515,7 @@ describe('App', () => {
     expect(await screen.findByText('Sorteando entre os numeros')).toBeInTheDocument();
     expect(mockedRaffleService.getEligibleNumbers).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 9500 });
+    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 7000 });
     expect(await screen.findByText('00042')).toBeInTheDocument();
-  }, 11000);
+  }, 8500);
 });

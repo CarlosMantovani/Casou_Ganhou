@@ -1,5 +1,5 @@
 import { apiClient } from '../config/apiClient';
-import type { RaffleDrawResponse } from '../types/admin';
+import type { RaffleCandidateResponse, RaffleDrawResponse } from '../types/admin';
 
 export const raffleService = {
   async draw(): Promise<RaffleDrawResponse> {
@@ -12,8 +12,8 @@ export const raffleService = {
     return response.data;
   },
 
-  async getEligibleNumbers(): Promise<string[]> {
-    const response = await apiClient.get<string[]>('/raffle/eligible-numbers');
+  async getEligibleNumbers(): Promise<RaffleCandidateResponse[]> {
+    const response = await apiClient.get<RaffleCandidateResponse[]>('/raffle/eligible-numbers');
     return response.data;
   },
 };

@@ -3,16 +3,17 @@ import { ArrowLeft, PartyPopper, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
+import { FlagEmoji } from '../../components/ui/FlagEmoji';
 import { raffleService } from '../../services/raffleService';
 import type { ApiError } from '../../types/api';
-import type { RaffleDrawResponse } from '../../types/admin';
+import type { RaffleCandidateResponse, RaffleDrawResponse } from '../../types/admin';
 
-const REVEAL_DURATION_MS = 8000;
+const REVEAL_DURATION_MS = 5500;
 const REVEAL_TICK_MS = 75;
 
 export function AdminDrawPage() {
   const [isConfirming, setIsConfirming] = useState(false);
-  const [revealNumber, setRevealNumber] = useState<string | null>(null);
+  const [revealCandidate, setRevealCandidate] = useState<RaffleCandidateResponse | null>(null);
 
   const resultQuery = useQuery<RaffleDrawResponse, ApiError>({
     queryKey: ['raffle-result'],
@@ -23,18 +24,18 @@ export function AdminDrawPage() {
   const drawMutation = useMutation<RaffleDrawResponse, ApiError>({
     mutationFn: async () => {
       const eligibleNumbers = await raffleService.getEligibleNumbers();
-      await runRevealAnimation(eligibleNumbers, setRevealNumber);
+      await runRevealAnimation(eligibleNumbers, setRevealCandidate);
       return raffleService.draw();
     },
     onMutate: () => {
       setIsConfirming(false);
-      setRevealNumber(null);
+      setRevealCandidate(null);
     },
     onSuccess: () => {
       void resultQuery.refetch();
     },
     onSettled: () => {
-      setRevealNumber(null);
+      setRevealCandidate(null);
     },
   });
 
@@ -55,7 +56,7 @@ export function AdminDrawPage() {
             <p className="font-serif text-2xl italic text-gold">Presente Premiado</p>
 
             {isRevealing ? (
-              <RevealStage number={revealNumber} />
+              <RevealStage candidate={revealCandidate} />
             ) : result ? (
               <WinnerResult result={result} />
             ) : (
@@ -131,7 +132,7 @@ export function AdminDrawPage() {
   );
 }
 
-function RevealStage({ number }: { number: string | null }) {
+function RevealStage({ candidate }: { candidate: RaffleCandidateResponse | null }) {
   return (
     <div className="mt-16">
       <p className="text-sm font-bold uppercase tracking-[0.28em] text-gold">
@@ -139,9 +140,15 @@ function RevealStage({ number }: { number: string | null }) {
         Sorteando entre os numeros
       </p>
       <div className="mx-auto mt-8 grid h-52 w-52 place-items-center rounded-full border border-gold/35 bg-white/5 shadow-[0_0_60px_rgba(201,162,39,0.16)]">
-        <span className="font-serif text-6xl font-bold text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
-          {number ?? '-----'}
-        </span>
+        <div className="grid place-items-center gap-3">
+          {candidate?.participantFlagEmoji ? (
+            <FlagEmoji className="h-12 w-12" emoji={candidate.participantFlagEmoji} />
+          ) : null}
+          <span className="font-serif text-6xl font-bold text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
+            {candidate?.luckyNumber ?? '-----'}
+          </span>
+          {candidate?.participantFlagName ? <span className="text-sm font-bold text-white/70">{candidate.participantFlagName}</span> : null}
+        </div>
       </div>
       <p className="mt-8 text-sm font-semibold uppercase tracking-[0.28em] text-white/55">Preparando a revelacao</p>
     </div>
@@ -158,6 +165,12 @@ function WinnerResult({ result }: { result: RaffleDrawResponse }) {
       <h1 className="mt-8 font-serif text-[clamp(5rem,18vw,11rem)] font-bold leading-none text-gold drop-shadow-[0_0_30px_rgba(201,162,39,0.35)]">
         {result.winningNumber}
       </h1>
+      {result.participantFlagEmoji && result.participantFlagName ? (
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <FlagEmoji className="h-12 w-12" emoji={result.participantFlagEmoji} />
+          <span className="text-xl font-bold text-white/80">{result.participantFlagName}</span>
+        </div>
+      ) : null}
       <p className="mt-8 font-serif text-4xl font-bold">{result.winnerName}</p>
       <p className="mt-3 text-sm text-white/50">
         Sorteado em {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(result.drawnAt))}
@@ -166,16 +179,16 @@ function WinnerResult({ result }: { result: RaffleDrawResponse }) {
   );
 }
 
-function runRevealAnimation(numbers: string[], setNumber: (number: string) => void) {
-  if (numbers.length === 0) return Promise.resolve();
+function runRevealAnimation(candidates: RaffleCandidateResponse[], setCandidate: (candidate: RaffleCandidateResponse) => void) {
+  if (candidates.length === 0) return Promise.resolve();
 
   return new Promise<void>((resolve) => {
     let index = 0;
-    setNumber(numbers[index]);
+    setCandidate(candidates[index]);
 
     const intervalId = window.setInterval(() => {
-      index = (index + 1) % numbers.length;
-      setNumber(numbers[index]);
+      index = (index + 1) % candidates.length;
+      setCandidate(candidates[index]);
     }, REVEAL_TICK_MS);
 
     window.setTimeout(() => {

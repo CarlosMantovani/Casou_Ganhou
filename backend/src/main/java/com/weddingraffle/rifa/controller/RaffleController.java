@@ -1,5 +1,6 @@
 package com.weddingraffle.rifa.controller;
 
+import com.weddingraffle.rifa.dto.RaffleCandidateResponse;
 import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.service.RaffleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +35,7 @@ public class RaffleController {
 
     @Operation(summary = "List eligible lucky numbers for raffle reveal")
     @GetMapping("/eligible-numbers")
-    public ResponseEntity<List<String>> listEligibleNumbers() {
+    public ResponseEntity<List<RaffleCandidateResponse>> listEligibleNumbers() {
         return ResponseEntity.ok(raffleService.listEligibleNumbers());
     }
 }

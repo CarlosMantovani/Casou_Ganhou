@@ -43,6 +43,7 @@ vi.mock('./services/adminTransactionService', () => ({
 vi.mock('./services/raffleService', () => ({
   raffleService: {
     draw: vi.fn(),
+    getEligibleNumbers: vi.fn(),
     getResult: vi.fn(),
   },
 }));
@@ -138,6 +139,18 @@ describe('App', () => {
       unitPrice: '10.00',
       updatedAt: '2026-08-14T18:00:00-03:00',
     });
+    mockedRaffleService.getEligibleNumbers.mockResolvedValue([
+      {
+        luckyNumber: '00001',
+        participantFlagEmoji: 'ðŸ‡§ðŸ‡·',
+        participantFlagName: 'Brasil',
+      },
+      {
+        luckyNumber: '00042',
+        participantFlagEmoji: 'ðŸ‡¨ðŸ‡¦',
+        participantFlagName: 'Canada',
+      },
+    ]);
   });
 
   it('blocks invalid email before the quantity step', async () => {
@@ -528,7 +541,7 @@ describe('App', () => {
     expect(await screen.findByText('Data do sorteio atualizada com sucesso.')).toBeInTheDocument();
   });
 
-  it('renders existing raffle result without drawing again', async () => {
+  it('renders existing raffle result and keeps draw action available', async () => {
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedRaffleService.getResult.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',
@@ -540,10 +553,11 @@ describe('App', () => {
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('Winner Guest')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sortear novamente' })).toBeInTheDocument();
     expect(mockedRaffleService.draw).not.toHaveBeenCalled();
   });
 
-  it('confirms and runs raffle draw when no result exists', async () => {
+  it('shows suspense and runs raffle draw when no result exists', async () => {
     const user = userEvent.setup();
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedRaffleService.getResult.mockRejectedValue({ status: 404 });
@@ -558,7 +572,10 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Sortear vencedor' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar' }));
 
-    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('Sorteando entre os numeros')).toBeInTheDocument();
+    expect(mockedRaffleService.getEligibleNumbers).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 7000 });
     expect(await screen.findByText('00042')).toBeInTheDocument();
-  });
+  }, 8500);
 });

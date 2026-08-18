@@ -1,8 +1,10 @@
 package com.weddingraffle.rifa.controller;
 
+import com.weddingraffle.rifa.dto.RaffleCandidateResponse;
 import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.service.RaffleService;
 import io.swagger.v3.oas.annotations.Operation;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,5 +31,11 @@ public class RaffleController {
     @GetMapping("/result")
     public ResponseEntity<RaffleDrawResponse> getResult() {
         return ResponseEntity.ok(raffleService.getResult());
+    }
+
+    @Operation(summary = "List eligible lucky numbers for raffle reveal")
+    @GetMapping("/eligible-numbers")
+    public ResponseEntity<List<RaffleCandidateResponse>> listEligibleNumbers() {
+        return ResponseEntity.ok(raffleService.listEligibleNumbers());
     }
 }

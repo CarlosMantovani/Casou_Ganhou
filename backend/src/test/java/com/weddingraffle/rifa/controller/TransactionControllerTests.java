@@ -12,10 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.dto.TransactionStatusResponse;
 import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import com.weddingraffle.rifa.service.TransactionService;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -119,6 +122,25 @@ class TransactionControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")));
+    }
+
+    @Test
+    void statusReturnsPortuguesePaymentStatusWithoutAuthentication() throws Exception {
+        when(transactionService.getStatus("external-reference-123"))
+                .thenReturn(new TransactionStatusResponse(
+                        "external-reference-123",
+                        true,
+                        PaymentStatusResponse.APROVADO,
+                        2,
+                        new BigDecimal("20.00"),
+                        "Brasil",
+                        "🇧🇷",
+                        List.of("00001", "00002")));
+
+        mockMvc.perform(get("/transactions/external-reference-123/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.status").value("APROVADO"));
     }
 
     @TestConfiguration

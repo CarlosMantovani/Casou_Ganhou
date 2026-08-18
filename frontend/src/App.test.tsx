@@ -122,7 +122,7 @@ describe('App', () => {
           paymentMethod: 'MERCADO_PAGO',
           phone: '11999999999',
           quantity: 2,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '20.00',
         },
       ],
@@ -284,7 +284,7 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 2,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '20.00',
     });
 
@@ -306,7 +306,7 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 1,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '10.00',
     });
 
@@ -327,7 +327,7 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 1,
-      status: 'PENDING',
+      status: 'PENDENTE',
       totalAmount: '10.00',
     });
 
@@ -401,7 +401,7 @@ describe('App', () => {
           paymentMethod: 'MERCADO_PAGO',
           phone: '11999999999',
           quantity: 10,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '100.00',
         },
       ],
@@ -442,7 +442,7 @@ describe('App', () => {
       paymentMethod: 'CASH',
       phone: '11999999999',
       quantity: 1,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '10.00',
     });
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(

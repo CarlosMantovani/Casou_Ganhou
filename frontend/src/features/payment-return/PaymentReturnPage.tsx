@@ -20,7 +20,7 @@ export function PaymentReturnPage() {
     enabled: Boolean(externalReference),
     queryKey: ['transaction-status', externalReference],
     queryFn: () => transactionService.getStatus(externalReference),
-    refetchInterval: (query) => (query.state.data?.status === 'PENDING' ? 5000 : false),
+    refetchInterval: (query) => (query.state.data?.status === 'PENDENTE' ? 5000 : false),
   });
 
   if (!externalReference) {
@@ -44,7 +44,7 @@ export function PaymentReturnPage() {
 
   const transaction = statusQuery.data;
 
-  if (transaction.status === 'APPROVED' && transaction.luckyNumbers.length > 0) {
+  if (transaction.status === 'APROVADO' && transaction.luckyNumbers.length > 0) {
     return (
       <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
         <div className="mx-auto flex w-full max-w-[440px] flex-col gap-6 text-center">
@@ -96,11 +96,11 @@ export function PaymentReturnPage() {
     );
   }
 
-  if (transaction.status === 'PENDING') {
+  if (transaction.status === 'PENDENTE') {
     return <PaymentState title="Pagamento pendente" message={publicMessages.pending} tone="pending" />;
   }
 
-  if (transaction.status === 'CANCELLED') {
+  if (transaction.status === 'CANCELADO') {
     return <PaymentState title="Pagamento cancelado" message={publicMessages.cancelled} tone="error" />;
   }
 

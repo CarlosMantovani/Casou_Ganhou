@@ -49,8 +49,8 @@ class LuckyNumberPdfServiceImplTests {
     void generatesMultiplePagesWithoutOmittingLuckyNumbers() throws IOException {
         LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
         Transaction transaction =
-                new Transaction("guest@example.com", 80, new BigDecimal("800.00"), PaymentStatus.APPROVED, "external");
-        List<String> luckyNumbers = java.util.stream.IntStream.rangeClosed(1, 80)
+                new Transaction("guest@example.com", 200, new BigDecimal("2000.00"), PaymentStatus.APPROVED, "external");
+        List<String> luckyNumbers = java.util.stream.IntStream.rangeClosed(1, 200)
                 .mapToObj(number -> String.format("%05d", number))
                 .toList();
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
@@ -62,6 +62,7 @@ class LuckyNumberPdfServiceImplTests {
             String text = new PDFTextStripper().getText(document);
 
             assertThat(document.getNumberOfPages()).isGreaterThan(1);
+            assertThat(text).contains("200 numeros gerados", "Numeros da sorte - continuacao");
             assertThat(text).containsSubsequence(luckyNumbers);
         }
     }

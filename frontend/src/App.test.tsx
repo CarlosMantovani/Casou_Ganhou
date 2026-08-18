@@ -386,11 +386,12 @@ describe('App', () => {
 
   it('registers an admin cash payment and shows pdf link', async () => {
     const user = userEvent.setup();
+    const luckyNumbers = Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(5, '0'));
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedAdminTransactionService.createCashTransaction.mockResolvedValue({
       email: null,
       externalReference: 'cash-reference',
-      luckyNumbers: ['00077'],
+      luckyNumbers,
       name: 'Cash Guest',
       paymentMethod: 'CASH',
       phone: '11999999999',
@@ -405,12 +406,27 @@ describe('App', () => {
     renderApp('/admin/cash-payment');
 
     await user.type(await screen.findByLabelText('Nome'), 'Cash Guest');
-    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
+    await user.type(screen.getByLabelText('Telefone'), '11999999999');
+    expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-9999');
     await user.clear(screen.getByLabelText('Quantidade'));
-    await user.type(screen.getByLabelText('Quantidade'), '1');
+    await user.type(screen.getByLabelText('Quantidade'), '10');
     await user.click(screen.getByRole('button', { name: /Confirmar pagamento/i }));
 
-    expect(await screen.findByText('00077')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockedAdminTransactionService.createCashTransaction).toHaveBeenCalledWith({
+        email: undefined,
+        name: 'Cash Guest',
+        phone: '11999999999',
+        quantity: 10,
+      }),
+    );
+    expect(await screen.findByText('00008')).toBeInTheDocument();
+    expect(screen.queryByText('00009')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /00001/ }));
+
+    expect(screen.getByText('00009')).toBeInTheDocument();
+    expect(screen.getByText('00010')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
       'href',
       'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',

@@ -34,9 +34,11 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     private static final float PAGE_MARGIN = 48;
     private static final float HEADER_HEIGHT = 92;
     private static final float FOOTER_HEIGHT = 44;
+    private static final float CONTENT_BOTTOM = FOOTER_HEIGHT + 20;
     private static final int NUMBER_COLUMNS = 4;
     private static final float NUMBER_GAP = 10;
     private static final float NUMBER_CARD_HEIGHT = 34;
+    private static final float NUMBER_CARD_RADIUS = 8;
 
     private final TransactionRepository transactionRepository;
     private final LuckyNumberService luckyNumberService;
@@ -75,15 +77,23 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             PDFont emojiFont = loadEmojiFont(document);
 
             PdfPage currentPage = createPage(document, 1, titleFont, textFont, false);
-            float y = writeTransactionDetails(currentPage.content(), titleFont, textFont, emojiFont, transaction);
+            float y =
+                    writeTransactionDetails(currentPage.content(), titleFont, textFont, emojiFont, transaction, luckyNumbers.size());
+            y = writeNumbersSectionHeader(currentPage.content(), titleFont, textFont, y, luckyNumbers.size(), false);
             float numberCardWidth = (PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2) - (NUMBER_GAP * (NUMBER_COLUMNS - 1)))
                     / NUMBER_COLUMNS;
 
             for (int index = 0; index < luckyNumbers.size(); index++) {
-                if (y - NUMBER_CARD_HEIGHT < FOOTER_HEIGHT + 20) {
+                if (y - NUMBER_CARD_HEIGHT < CONTENT_BOTTOM) {
                     closePage(currentPage, textFont);
                     currentPage = createPage(document, currentPage.number() + 1, titleFont, textFont, true);
-                    y = PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34;
+                    y = writeNumbersSectionHeader(
+                            currentPage.content(),
+                            titleFont,
+                            textFont,
+                            PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34,
+                            luckyNumbers.size(),
+                            true);
                 }
 
                 int column = index % NUMBER_COLUMNS;
@@ -128,7 +138,12 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static float writeTransactionDetails(
-            PDPageContentStream content, PDFont titleFont, PDFont textFont, PDFont emojiFont, Transaction transaction)
+            PDPageContentStream content,
+            PDFont titleFont,
+            PDFont textFont,
+            PDFont emojiFont,
+            Transaction transaction,
+            int luckyNumberCount)
             throws IOException {
         float y = PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34;
         writeLine(content, titleFont, 19, PAGE_MARGIN, y, "Seus numeros da sorte", CHARCOAL);
@@ -152,7 +167,39 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         content.setNonStrokingColor(GOLD);
         content.addRect(PAGE_MARGIN, y - 4, 72, 2);
         content.fill();
-        return y - 28;
+        y -= 28;
+
+        String summary = luckyNumberCount == 1 ? "1 numero gerado" : luckyNumberCount + " numeros gerados";
+        writeLine(content, textFont, 11, PAGE_MARGIN, y, summary, TERRACOTTA);
+        return y - 30;
+    }
+
+    private static float writeNumbersSectionHeader(
+            PDPageContentStream content,
+            PDFont titleFont,
+            PDFont textFont,
+            float y,
+            int luckyNumberCount,
+            boolean isContinuation)
+            throws IOException {
+        writeLine(
+                content,
+                titleFont,
+                15,
+                PAGE_MARGIN,
+                y,
+                isContinuation ? "Numeros da sorte - continuacao" : "Numeros gerados",
+                CHARCOAL);
+        y -= 18;
+        writeLine(
+                content,
+                textFont,
+                9,
+                PAGE_MARGIN,
+                y,
+                "Comprovante com " + luckyNumberCount + " numero(s) desta compra.",
+                TERRACOTTA);
+        return y - 18;
     }
 
     private static float writeWrappedText(
@@ -187,15 +234,36 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
 
     private static void drawNumberCard(
             PDPageContentStream content, PDFont numberFont, float x, float y, float width, String luckyNumber) throws IOException {
+        float cardY = y - NUMBER_CARD_HEIGHT;
+
         content.setNonStrokingColor(BLUSH);
-        content.addRect(x, y - NUMBER_CARD_HEIGHT, width, NUMBER_CARD_HEIGHT);
+        addRoundedRectangle(content, x, cardY, width, NUMBER_CARD_HEIGHT, NUMBER_CARD_RADIUS);
         content.fill();
+
         content.setStrokingColor(TERRACOTTA);
-        content.addRect(x, y - NUMBER_CARD_HEIGHT, width, NUMBER_CARD_HEIGHT);
+        addRoundedRectangle(content, x, cardY, width, NUMBER_CARD_HEIGHT, NUMBER_CARD_RADIUS);
         content.stroke();
 
         float textWidth = numberFont.getStringWidth(luckyNumber) / 1000 * 14;
         writeLine(content, numberFont, 14, x + ((width - textWidth) / 2), y - 22, luckyNumber, CHARCOAL);
+    }
+
+    private static void addRoundedRectangle(
+            PDPageContentStream content, float x, float y, float width, float height, float radius) throws IOException {
+        float right = x + width;
+        float top = y + height;
+        float curve = radius * 0.55228475f;
+
+        content.moveTo(x + radius, y);
+        content.lineTo(right - radius, y);
+        content.curveTo(right - radius + curve, y, right, y + radius - curve, right, y + radius);
+        content.lineTo(right, top - radius);
+        content.curveTo(right, top - radius + curve, right - radius + curve, top, right - radius, top);
+        content.lineTo(x + radius, top);
+        content.curveTo(x + radius - curve, top, x, top - radius + curve, x, top - radius);
+        content.lineTo(x, y + radius);
+        content.curveTo(x, y + radius - curve, x + radius - curve, y, x + radius, y);
+        content.closePath();
     }
 
     private static void closePage(PdfPage page, PDFont textFont) throws IOException {

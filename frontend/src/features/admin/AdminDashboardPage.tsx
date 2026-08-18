@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Gift, LogOut, ReceiptText, Search, Ticket } from 'lucide-react';
+import { ChevronDown, Gift, LogOut, ReceiptText, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -225,12 +225,15 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
               <td className="px-3 py-4">
                 <StatusBadge status={transaction.status} />
               </td>
-              <td className="px-3 py-4">
+              <td className="w-80 min-w-80 px-3 py-4">
                 {displayedLuckyNumbers.length > 0 ? (
-                  <div className="grid min-w-52 grid-cols-4 gap-2">
+                  <div className="grid w-full grid-cols-4 gap-2">
                     {displayedLuckyNumbers.map((number) => (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-gold/20 px-2 py-1 text-xs font-bold text-charcoal" key={number}>
-                        <Ticket aria-hidden="true" className="h-3 w-3" />
+                      <span
+                        className="flex min-w-0 items-center justify-center whitespace-nowrap rounded-md bg-gold/20 px-2 py-1 font-mono text-xs font-bold tabular-nums text-charcoal"
+                        key={number}
+                        title={number}
+                      >
                         {number}
                       </span>
                     ))}

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
@@ -275,7 +276,7 @@ class TransactionServiceImplTests {
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
         assertThat(response.emailProvided()).isTrue();
-        assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001", "00002");
@@ -301,7 +302,7 @@ class TransactionServiceImplTests {
 
         var response = transactionService.getStatus("external-reference-123");
 
-        assertThat(response.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));

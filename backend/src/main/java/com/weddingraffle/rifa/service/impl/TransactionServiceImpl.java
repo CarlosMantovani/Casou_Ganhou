@@ -5,6 +5,7 @@ import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
@@ -154,7 +155,7 @@ public class TransactionServiceImpl implements TransactionService {
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
                 StringUtils.hasText(transaction.getEmail()),
-                transaction.getStatus(),
+                PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 transaction.getParticipantFlagName(),

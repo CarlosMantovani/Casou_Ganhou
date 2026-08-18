@@ -18,6 +18,8 @@ public interface LuckyNumberRepository extends JpaRepository<LuckyNumber, Long> 
 
     List<LuckyNumber> findByTransactionInOrderByNumberAsc(List<Transaction> transactions);
 
+    void deleteByTransaction(Transaction transaction);
+
     @Query(
             """
             select luckyNumber

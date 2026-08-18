@@ -11,4 +11,6 @@ public interface AdminTransactionService {
     Page<AdminTransactionResponse> list(String email, Pageable pageable);
 
     CashTransactionCreateResponse createCashTransaction(CashTransactionCreateRequest request);
+
+    void deleteCashTransaction(String externalReference);
 }

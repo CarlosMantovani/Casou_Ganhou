@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
@@ -19,6 +21,7 @@ import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -113,6 +116,44 @@ class AdminTransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
+    }
+
+    @Test
+    void deletesCashTransactionWithLuckyNumbers() {
+        AdminTransactionServiceImpl service = service();
+        Transaction transaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                null,
+                1,
+                new BigDecimal("10.00"),
+                PaymentStatus.APPROVED,
+                PaymentMethod.CASH,
+                "cash-reference");
+        when(transactionRepository.findByExternalReference("cash-reference")).thenReturn(Optional.of(transaction));
+
+        service.deleteCashTransaction("cash-reference");
+
+        verify(luckyNumberRepository).deleteByTransaction(transaction);
+        verify(transactionRepository).delete(transaction);
+    }
+
+    @Test
+    void deleteCashTransactionRejectsMercadoPagoTransaction() {
+        AdminTransactionServiceImpl service = service();
+        Transaction transaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                "guest@example.com",
+                1,
+                new BigDecimal("10.00"),
+                PaymentStatus.APPROVED,
+                PaymentMethod.MERCADO_PAGO,
+                "mp-reference");
+        when(transactionRepository.findByExternalReference("mp-reference")).thenReturn(Optional.of(transaction));
+
+        assertThatThrownBy(() -> service.deleteCashTransaction("mp-reference"))
+                .isInstanceOf(InvalidTransactionStateException.class);
     }
 
     private AdminTransactionServiceImpl service() {

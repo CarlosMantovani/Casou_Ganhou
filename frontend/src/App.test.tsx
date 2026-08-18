@@ -36,6 +36,7 @@ vi.mock('./services/authService', () => ({
 vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
+    deleteCashTransaction: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -428,6 +429,48 @@ describe('App', () => {
     await user.click(transactionRow);
 
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
+  });
+
+  it('deletes cash transactions from admin list', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.list.mockResolvedValue({
+      content: [
+        {
+          createdAt: '2026-08-14T18:00:00-03:00',
+          email: null,
+          externalReference: 'cash-reference',
+          luckyNumbers: ['00077'],
+          name: 'Cash Guest',
+          paymentMethod: 'CASH',
+          phone: '11999999999',
+          quantity: 1,
+          status: 'APPROVED',
+          totalAmount: '10.00',
+        },
+      ],
+      first: true,
+      last: true,
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+    mockedAdminTransactionService.deleteCashTransaction.mockResolvedValue();
+
+    try {
+      renderApp('/admin');
+
+      await user.click(await screen.findByRole('button', { name: 'Excluir transacao de Cash Guest' }));
+
+      expect(confirm).toHaveBeenCalledWith('Excluir a transacao em dinheiro de Cash Guest?');
+      await waitFor(() =>
+        expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
+      );
+    } finally {
+      confirm.mockRestore();
+    }
   });
 
   it('registers an admin cash payment and shows pdf link', async () => {

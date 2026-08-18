@@ -2,8 +2,10 @@ package com.weddingraffle.rifa.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -105,6 +107,20 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.externalReference").value("external"))
                 .andExpect(jsonPath("$.paymentMethod").value("CASH"))
                 .andExpect(jsonPath("$.luckyNumbers[0]").value("00001"));
+    }
+
+    @Test
+    void deleteCashTransactionRequiresAuthentication() throws Exception {
+        mockMvc.perform(delete("/transactions/external")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteCashTransactionReturnsNoContentForAdmin() throws Exception {
+        mockMvc.perform(delete("/transactions/cash-reference")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isNoContent());
+
+        verify(adminTransactionService).deleteCashTransaction("cash-reference");
     }
 
     @TestConfiguration

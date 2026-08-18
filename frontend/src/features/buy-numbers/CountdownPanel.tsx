@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 
-import { Card } from '../../components/ui/Card';
 import { getCountdownMs, getCountdownParts, isValidDateTime } from '../../utils/dateTime';
 import { formatDateTime } from '../../utils/formatters';
 
@@ -27,7 +26,7 @@ export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | 
   const urgency = getUrgencyLevel(getCountdownMs(scheduledDrawAt));
 
   return (
-    <Card className={`${urgency.cardClassName} text-center text-white shadow-none transition-colors`}>
+    <section className={`rounded-lg p-6 ${urgency.cardClassName} text-center text-white transition-colors`}>
       <p className={`text-xs font-bold uppercase tracking-wide ${urgency.eyebrowClassName}`}>Contagem para o sorteio</p>
       <h2 className="mt-2 font-serif text-2xl font-bold">{urgency.title}</h2>
       <p className="mt-2 text-xs font-semibold text-white/70">Sorteio em {formatDateTime(scheduledDrawAt)}</p>
@@ -40,7 +39,7 @@ export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | 
       <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${urgency.messageClassName}`}>
         {urgency.message}
       </p>
-    </Card>
+    </section>
   );
 }
 

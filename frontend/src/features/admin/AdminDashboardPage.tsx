@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,7 @@ const EMPTY_TRANSACTIONS: AdminTransactionResponse[] = [];
 
 export function AdminDashboardPage() {
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
@@ -24,10 +25,17 @@ export function AdminDashboardPage() {
     queryKey: ['admin-transactions', submittedQueryFilter, page],
     queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE }),
   });
+  const deleteCashTransactionMutation = useMutation({
+    mutationFn: (externalReference: string) =>
+      adminTransactionService.deleteCashTransaction(externalReference),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
+    },
+  });
 
   const transactions = transactionsQuery.data?.content ?? EMPTY_TRANSACTIONS;
   const approvedTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.status === 'APPROVED'),
+    () => transactions.filter((transaction) => transaction.status === 'APROVADO'),
     [transactions],
   );
   const soldNumbersCount = approvedTransactions.reduce((total, transaction) => total + transaction.luckyNumbers.length, 0);
@@ -62,7 +70,7 @@ export function AdminDashboardPage() {
               href="/admin/settings"
             >
               <Settings aria-hidden="true" className="h-4 w-4" />
-              Configuracoes
+              Configurações
             </a>
             <a
               className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal transition hover:bg-gold/90"
@@ -85,9 +93,9 @@ export function AdminDashboardPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-8">
         <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Transacoes nesta pagina" value={String(transactions.length)} />
-          <MetricCard label="Numeros aprovados nesta pagina" value={String(soldNumbersCount)} />
-          <MetricCard label="Receita aprovada nesta pagina" value={formatCurrency(approvedAmount)} />
+          <MetricCard label="Transações nesta página" value={String(transactions.length)} />
+          <MetricCard label="Números aprovados nesta página" value={String(soldNumbersCount)} />
+          <MetricCard label="Receita aprovada nesta página" value={formatCurrency(approvedAmount)} />
         </div>
 
         <Card className="mt-6 overflow-hidden">
@@ -109,24 +117,36 @@ export function AdminDashboardPage() {
             </div>
           </form>
 
-          {transactionsQuery.isLoading ? <p className="py-10 text-center text-sm text-warm-gray">Carregando transacoes...</p> : null}
+          {transactionsQuery.isLoading ? <p className="py-10 text-center text-sm text-warm-gray">Carregando transações...</p> : null}
 
           {transactionsQuery.isError ? (
             <p className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
-              Nao foi possivel carregar as transacoes.
+              Não foi possível carregar as transações.
             </p>
           ) : null}
 
           {!transactionsQuery.isLoading && !transactionsQuery.isError && transactions.length === 0 ? (
-            <p className="py-10 text-center text-sm text-warm-gray">Nenhuma transacao encontrada.</p>
+            <p className="py-10 text-center text-sm text-warm-gray">Nenhuma transação encontrada.</p>
           ) : null}
 
-          {transactions.length > 0 ? <TransactionTable transactions={transactions} /> : null}
+          {transactions.length > 0 ? (
+            <TransactionTable
+              deletingExternalReference={deleteCashTransactionMutation.variables ?? null}
+              isDeleting={deleteCashTransactionMutation.isPending}
+              onDeleteCashTransaction={(transaction) => {
+                const confirmed = window.confirm(`Excluir a transação em dinheiro de ${transaction.name}?`);
+                if (confirmed) {
+                  deleteCashTransactionMutation.mutate(transaction.externalReference);
+                }
+              }}
+              transactions={transactions}
+            />
+          ) : null}
 
           {transactionsQuery.data ? (
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#EEE6DF] pt-4">
               <p className="text-sm text-warm-gray">
-                Pagina {transactionsQuery.data.number + 1} de {Math.max(transactionsQuery.data.totalPages, 1)}
+                Página {transactionsQuery.data.number + 1} de {Math.max(transactionsQuery.data.totalPages, 1)}
               </p>
               <div className="flex gap-2">
                 <button
@@ -143,7 +163,7 @@ export function AdminDashboardPage() {
                   onClick={() => setPage((current) => current + 1)}
                   type="button"
                 >
-                  Proxima
+                  Próxima
                 </button>
               </div>
             </div>
@@ -163,7 +183,17 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TransactionTable({ transactions }: { transactions: AdminTransactionResponse[] }) {
+function TransactionTable({
+  deletingExternalReference,
+  isDeleting,
+  onDeleteCashTransaction,
+  transactions,
+}: {
+  deletingExternalReference: string | null;
+  isDeleting: boolean;
+  onDeleteCashTransaction: (transaction: AdminTransactionResponse) => void;
+  transactions: AdminTransactionResponse[];
+}) {
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(() => new Set());
 
   const toggleTransaction = (externalReference: string) => {
@@ -188,11 +218,12 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
             <th className="px-3 py-3 font-bold">Nome</th>
             <th className="px-3 py-3 font-bold">Data</th>
             <th className="px-3 py-3 font-bold">Contato</th>
-            <th className="px-3 py-3 font-bold">Metodo</th>
+            <th className="px-3 py-3 font-bold">Método</th>
             <th className="px-3 py-3 font-bold">Qtd.</th>
             <th className="px-3 py-3 font-bold">Total</th>
             <th className="px-3 py-3 font-bold">Status</th>
-            <th className="px-3 py-3 font-bold">Numeros</th>
+            <th className="px-3 py-3 font-bold">Números</th>
+            <th className="px-3 py-3 text-right font-bold">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EEE6DF]">
@@ -255,6 +286,24 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
                   />
                 ) : null}
               </td>
+              <td className="px-3 py-4 text-right">
+                {transaction.paymentMethod === 'CASH' ? (
+                  <button
+                    aria-label={`Excluir transação de ${transaction.name}`}
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-terracotta/30 px-3 py-2 text-xs font-bold text-terracotta-dark transition hover:bg-blush disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isDeleting && deletingExternalReference === transaction.externalReference}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteCashTransaction(transaction);
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span className="text-warm-gray">-</span>
+                )}
+              </td>
             </tr>
             );
           })}
@@ -266,10 +315,13 @@ function TransactionTable({ transactions }: { transactions: AdminTransactionResp
 
 function StatusBadge({ status }: { status: AdminTransactionResponse['status'] }) {
   const styles = {
-    APPROVED: 'bg-olive/15 text-olive',
-    PENDING: 'bg-gold/15 text-[#8A6A00]',
-    REJECTED: 'bg-terracotta/15 text-terracotta-dark',
-    CANCELLED: 'bg-terracotta/15 text-terracotta-dark',
+    APROVADO: 'bg-olive/15 text-olive',
+    PENDENTE: 'bg-gold/15 text-[#8A6A00]',
+    REJEITADO: 'bg-terracotta/15 text-terracotta-dark',
+    CANCELADO: 'bg-terracotta/15 text-terracotta-dark',
+    ESTORNADO: 'bg-terracotta/15 text-terracotta-dark',
+    CHARGEBACK: 'bg-terracotta/15 text-terracotta-dark',
+    EM_MEDIACAO: 'bg-gold/15 text-[#8A6A00]',
   };
 
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${styles[status]}`}>{status}</span>;

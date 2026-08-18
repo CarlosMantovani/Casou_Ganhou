@@ -2,8 +2,10 @@ package com.weddingraffle.rifa.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,8 +15,8 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
-import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -62,7 +64,7 @@ class AdminTransactionControllerTests {
                         PaymentMethod.MERCADO_PAGO,
                         2,
                         new BigDecimal("20.00"),
-                        PaymentStatus.APPROVED,
+                        PaymentStatusResponse.APROVADO,
                         List.of("00001", "00002")))));
 
         mockMvc.perform(get("/transactions")
@@ -72,6 +74,7 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-08-14T18:00:00-03:00"))
                 .andExpect(jsonPath("$.content[0].name").value("Guest User"))
+                .andExpect(jsonPath("$.content[0].status").value("APROVADO"))
                 .andExpect(jsonPath("$.content[0].luckyNumbers[0]").value("00001"));
     }
 
@@ -92,7 +95,7 @@ class AdminTransactionControllerTests {
                         "11999999999",
                         null,
                         PaymentMethod.CASH,
-                        PaymentStatus.APPROVED,
+                        PaymentStatusResponse.APROVADO,
                         2,
                         new BigDecimal("20.00"),
                         List.of("00001", "00002")));
@@ -104,7 +107,22 @@ class AdminTransactionControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external"))
                 .andExpect(jsonPath("$.paymentMethod").value("CASH"))
+                .andExpect(jsonPath("$.status").value("APROVADO"))
                 .andExpect(jsonPath("$.luckyNumbers[0]").value("00001"));
+    }
+
+    @Test
+    void deleteCashTransactionRequiresAuthentication() throws Exception {
+        mockMvc.perform(delete("/transactions/external")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteCashTransactionReturnsNoContentForAdmin() throws Exception {
+        mockMvc.perform(delete("/transactions/cash-reference")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isNoContent());
+
+        verify(adminTransactionService).deleteCashTransaction("cash-reference");
     }
 
     @TestConfiguration

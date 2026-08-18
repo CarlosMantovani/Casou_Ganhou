@@ -3,10 +3,13 @@ package com.weddingraffle.rifa.service.impl;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
+import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -98,10 +101,25 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPhone(),
                 transaction.getEmail(),
                 transaction.getPaymentMethod(),
-                transaction.getStatus(),
+                PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 luckyNumbers);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCashTransaction(String externalReference) {
+        Transaction transaction = transactionRepository
+                .findByExternalReference(externalReference)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
+
+        if (transaction.getPaymentMethod() != PaymentMethod.CASH) {
+            throw new InvalidTransactionStateException("Only cash transactions can be deleted.");
+        }
+
+        luckyNumberRepository.deleteByTransaction(transaction);
+        transactionRepository.delete(transaction);
     }
 
     private Map<Transaction, List<String>> numbersByTransaction(List<Transaction> transactions) {
@@ -124,7 +142,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPaymentMethod(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
-                transaction.getStatus(),
+                PaymentStatusResponse.from(transaction.getStatus()),
                 numbersByTransaction.getOrDefault(transaction, List.of()));
     }
 }

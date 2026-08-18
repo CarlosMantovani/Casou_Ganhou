@@ -20,11 +20,11 @@ export function PaymentReturnPage() {
     enabled: Boolean(externalReference),
     queryKey: ['transaction-status', externalReference],
     queryFn: () => transactionService.getStatus(externalReference),
-    refetchInterval: (query) => (query.state.data?.status === 'PENDING' ? 5000 : false),
+    refetchInterval: (query) => (query.state.data?.status === 'PENDENTE' ? 5000 : false),
   });
 
   if (!externalReference) {
-    return <PaymentState title="Nao foi possivel localizar sua compra" message={publicMessages.missingReference} tone="error" />;
+    return <PaymentState title="Não foi possível localizar sua compra" message={publicMessages.missingReference} tone="error" />;
   }
 
   if (statusQuery.isLoading) {
@@ -39,12 +39,12 @@ export function PaymentReturnPage() {
   }
 
   if (statusQuery.isError || !statusQuery.data) {
-    return <PaymentState title="Nao foi possivel confirmar o pagamento" message={publicMessages.genericError} tone="error" />;
+    return <PaymentState title="Não foi possível confirmar o pagamento" message={publicMessages.genericError} tone="error" />;
   }
 
   const transaction = statusQuery.data;
 
-  if (transaction.status === 'APPROVED' && transaction.luckyNumbers.length > 0) {
+  if (transaction.status === 'APROVADO' && transaction.luckyNumbers.length > 0) {
     return (
       <main className="min-h-screen bg-cream px-6 pb-16 pt-10 text-charcoal">
         <div className="mx-auto flex w-full max-w-[440px] flex-col gap-6 text-center">
@@ -54,7 +54,7 @@ export function PaymentReturnPage() {
               Muito obrigado pela <span className="italic text-terracotta">sua gentileza!</span>
             </h1>
             <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">
-              Sua participacao foi confirmada. Boa sorte no sorteio!
+              Sua participação foi confirmada. Boa sorte no sorteio!
             </p>
             <div className="mt-6">
               <GoldDivider />
@@ -72,7 +72,7 @@ export function PaymentReturnPage() {
           </Card>
 
           <Card className="border border-gold/30 text-center">
-            <h2 className="font-serif text-lg font-semibold">Seus numeros da sorte</h2>
+            <h2 className="font-serif text-lg font-semibold">Seus números da sorte</h2>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               {transaction.luckyNumbers.map((number) => (
                 <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
@@ -85,22 +85,22 @@ export function PaymentReturnPage() {
           {transaction.emailProvided ? <EmailConfirmationCard /> : <PdfDownloadCard externalReference={transaction.externalReference} />}
 
           <p className="font-serif text-sm italic leading-relaxed text-terracotta">
-            Que este numero te traga a alegria de celebrar junto ao casal neste dia tao especial.
+            Que este número te traga a alegria de celebrar junto ao casal neste dia tão especial.
           </p>
 
           <a className="text-sm font-semibold text-warm-gray underline underline-offset-4" href="/">
-            Voltar ao inicio
+            Voltar ao início
           </a>
         </div>
       </main>
     );
   }
 
-  if (transaction.status === 'PENDING') {
+  if (transaction.status === 'PENDENTE') {
     return <PaymentState title="Pagamento pendente" message={publicMessages.pending} tone="pending" />;
   }
 
-  if (transaction.status === 'CANCELLED') {
+  if (transaction.status === 'CANCELADO') {
     return <PaymentState title="Pagamento cancelado" message={publicMessages.cancelled} tone="error" />;
   }
 
@@ -115,9 +115,9 @@ function EmailConfirmationCard() {
           <Check aria-hidden="true" className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="text-sm font-bold">Confirmacao enviada por e-mail</h2>
+          <h2 className="text-sm font-bold">Confirmação enviada por e-mail</h2>
           <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-            Seus numeros tambem foram enviados para o e-mail informado na compra.
+            Seus números também foram enviados para o e-mail informado na compra.
           </p>
         </div>
       </div>
@@ -133,9 +133,9 @@ function PdfDownloadCard({ externalReference }: { externalReference: string }) {
           <Download aria-hidden="true" className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h2 className="text-sm font-bold">Baixe seus numeros agora</h2>
+          <h2 className="text-sm font-bold">Baixe seus números agora</h2>
           <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-            Como nenhum e-mail foi informado, esta e a unica forma de guardar seus numeros.
+            Como nenhum e-mail foi informado, esta é a única forma de guardar seus números.
           </p>
           <a
             className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"
@@ -184,7 +184,7 @@ function PaymentState({ icon, message, title, tone }: PaymentStateProps) {
             className="inline-flex min-h-12 w-full items-center justify-center rounded-lg border border-terracotta bg-transparent px-5 py-3 text-sm font-semibold text-terracotta transition hover:bg-blush focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
             href="/"
           >
-            Voltar ao inicio
+            Voltar ao início
           </a>
         </div>
       </div>

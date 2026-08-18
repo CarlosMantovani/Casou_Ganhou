@@ -80,7 +80,7 @@ export function AdminSettingsPage() {
             <p className="font-serif text-2xl font-bold">
               Presente <span className="italic text-gold">Premiado</span>
             </p>
-            <p className="mt-1 text-xs text-white/55">Configuracoes da rifa</p>
+            <p className="mt-1 text-xs text-white/55">Configurações da rifa</p>
           </div>
           <a className="inline-flex items-center gap-2 text-sm font-semibold text-white/70 hover:text-white" href="/admin">
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
@@ -94,15 +94,15 @@ export function AdminSettingsPage() {
           <Card>
             <form className="space-y-5" onSubmit={handleSubmit((data) => updateUnitPriceMutation.mutate(data))}>
               <div>
-                <h1 className="font-serif text-2xl font-bold">Preco unitario</h1>
+                <h1 className="font-serif text-2xl font-bold">Preço unitário</h1>
                 <p className="mt-1 text-sm text-warm-gray">
-                  O novo valor passa a valer apenas para novas cotacoes e novas transacoes.
+                  O novo valor passa a valer apenas para novas cotações e novas transações.
                 </p>
               </div>
 
               <TextInput
                 id="raffle-unit-price"
-                label="Valor por numero"
+                label="Valor por número"
                 min="0.01"
                 step="0.01"
                 type="number"
@@ -115,7 +115,7 @@ export function AdminSettingsPage() {
                   className="rounded-lg border border-olive/20 bg-olive/10 px-4 py-3 text-sm font-semibold text-olive"
                   role="status"
                 >
-                  Preco atualizado com sucesso.
+                  Preço atualizado com sucesso.
                 </p>
               ) : null}
 
@@ -124,7 +124,7 @@ export function AdminSettingsPage() {
                   className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark"
                   role="alert"
                 >
-                  Nao foi possivel atualizar o preco.
+                  Não foi possível atualizar o preço.
                 </p>
               ) : null}
 
@@ -134,7 +134,7 @@ export function AdminSettingsPage() {
                 type="submit"
               >
                 <Save aria-hidden="true" className="h-5 w-5" />
-                Salvar preco
+                Salvar preço
               </Button>
             </form>
           </Card>
@@ -153,7 +153,7 @@ export function AdminSettingsPage() {
 
               <TextInput
                 id="raffle-scheduled-draw-at"
-                label="Data e horario"
+                label="Data e horário"
                 type="datetime-local"
                 error={scheduledDrawErrors.scheduledDrawAt?.message}
                 {...registerScheduledDraw('scheduledDrawAt')}
@@ -173,7 +173,7 @@ export function AdminSettingsPage() {
                   className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark"
                   role="alert"
                 >
-                  Nao foi possivel atualizar a data do sorteio.
+                  Não foi possível atualizar a data do sorteio.
                 </p>
               ) : null}
 
@@ -191,12 +191,12 @@ export function AdminSettingsPage() {
 
         <Card className="bg-blush shadow-none">
           {configQuery.isLoading ? (
-            <p className="py-10 text-center text-sm text-warm-gray">Carregando configuracoes...</p>
+            <p className="py-10 text-center text-sm text-warm-gray">Carregando configurações...</p>
           ) : null}
 
           {configQuery.isError ? (
             <p className="rounded-lg border border-terracotta/30 bg-white px-4 py-3 text-sm text-terracotta-dark" role="alert">
-              Nao foi possivel carregar o preco atual.
+              Não foi possível carregar o preço atual.
             </p>
           ) : null}
 
@@ -204,19 +204,19 @@ export function AdminSettingsPage() {
             <div className="space-y-5">
               <div>
                 <Settings aria-hidden="true" className="h-10 w-10 text-terracotta" />
-                <p className="mt-4 text-xs font-bold uppercase tracking-wide text-warm-gray">Preco vigente</p>
+                <p className="mt-4 text-xs font-bold uppercase tracking-wide text-warm-gray">Preço vigente</p>
                 <p className="mt-2 font-serif text-4xl font-bold text-charcoal">
                   {formatCurrency(configQuery.data.unitPrice)}
                 </p>
               </div>
 
               <div className="rounded-lg bg-white/70 px-4 py-3 text-sm leading-relaxed text-warm-gray">
-                Transacoes ja criadas mantem o valor com que nasceram. Esta configuracao so altera o preco usado daqui em diante.
+                Transações já criadas mantêm o valor com que nasceram. Esta configuração só altera o preço usado daqui em diante.
               </div>
 
               {configQuery.data.updatedAt ? (
                 <p className="text-xs text-warm-gray">
-                  Ultima atualizacao: {formatDateTime(configQuery.data.updatedAt)}
+                  Última atualização: {formatDateTime(configQuery.data.updatedAt)}
                 </p>
               ) : null}
 
@@ -225,7 +225,7 @@ export function AdminSettingsPage() {
                 <p className="mt-2 text-sm font-semibold text-charcoal">
                   {configQuery.data.scheduledDrawAt
                     ? formatDateTime(configQuery.data.scheduledDrawAt)
-                    : 'Ainda nao configurado'}
+                    : 'Ainda não configurado'}
                 </p>
               </div>
             </div>

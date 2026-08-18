@@ -36,6 +36,7 @@ vi.mock('./services/authService', () => ({
 vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
+    deleteCashTransaction: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -43,6 +44,7 @@ vi.mock('./services/adminTransactionService', () => ({
 vi.mock('./services/raffleService', () => ({
   raffleService: {
     draw: vi.fn(),
+    getEligibleNumbers: vi.fn(),
     getResult: vi.fn(),
   },
 }));
@@ -122,7 +124,7 @@ describe('App', () => {
           paymentMethod: 'MERCADO_PAGO',
           phone: '11999999999',
           quantity: 2,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '20.00',
         },
       ],
@@ -138,6 +140,18 @@ describe('App', () => {
       unitPrice: '10.00',
       updatedAt: '2026-08-14T18:00:00-03:00',
     });
+    mockedRaffleService.getEligibleNumbers.mockResolvedValue([
+      {
+        luckyNumber: '00001',
+        participantFlagEmoji: 'ðŸ‡§ðŸ‡·',
+        participantFlagName: 'Brasil',
+      },
+      {
+        luckyNumber: '00042',
+        participantFlagEmoji: 'ðŸ‡¨ðŸ‡¦',
+        participantFlagName: 'Canada',
+      },
+    ]);
   });
 
   it('blocks invalid email before the quantity step', async () => {
@@ -148,16 +162,16 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
     await user.type(screen.getByLabelText('E-mail (opcional)'), 'invalid');
 
-    expect(await screen.findByText('Informe um e-mail valido.')).toBeInTheDocument();
+    expect(await screen.findByText('Informe um e-mail válido.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
   });
 
   it('renders the public flag ranking on the purchase page', async () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
-    expect(screen.getByText(/primeiro lugar tambem ganhara um premio/i)).toBeInTheDocument();
+    expect(screen.getByText(/primeiro lugar também ganhará um prêmio/i)).toBeInTheDocument();
     expect(await screen.findByText('Brasil')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
@@ -186,8 +200,8 @@ describe('App', () => {
     try {
       render(<CountdownPanel scheduledDrawAt="2026-09-06T02:00:00Z" />);
 
-      expect(screen.getByText('Ultima chamada')).toBeInTheDocument();
-      expect(screen.getByText('Ultimos 5 minutos para garantir seus numeros.')).toBeInTheDocument();
+      expect(screen.getByText('Última chamada')).toBeInTheDocument();
+      expect(screen.getByText('Últimos 5 minutos para garantir seus números.')).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -202,7 +216,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
 
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos numeros voce quer?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Telefone'), '44988549696');
 
@@ -284,7 +298,7 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 2,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '20.00',
     });
 
@@ -295,7 +309,7 @@ describe('App', () => {
     expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(screen.getByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByText('Confirmacao enviada por e-mail')).toBeInTheDocument();
+    expect(screen.getByText('Confirmação enviada por e-mail')).toBeInTheDocument();
   });
 
   it('renders pdf download when approved payment has no email', async () => {
@@ -306,13 +320,13 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 1,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '10.00',
     });
 
     renderApp('/payment-return/success?external_reference=external-reference');
 
-    expect(await screen.findByText('Baixe seus numeros agora')).toBeInTheDocument();
+    expect(await screen.findByText('Baixe seus números agora')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
       'href',
       'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
@@ -327,20 +341,20 @@ describe('App', () => {
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
       quantity: 1,
-      status: 'PENDING',
+      status: 'PENDENTE',
       totalAmount: '10.00',
     });
 
     renderApp('/payment-return/pending?external_reference=external-reference');
 
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
-    expect(screen.getByText(/numeros serao gerados assim que a confirmacao/i)).toBeInTheDocument();
+    expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
   });
 
   it('renders a friendly error when external reference is missing', () => {
     renderApp('/payment-return/success');
 
-    expect(screen.getByText('Nao foi possivel localizar sua compra')).toBeInTheDocument();
+    expect(screen.getByText('Não foi possível localizar sua compra')).toBeInTheDocument();
   });
 
   it('redirects protected admin route to login without session', async () => {
@@ -401,7 +415,7 @@ describe('App', () => {
           paymentMethod: 'MERCADO_PAGO',
           phone: '11999999999',
           quantity: 10,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '100.00',
         },
       ],
@@ -430,6 +444,48 @@ describe('App', () => {
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
   });
 
+  it('deletes cash transactions from admin list', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.list.mockResolvedValue({
+      content: [
+        {
+          createdAt: '2026-08-14T18:00:00-03:00',
+          email: null,
+          externalReference: 'cash-reference',
+          luckyNumbers: ['00077'],
+          name: 'Cash Guest',
+          paymentMethod: 'CASH',
+          phone: '11999999999',
+          quantity: 1,
+          status: 'APPROVED',
+          totalAmount: '10.00',
+        },
+      ],
+      first: true,
+      last: true,
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+    mockedAdminTransactionService.deleteCashTransaction.mockResolvedValue();
+
+    try {
+      renderApp('/admin');
+
+      await user.click(await screen.findByRole('button', { name: 'Excluir transacao de Cash Guest' }));
+
+      expect(confirm).toHaveBeenCalledWith('Excluir a transacao em dinheiro de Cash Guest?');
+      await waitFor(() =>
+        expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
+      );
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
   it('registers an admin cash payment and shows pdf link', async () => {
     const user = userEvent.setup();
     const luckyNumbers = Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(5, '0'));
@@ -442,7 +498,7 @@ describe('App', () => {
       paymentMethod: 'CASH',
       phone: '11999999999',
       quantity: 1,
-      status: 'APPROVED',
+      status: 'APROVADO',
       totalAmount: '10.00',
     });
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
@@ -490,17 +546,17 @@ describe('App', () => {
 
     renderApp('/admin/settings');
 
-    expect(await screen.findByText('Preco unitario')).toBeInTheDocument();
+    expect(await screen.findByText('Preço unitário')).toBeInTheDocument();
     expect(await screen.findByText('R$ 10,00')).toBeInTheDocument();
 
-    await user.clear(screen.getByLabelText('Valor por numero'));
-    await user.type(screen.getByLabelText('Valor por numero'), '15');
-    await user.click(screen.getByRole('button', { name: /Salvar preco/i }));
+    await user.clear(screen.getByLabelText('Valor por número'));
+    await user.type(screen.getByLabelText('Valor por número'), '15');
+    await user.click(screen.getByRole('button', { name: /Salvar preço/i }));
 
     await waitFor(() =>
       expect(mockedRaffleConfigService.updateUnitPrice).toHaveBeenCalledWith({ unitPrice: '15.00' }),
     );
-    expect(await screen.findByText('Preco atualizado com sucesso.')).toBeInTheDocument();
+    expect(await screen.findByText('Preço atualizado com sucesso.')).toBeInTheDocument();
     expect(screen.getByText('R$ 15,00')).toBeInTheDocument();
   });
 
@@ -517,7 +573,7 @@ describe('App', () => {
 
     expect(await screen.findByText('Data do sorteio')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Data e horario'), '2026-09-05T20:00');
+    await user.type(screen.getByLabelText('Data e horário'), '2026-09-05T20:00');
     await user.click(screen.getByRole('button', { name: /Salvar data/i }));
 
     await waitFor(() =>
@@ -528,7 +584,7 @@ describe('App', () => {
     expect(await screen.findByText('Data do sorteio atualizada com sucesso.')).toBeInTheDocument();
   });
 
-  it('renders existing raffle result without drawing again', async () => {
+  it('renders existing raffle result and keeps draw action available', async () => {
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedRaffleService.getResult.mockResolvedValue({
       drawnAt: '2026-07-30T12:00:00Z',
@@ -540,10 +596,11 @@ describe('App', () => {
 
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('Winner Guest')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sortear novamente' })).toBeInTheDocument();
     expect(mockedRaffleService.draw).not.toHaveBeenCalled();
   });
 
-  it('confirms and runs raffle draw when no result exists', async () => {
+  it('shows suspense and runs raffle draw when no result exists', async () => {
     const user = userEvent.setup();
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
     mockedRaffleService.getResult.mockRejectedValue({ status: 404 });
@@ -558,7 +615,10 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Sortear vencedor' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar' }));
 
-    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('Sorteando entre os números')).toBeInTheDocument();
+    expect(mockedRaffleService.getEligibleNumbers).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(mockedRaffleService.draw).toHaveBeenCalledTimes(1), { timeout: 7000 });
     expect(await screen.findByText('00042')).toBeInTheDocument();
-  });
+  }, 8500);
 });

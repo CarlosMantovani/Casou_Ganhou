@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const optionalEmailSchema = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.string().email('Informe um e-mail valido.').optional(),
+  z.string().email('Informe um e-mail válido.').optional(),
 );
 
 export const buyerSchema = z.object({

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ChevronDown, Download, ReceiptText } from 'lucide-react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -16,10 +16,10 @@ import { cashPaymentSchema, type CashPaymentFormData } from './schemas';
 export function AdminCashPaymentPage() {
   const [isLuckyNumberListExpanded, setIsLuckyNumberListExpanded] = useState(false);
   const {
+    control,
     formState: { errors, isValid },
     handleSubmit,
     register,
-    setValue,
   } = useForm<CashPaymentFormData>({
     defaultValues: { email: '', name: '', phone: '', quantity: 1 },
     mode: 'onChange',
@@ -36,7 +36,6 @@ export function AdminCashPaymentPage() {
       }),
     onSuccess: () => setIsLuckyNumberListExpanded(false),
   });
-  const phoneInput = register('phone');
   const createdLuckyNumbers = createCashMutation.data?.luckyNumbers ?? [];
   const hasMoreLuckyNumbers = createdLuckyNumbers.length > 8;
   const displayedLuckyNumbers = isLuckyNumberListExpanded ? createdLuckyNumbers : createdLuckyNumbers.slice(0, 8);
@@ -63,28 +62,27 @@ export function AdminCashPaymentPage() {
           <form className="space-y-5" onSubmit={handleSubmit((data) => createCashMutation.mutate(data))}>
             <div>
               <h1 className="font-serif text-2xl font-bold">Registrar pagamento</h1>
-              <p className="mt-1 text-sm text-warm-gray">Os numeros sao gerados imediatamente apos confirmar.</p>
+              <p className="mt-1 text-sm text-warm-gray">Os números são gerados imediatamente após confirmar.</p>
             </div>
 
             <TextInput id="cash-name" label="Nome" placeholder="Nome do convidado" error={errors.name?.message} {...register('name')} />
 
-            <TextInput
-              id="cash-phone"
-              label="Telefone"
-              placeholder="(11) 99999-9999"
-              maxLength={15}
-              inputMode="tel"
-              type="tel"
-              error={errors.phone?.message}
-              name={phoneInput.name}
-              onBlur={phoneInput.onBlur}
-              onChange={(event) =>
-                setValue('phone', formatPhoneNumber(event.target.value), {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
-              ref={phoneInput.ref}
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <TextInput
+                  id="cash-phone"
+                  label="Telefone"
+                  placeholder="(11) 99999-9999"
+                  maxLength={15}
+                  inputMode="tel"
+                  type="tel"
+                  error={errors.phone?.message}
+                  {...field}
+                  onChange={(event) => field.onChange(formatPhoneNumber(event.target.value))}
+                />
+              )}
             />
 
             <TextInput
@@ -108,7 +106,7 @@ export function AdminCashPaymentPage() {
 
             {createCashMutation.isError ? (
               <p className="rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
-                Nao foi possivel registrar o pagamento.
+                Não foi possível registrar o pagamento.
               </p>
             ) : null}
 
@@ -171,7 +169,7 @@ export function AdminCashPaymentPage() {
               <div>
                 <ReceiptText aria-hidden="true" className="mx-auto h-12 w-12 text-terracotta" />
                 <p className="mt-4 text-sm leading-relaxed text-warm-gray">
-                  Depois de confirmar, os numeros aparecerao aqui para entrega ao convidado.
+                  Depois de confirmar, os números aparecerão aqui para entrega ao convidado.
                 </p>
               </div>
             </div>

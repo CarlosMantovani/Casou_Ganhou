@@ -132,7 +132,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 10,
                 PAGE_MARGIN,
                 pageHeight - 66,
-                isContinuation ? "Numeros da sorte - continuacao" : "Numeros da sorte",
+                isContinuation ? "Números da sorte - continuação" : "Números da sorte",
                 Color.WHITE);
         return new PdfPage(content, pageNumber);
     }
@@ -146,7 +146,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             int luckyNumberCount)
             throws IOException {
         float y = PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34;
-        writeLine(content, titleFont, 19, PAGE_MARGIN, y, "Seus numeros da sorte", CHARCOAL);
+        writeLine(content, titleFont, 19, PAGE_MARGIN, y, "Seus números da sorte", CHARCOAL);
         y -= 30;
         y = writeWrappedText(
                 content,
@@ -155,7 +155,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 PAGE_MARGIN,
                 y,
                 PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2),
-                "Obrigado pela sua contribuicao, " + transaction.getName() + ".",
+                "Obrigado pela sua contribuição, " + transaction.getName() + ".",
                 CHARCOAL);
         y -= 8;
 
@@ -169,7 +169,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         content.fill();
         y -= 28;
 
-        String summary = luckyNumberCount == 1 ? "1 numero gerado" : luckyNumberCount + " numeros gerados";
+        String summary = luckyNumberCount == 1 ? "1 número gerado" : luckyNumberCount + " números gerados";
         writeLine(content, textFont, 11, PAGE_MARGIN, y, summary, TERRACOTTA);
         return y - 30;
     }
@@ -188,7 +188,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 15,
                 PAGE_MARGIN,
                 y,
-                isContinuation ? "Numeros da sorte - continuacao" : "Numeros gerados",
+                isContinuation ? "Números da sorte - continuação" : "Números gerados",
                 CHARCOAL);
         y -= 18;
         writeLine(
@@ -197,7 +197,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 9,
                 PAGE_MARGIN,
                 y,
-                "Comprovante com " + luckyNumberCount + " numero(s) desta compra.",
+                "Comprovante com " + luckyNumberCount + " número(s) desta compra.",
                 TERRACOTTA);
         return y - 18;
     }
@@ -275,7 +275,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 FOOTER_HEIGHT - 10,
                 "Boa sorte no sorteio!",
                 TERRACOTTA);
-        String pageText = "Pagina " + page.number();
+        String pageText = "Página " + page.number();
         float pageTextWidth = textFont.getStringWidth(pageText) / 1000 * 9;
         writeLine(
                 page.content(),

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const optionalEmailSchema = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.string().email('Informe um e-mail valido.').optional(),
+  z.string().email('Informe um e-mail válido.').optional(),
 );
 
 export const adminLoginSchema = z.object({
@@ -21,19 +21,19 @@ export const cashPaymentSchema = z.object({
       return digits.length === 10 || digits.length === 11;
     }, 'Informe um telefone com DDD.'),
   email: optionalEmailSchema,
-  quantity: z.coerce.number().int().min(1, 'Informe ao menos 1 numero.'),
+  quantity: z.coerce.number().int().min(1, 'Informe ao menos 1 número.'),
 });
 
 export const raffleConfigSchema = z.object({
   unitPrice: z.coerce
-    .number({ invalid_type_error: 'Informe um valor valido.' })
+    .number({ invalid_type_error: 'Informe um valor válido.' })
     .positive('Informe um valor maior que zero.')
-    .refine((value) => Number.isFinite(value), 'Informe um valor valido.')
-    .refine((value) => Math.round(value * 100) === value * 100, 'Informe no maximo 2 casas decimais.'),
+    .refine((value) => Number.isFinite(value), 'Informe um valor válido.')
+    .refine((value) => Math.round(value * 100) === value * 100, 'Informe no máximo 2 casas decimais.'),
 });
 
 export const scheduledDrawSchema = z.object({
-  scheduledDrawAt: z.string().min(1, 'Informe a data e horario do sorteio.'),
+  scheduledDrawAt: z.string().min(1, 'Informe a data e horário do sorteio.'),
 });
 
 export type AdminLoginFormData = z.infer<typeof adminLoginSchema>;

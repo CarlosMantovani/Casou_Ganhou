@@ -21,7 +21,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function T
         aria-describedby={descriptionId}
         aria-invalid={Boolean(error)}
         className={`min-h-12 w-full rounded-lg border bg-white px-4 text-base text-charcoal outline-none transition placeholder:text-warm-gray/70 focus:border-gold focus:ring-2 focus:ring-gold/20 ${
-          error ? 'border-terracotta-dark' : 'border-[#E2D8D2]'
+          error ? 'border-wine' : 'border-line'
         } ${className}`}
         id={id}
         ref={ref}
@@ -33,7 +33,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function T
         </p>
       ) : null}
       {error ? (
-        <p className="text-xs font-medium text-terracotta-dark" id={`${id}-error`} role="alert">
+        <p className="text-xs font-medium text-wine" id={`${id}-error`} role="alert">
           {error}
         </p>
       ) : null}

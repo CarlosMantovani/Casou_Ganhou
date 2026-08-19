@@ -13,6 +13,7 @@ import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
@@ -117,6 +118,17 @@ class AdminTransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
+    }
+
+    @Test
+    void createCashTransactionRejectsPurchaseAfterDrawIsClosed() {
+        AdminTransactionServiceImpl service = service();
+        when(raffleConfigService.isDrawClosed()).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createCashTransaction(
+                        new CashTransactionCreateRequest("Guest User", "(11) 99999-9999", "GUEST@example.com", 2)))
+                .isInstanceOf(InvalidRaffleStateException.class)
+                .hasMessage("Draw is closed. No more numbers can be purchased.");
     }
 
     @Test

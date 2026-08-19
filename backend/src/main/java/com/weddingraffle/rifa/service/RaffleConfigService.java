@@ -8,6 +8,8 @@ public interface RaffleConfigService {
 
     BigDecimal getCurrentUnitPrice();
 
+    boolean isDrawClosed();
+
     RaffleConfigResponse getConfig();
 
     RaffleConfigResponse updateUnitPrice(BigDecimal unitPrice);

@@ -9,8 +9,10 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.FlagRankingResponse;
 import com.weddingraffle.rifa.dto.HomeSummaryResponse;
+import com.weddingraffle.rifa.dto.RaffleDrawResponse;
 import com.weddingraffle.rifa.service.PublicHomeService;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,15 +41,25 @@ class PublicHomeControllerTests {
     void returnsHomeSummaryWithoutAuthentication() throws Exception {
         when(publicHomeService.getSummary())
                 .thenReturn(new HomeSummaryResponse(
-                        java.time.OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
-                        List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12))));
+                        OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
+                        List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12)),
+                        new RaffleDrawResponse(
+                                "00042",
+                                "Winner Guest",
+                                OffsetDateTime.parse("2026-09-05T23:00:00-03:00"),
+                                "Brasil",
+                                "BR")));
 
         mockMvc.perform(get("/public/home-summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"))
                 .andExpect(jsonPath("$.flagRanking[0].code").value("BRAZIL"))
                 .andExpect(jsonPath("$.flagRanking[0].name").value("Brasil"))
-                .andExpect(jsonPath("$.flagRanking[0].totalNumbers").value(12));
+                .andExpect(jsonPath("$.flagRanking[0].totalNumbers").value(12))
+                .andExpect(jsonPath("$.raffleResult.winningNumber").value("00042"))
+                .andExpect(jsonPath("$.raffleResult.winnerName").value("Winner Guest"))
+                .andExpect(jsonPath("$.raffleResult.participantFlagName").value("Brasil"))
+                .andExpect(jsonPath("$.raffleResult.participantFlagEmoji").value("BR"));
     }
 
     @TestConfiguration

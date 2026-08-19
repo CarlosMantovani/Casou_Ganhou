@@ -8,6 +8,7 @@ import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
@@ -70,6 +71,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     @Override
     @Transactional
     public CashTransactionCreateResponse createCashTransaction(CashTransactionCreateRequest request) {
+        ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
@@ -129,6 +131,12 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         return luckyNumberRepository.findByTransactionInOrderByNumberAsc(transactions).stream()
                 .collect(Collectors.groupingBy(
                         LuckyNumber::getTransaction, Collectors.mapping(LuckyNumber::getNumber, Collectors.toList())));
+    }
+
+    private void ensureDrawIsOpen() {
+        if (raffleConfigService.isDrawClosed()) {
+            throw new InvalidRaffleStateException("Draw is closed. No more numbers can be purchased.");
+        }
     }
 
     private static AdminTransactionResponse toResponse(

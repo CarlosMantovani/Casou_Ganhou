@@ -8,4 +8,13 @@ export interface FlagRankingItem {
 export interface HomeSummaryResponse {
   scheduledDrawAt: string | null;
   flagRanking: FlagRankingItem[];
+  raffleResult: RaffleResult | null;
+}
+
+export interface RaffleResult {
+  winningNumber: string;
+  winnerName: string;
+  drawnAt: string;
+  participantFlagName: string | null;
+  participantFlagEmoji: string | null;
 }

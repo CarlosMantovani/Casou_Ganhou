@@ -105,6 +105,7 @@ describe('App', () => {
     );
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: null,
+      raffleResult: null,
       flagRanking: [
         {
           code: 'BRAZIL',
@@ -180,14 +181,15 @@ describe('App', () => {
     expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
     expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
     expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
-    expect((await screen.findAllByText('Brasil')).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('img', { name: '🇧🇷' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('12').length).toBeGreaterThan(0);
+    expect(await screen.findAllByText('Brasil')).toHaveLength(2);
+    expect(screen.getAllByRole('img', { name: '🇧🇷' })).toHaveLength(2);
+    expect(screen.getAllByText('12')).toHaveLength(2);
   });
 
   it('renders the public countdown when scheduled draw date is configured', async () => {
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: null,
       flagRanking: [],
     });
 
@@ -213,6 +215,63 @@ describe('App', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('shows draw closed and blocks public purchase when scheduled draw has passed', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-08-01T02:00:00Z',
+      raffleResult: null,
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findAllByText('Sorteio encerrado')).toHaveLength(2);
+    expect(screen.getByText('Sorteio encerrado. Não é mais possível comprar números.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continuar' })).not.toBeInTheDocument();
+    expect(mockedTransactionService.quote).not.toHaveBeenCalled();
+  });
+
+  it('renders the raffle winner on the purchase page when result exists', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-08-01T02:00:00Z',
+      raffleResult: {
+        drawnAt: '2026-08-01T03:00:00Z',
+        participantFlagEmoji: '🇧🇷',
+        participantFlagName: 'Brasil',
+        winnerName: 'Winner Guest',
+        winningNumber: '00042',
+      },
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Número ganhador')).toBeInTheDocument();
+    expect(screen.getByText('00042')).toBeInTheDocument();
+    expect(screen.getByText('Winner Guest')).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
+  });
+
+  it('does not render the raffle winner before the scheduled draw is closed', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: {
+        drawnAt: '2026-08-01T03:00:00Z',
+        participantFlagEmoji: '🇧🇷',
+        participantFlagName: 'Brasil',
+        winnerName: 'Winner Guest',
+        winningNumber: '00042',
+      },
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.queryByText('Número ganhador')).not.toBeInTheDocument();
+    expect(screen.queryByText('00042')).not.toBeInTheDocument();
   });
 
   it('requires name and phone before the quantity step', async () => {

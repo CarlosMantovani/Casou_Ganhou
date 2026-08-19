@@ -31,6 +31,15 @@ export function getCountdownMs(target: string, now = new Date()) {
   return Math.max(0, targetDate.getTime() - now.getTime());
 }
 
+export function isPastDateTime(value: string | null, now = new Date()) {
+  if (!value) return false;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+
+  return date.getTime() <= now.getTime();
+}
+
 export function isValidDateTime(value: string) {
   return !Number.isNaN(new Date(value).getTime());
 }

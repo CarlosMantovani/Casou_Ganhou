@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getCountdownMs, getCountdownParts, isValidDateTime } from '../../utils/dateTime';
+import { getCountdownMs, getCountdownParts, isPastDateTime, isValidDateTime } from '../../utils/dateTime';
 import { formatDateTime } from '../../utils/formatters';
 
 const URGENCY_THRESHOLDS = {
@@ -21,6 +21,16 @@ export function CountdownPanel({ scheduledDrawAt }: { scheduledDrawAt: string | 
   }, [scheduledDrawAt]);
 
   if (!scheduledDrawAt || !isValidDateTime(scheduledDrawAt)) return null;
+
+  if (isPastDateTime(scheduledDrawAt)) {
+    return (
+      <section className="rounded-lg bg-green-deep p-6 text-center text-white">
+        <p className="text-xs font-bold uppercase tracking-wide text-gold">Sorteio</p>
+        <h2 className="mt-2 font-serif text-2xl font-bold">Sorteio encerrado</h2>
+        <p className="mt-2 text-xs font-semibold text-white/70">Sorteio em {formatDateTime(scheduledDrawAt)}</p>
+      </section>
+    );
+  }
 
   const countdown = getCountdownParts(scheduledDrawAt);
   const urgency = getUrgencyLevel(getCountdownMs(scheduledDrawAt));
@@ -57,17 +67,17 @@ function CountdownItem({ label, value }: { label: string; value: number }) {
 function getUrgencyLevel(diffMs: number) {
   if (diffMs <= URGENCY_THRESHOLDS.fiveMinutes) {
     return {
-      cardClassName: 'bg-[#3B0D0D] ring-2 ring-terracotta',
+      cardClassName: 'bg-wine ring-2 ring-gold',
       eyebrowClassName: 'text-gold',
       message: 'Últimos 5 minutos para garantir seus números.',
-      messageClassName: 'animate-pulse bg-terracotta text-white',
+      messageClassName: 'animate-pulse bg-green text-white',
       title: 'Última chamada',
     };
   }
 
   if (diffMs <= URGENCY_THRESHOLDS.fifteenMinutes) {
     return {
-      cardClassName: 'bg-[#5C1515]',
+      cardClassName: 'bg-wine',
       eyebrowClassName: 'text-gold',
       message: 'Faltam menos de 15 minutos para o sorteio.',
       messageClassName: 'bg-white/15 text-white',
@@ -77,7 +87,7 @@ function getUrgencyLevel(diffMs: number) {
 
   if (diffMs <= URGENCY_THRESHOLDS.thirtyMinutes) {
     return {
-      cardClassName: 'bg-terracotta-dark',
+      cardClassName: 'bg-green-deep',
       eyebrowClassName: 'text-white',
       message: 'Faltam menos de 30 minutos. Não deixe para depois.',
       messageClassName: 'bg-white/15 text-white',
@@ -87,7 +97,7 @@ function getUrgencyLevel(diffMs: number) {
 
   if (diffMs <= URGENCY_THRESHOLDS.oneHour) {
     return {
-      cardClassName: 'bg-terracotta',
+      cardClassName: 'bg-green',
       eyebrowClassName: 'text-white',
       message: 'Falta menos de 1 hora para o sorteio.',
       messageClassName: 'bg-white/15 text-white',
@@ -96,7 +106,7 @@ function getUrgencyLevel(diffMs: number) {
   }
 
   return {
-    cardClassName: 'bg-charcoal',
+    cardClassName: 'bg-green-deep',
     eyebrowClassName: 'text-gold',
     message: null,
     messageClassName: 'bg-white/10 text-white/80',

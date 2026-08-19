@@ -396,6 +396,8 @@ describe('App', () => {
 
     renderApp('/admin');
 
+    await user.click(await screen.findByRole('button', { name: 'Mostrar valores' }));
+
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
@@ -420,7 +422,11 @@ describe('App', () => {
 
     renderApp('/admin');
 
-    expect(await screen.findAllByText('****')).toHaveLength(3);
+    expect(await screen.findByText('00001')).toBeInTheDocument();
+    expect((await screen.findAllByText('****')).length).toBeGreaterThanOrEqual(7);
+    expect(screen.queryByText('Guest User')).not.toBeInTheDocument();
+    expect(screen.queryByText('(11) 99999-9999')).not.toBeInTheDocument();
+    expect(screen.queryByText('R$ 20,00')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Mostrar valores' }));
@@ -428,6 +434,9 @@ describe('App', () => {
     expect(await screen.findByText('42')).toBeInTheDocument();
     expect(screen.getByText('99')).toBeInTheDocument();
     expect(screen.getByText('R$ 990,00')).toBeInTheDocument();
+    expect(screen.getByText('Guest User')).toBeInTheDocument();
+    expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
+    expect(screen.getByText('R$ 20,00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ocultar valores' })).toBeInTheDocument();
   });
 
@@ -460,7 +469,7 @@ describe('App', () => {
 
     renderApp('/admin');
 
-    const transactionRow = await screen.findByRole('button', { name: /Guest User/ });
+    const transactionRow = await screen.findByRole('button', { name: /00008/ });
     expect(screen.getByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
 
@@ -505,9 +514,9 @@ describe('App', () => {
     try {
       renderApp('/admin');
 
-      await user.click(await screen.findByRole('button', { name: 'Excluir transação de Cash Guest' }));
+      await user.click(await screen.findByRole('button', { name: 'Excluir transação' }));
 
-      expect(confirm).toHaveBeenCalledWith('Excluir a transação em dinheiro de Cash Guest?');
+      expect(confirm).toHaveBeenCalledWith('Excluir esta transação em dinheiro?');
       await waitFor(() =>
         expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
       );

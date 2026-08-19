@@ -126,10 +126,15 @@ export function AdminDashboardPage() {
 
           {transactions.length > 0 ? (
             <TransactionTable
+              areSensitiveValuesVisible={areMetricsVisible}
               deletingExternalReference={deleteCashTransactionMutation.variables ?? null}
               isDeleting={deleteCashTransactionMutation.isPending}
               onDeleteCashTransaction={(transaction) => {
-                const confirmed = window.confirm(`Excluir a transação em dinheiro de ${transaction.name}?`);
+                const confirmed = window.confirm(
+                  areMetricsVisible
+                    ? `Excluir a transação em dinheiro de ${transaction.name}?`
+                    : 'Excluir esta transação em dinheiro?',
+                );
                 if (confirmed) {
                   deleteCashTransactionMutation.mutate(transaction.externalReference);
                 }
@@ -213,11 +218,13 @@ function MetricsSummary({
 }
 
 function TransactionTable({
+  areSensitiveValuesVisible,
   deletingExternalReference,
   isDeleting,
   onDeleteCashTransaction,
   transactions,
 }: {
+  areSensitiveValuesVisible: boolean;
   deletingExternalReference: string | null;
   isDeleting: boolean;
   onDeleteCashTransaction: (transaction: AdminTransactionResponse) => void;
@@ -260,6 +267,7 @@ function TransactionTable({
             const hasMoreLuckyNumbers = transaction.luckyNumbers.length > 8;
             const isExpanded = expandedTransactions.has(transaction.externalReference);
             const displayedLuckyNumbers = isExpanded ? transaction.luckyNumbers : transaction.luckyNumbers.slice(0, 8);
+            const maskedValue = '****';
 
             return (
             <tr
@@ -280,15 +288,15 @@ function TransactionTable({
               role={hasMoreLuckyNumbers ? 'button' : undefined}
               tabIndex={hasMoreLuckyNumbers ? 0 : undefined}
             >
-              <td className="px-3 py-4 font-medium text-charcoal">{transaction.name}</td>
+              <td className="px-3 py-4 font-medium text-charcoal">{areSensitiveValuesVisible ? transaction.name : maskedValue}</td>
               <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">
-                <span className="block">{formatPhoneNumber(transaction.phone) || '-'}</span>
-                <span className="block text-xs">{transaction.email || '-'}</span>
+                <span className="block">{areSensitiveValuesVisible ? formatPhoneNumber(transaction.phone) || '-' : maskedValue}</span>
+                <span className="block text-xs">{areSensitiveValuesVisible ? transaction.email || '-' : maskedValue}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
-              <td className="px-3 py-4 text-warm-gray">{transaction.quantity}</td>
-              <td className="px-3 py-4 text-warm-gray">{formatCurrency(transaction.totalAmount)}</td>
+              <td className="px-3 py-4 text-warm-gray">{areSensitiveValuesVisible ? transaction.quantity : maskedValue}</td>
+              <td className="px-3 py-4 text-warm-gray">{areSensitiveValuesVisible ? formatCurrency(transaction.totalAmount) : maskedValue}</td>
               <td className="px-3 py-4">
                 <StatusBadge status={transaction.status} />
               </td>
@@ -318,7 +326,9 @@ function TransactionTable({
               <td className="px-3 py-4 text-right">
                 {transaction.paymentMethod === 'CASH' ? (
                   <button
-                    aria-label={`Excluir transação de ${transaction.name}`}
+                    aria-label={
+                      areSensitiveValuesVisible ? `Excluir transação de ${transaction.name}` : 'Excluir transação'
+                    }
                     className="inline-flex min-h-9 items-center justify-center rounded-lg border border-terracotta/30 px-3 py-2 text-xs font-bold text-terracotta-dark transition hover:bg-blush disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={isDeleting && deletingExternalReference === transaction.externalReference}
                     onClick={(event) => {

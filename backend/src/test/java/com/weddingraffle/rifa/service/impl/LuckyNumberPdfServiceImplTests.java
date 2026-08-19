@@ -32,17 +32,37 @@ class LuckyNumberPdfServiceImplTests {
     private LuckyNumberService luckyNumberService;
 
     @Test
-    void generatesPdfForApprovedTransactionWithLuckyNumbers() {
+    void generatesPdfForApprovedTransactionWithLuckyNumbers() throws IOException {
         LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
-        Transaction transaction =
-                new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external");
-        transaction.assignParticipantFlag(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
+        Transaction transaction = new Transaction(
+                "Maria Convidada",
+                "11999999999",
+                "guest@example.com",
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.CASH,
+                "external");
+        transaction.assignParticipantFlag(new ParticipantFlag("UY", "Uruguai", "🇺🇾"));
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
 
         byte[] pdf = service.generate("external");
 
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document);
+
+            assertThat(text)
+                    .contains(
+                            "José Carlos e Paula",
+                            "Presente Premiado",
+                            "Obrigado pela sua contribuição, Maria Convidada.",
+                            "Sua bandeira: Uruguai",
+                            "00001",
+                            "00002");
+            assertThat(text).doesNotContain("Sua bandeira: UY");
+        }
     }
 
     @Test

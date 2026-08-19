@@ -20,16 +20,16 @@ export function StepProgress({ currentStep }: StepProgressProps) {
             <div className="flex flex-col items-center gap-1">
               <span
                 className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${
-                  isDone || isCurrent ? 'bg-gold text-charcoal' : 'bg-[#E6DDD7] text-warm-gray'
+                  isDone || isCurrent ? 'bg-gold text-charcoal' : 'bg-ivory-deep text-warm-gray'
                 }`}
               >
                 {isDone ? '✓' : step.id}
               </span>
-              <span className={`text-[11px] ${isCurrent ? 'font-semibold text-terracotta' : 'text-warm-gray'}`}>
+              <span className={`text-[11px] ${isCurrent ? 'font-semibold text-green' : 'text-warm-gray'}`}>
                 {step.label}
               </span>
             </div>
-            {index < steps.length - 1 ? <span aria-hidden="true" className="h-px w-8 bg-[#DDD2CB]" /> : null}
+            {index < steps.length - 1 ? <span aria-hidden="true" className="h-px w-8 bg-line" /> : null}
           </li>
         );
       })}

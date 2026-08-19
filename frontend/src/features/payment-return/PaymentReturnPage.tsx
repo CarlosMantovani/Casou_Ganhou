@@ -43,6 +43,8 @@ export function PaymentReturnPage() {
   }
 
   const transaction = statusQuery.data;
+  const previousLuckyNumbers = transaction.previousLuckyNumbers ?? [];
+  const totalLuckyNumbers = transaction.totalLuckyNumbers ?? transaction.luckyNumbers.length;
 
   if (transaction.status === 'APROVADO' && transaction.luckyNumbers.length > 0) {
     return (
@@ -72,14 +74,34 @@ export function PaymentReturnPage() {
           </Card>
 
           <Card className="border border-gold/30 text-center">
-            <h2 className="font-serif text-lg font-semibold">Seus números da sorte</h2>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              {transaction.luckyNumbers.map((number) => (
-                <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
-                  {number}
-                </span>
-              ))}
-            </div>
+            {previousLuckyNumbers.length > 0 ? (
+              <div className="space-y-5 text-left">
+                <div className="text-center">
+                  <h2 className="font-serif text-lg font-semibold">Resumo dos seus números</h2>
+                  <dl className="mt-4 grid gap-2 rounded-lg bg-cream px-4 py-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-warm-gray">Números adquiridos anteriormente:</dt>
+                      <dd className="font-bold text-warm-gray">{previousLuckyNumbers.length}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-warm-gray">Números adquiridos agora:</dt>
+                      <dd className="font-bold text-terracotta">{transaction.luckyNumbers.length}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-warm-gray">Total de números com esta compra:</dt>
+                      <dd className="font-bold text-green">{totalLuckyNumbers}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <LuckyNumberGroup title="Números adquiridos agora" numbers={transaction.luckyNumbers} tone="highlight" />
+                <LuckyNumberGroup title="Números adquiridos anteriormente" numbers={previousLuckyNumbers} tone="muted" />
+              </div>
+            ) : (
+              <>
+                <h2 className="font-serif text-lg font-semibold">Seus números da sorte</h2>
+                <LuckyNumberList className="mt-5" numbers={transaction.luckyNumbers} tone="highlight" />
+              </>
+            )}
           </Card>
 
           {transaction.emailProvided ? <EmailConfirmationCard /> : <PdfDownloadCard externalReference={transaction.externalReference} />}
@@ -105,6 +127,48 @@ export function PaymentReturnPage() {
   }
 
   return <PaymentState title="Pagamento recusado" message={publicMessages.rejected} tone="error" />;
+}
+
+function LuckyNumberGroup({
+  numbers,
+  title,
+  tone,
+}: {
+  numbers: string[];
+  title: string;
+  tone: 'highlight' | 'muted';
+}) {
+  return (
+    <section aria-label={title}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-charcoal">{title}</h3>
+        <span className="shrink-0 rounded-full bg-cream px-3 py-1 text-xs font-bold text-warm-gray">{numbers.length}</span>
+      </div>
+      <LuckyNumberList numbers={numbers} tone={tone} />
+    </section>
+  );
+}
+
+function LuckyNumberList({
+  className = '',
+  numbers,
+  tone,
+}: {
+  className?: string;
+  numbers: string[];
+  tone: 'highlight' | 'muted';
+}) {
+  const toneClass = tone === 'highlight' ? 'bg-gold text-charcoal' : 'bg-cream text-warm-gray';
+
+  return (
+    <div className={`flex flex-wrap justify-center gap-3 ${className}`}>
+      {numbers.map((number) => (
+        <span className={`rounded-lg px-4 py-2 text-sm font-bold shadow-sm ${toneClass}`} key={number}>
+          {number}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function EmailConfirmationCard() {

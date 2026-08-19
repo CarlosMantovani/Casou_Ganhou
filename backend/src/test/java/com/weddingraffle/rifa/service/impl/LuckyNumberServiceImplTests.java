@@ -94,6 +94,19 @@ class LuckyNumberServiceImplTests {
     }
 
     @Test
+    void findsPreviousApprovedNumbersByPhoneExcludingCurrentTransaction() {
+        LuckyNumberServiceImpl luckyNumberService =
+                new LuckyNumberServiceImpl(appProperties(), luckyNumberRepository, candidateGenerator);
+        when(luckyNumberRepository.findNumbersByPhoneAndStatusExcludingExternalReference(
+                        "11999999999", PaymentStatus.APPROVED, "external"))
+                .thenReturn(List.of("00001", "00002"));
+
+        List<String> numbers = luckyNumberService.findPreviousApprovedNumbers("11999999999", "external");
+
+        assertThat(numbers).containsExactly("00001", "00002");
+    }
+
+    @Test
     void avoidsDuplicatePendingNumbersBeforeSaving() {
         LuckyNumberServiceImpl luckyNumberService =
                 new LuckyNumberServiceImpl(appProperties(), luckyNumberRepository, candidateGenerator);

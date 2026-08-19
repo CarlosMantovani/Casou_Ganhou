@@ -14,7 +14,8 @@ import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { cashPaymentSchema, type CashPaymentFormData } from './schemas';
 
 export function AdminCashPaymentPage() {
-  const [isLuckyNumberListExpanded, setIsLuckyNumberListExpanded] = useState(false);
+  const [isCurrentLuckyNumberListExpanded, setIsCurrentLuckyNumberListExpanded] = useState(false);
+  const [isPreviousLuckyNumberListExpanded, setIsPreviousLuckyNumberListExpanded] = useState(false);
   const {
     control,
     formState: { errors, isValid },
@@ -34,11 +35,14 @@ export function AdminCashPaymentPage() {
         email: data.email?.trim() || undefined,
         quantity: data.quantity,
       }),
-    onSuccess: () => setIsLuckyNumberListExpanded(false),
+    onSuccess: () => {
+      setIsCurrentLuckyNumberListExpanded(false);
+      setIsPreviousLuckyNumberListExpanded(false);
+    },
   });
   const createdLuckyNumbers = createCashMutation.data?.luckyNumbers ?? [];
-  const hasMoreLuckyNumbers = createdLuckyNumbers.length > 8;
-  const displayedLuckyNumbers = isLuckyNumberListExpanded ? createdLuckyNumbers : createdLuckyNumbers.slice(0, 8);
+  const previousLuckyNumbers = createCashMutation.data?.previousLuckyNumbers ?? [];
+  const totalLuckyNumbers = createCashMutation.data?.totalLuckyNumbers ?? createdLuckyNumbers.length;
 
   return (
     <main className="min-h-screen bg-cream text-charcoal">
@@ -126,35 +130,38 @@ export function AdminCashPaymentPage() {
                 <p className="mt-1 text-sm text-warm-gray">{formatCurrency(createCashMutation.data.totalAmount)}</p>
               </div>
 
-              <button
-                aria-expanded={hasMoreLuckyNumbers ? isLuckyNumberListExpanded : undefined}
-                className={`w-full rounded-lg border border-gold/40 bg-white/55 p-3 text-left ${
-                  hasMoreLuckyNumbers ? 'cursor-pointer transition hover:bg-white/80' : 'cursor-default'
-                }`}
-                disabled={!hasMoreLuckyNumbers}
-                onClick={() => setIsLuckyNumberListExpanded((current) => !current)}
-                type="button"
-              >
-                <div className="grid w-full grid-cols-4 gap-2">
-                  {displayedLuckyNumbers.map((number) => (
-                    <span
-                      className="flex min-w-0 items-center justify-center whitespace-nowrap rounded-md bg-gold px-2 py-1.5 font-mono text-xs font-bold tabular-nums text-charcoal"
-                      key={number}
-                      title={number}
-                    >
-                      {number}
-                    </span>
-                  ))}
-                </div>
-                {hasMoreLuckyNumbers ? (
-                  <ChevronDown
-                    aria-hidden="true"
-                    className={`mx-auto mt-3 h-4 w-4 text-terracotta transition-transform ${
-                      isLuckyNumberListExpanded ? 'rotate-180' : ''
-                    }`}
-                  />
-                ) : null}
-              </button>
+              {previousLuckyNumbers.length > 0 ? (
+                <dl className="grid gap-2 rounded-lg border border-gold/30 bg-white/60 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-warm-gray">Números adquiridos anteriormente:</dt>
+                    <dd className="font-bold text-warm-gray">{previousLuckyNumbers.length}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-warm-gray">Números adquiridos agora:</dt>
+                    <dd className="font-bold text-terracotta">{createdLuckyNumbers.length}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-warm-gray">Total de números com esta compra:</dt>
+                    <dd className="font-bold text-green">{totalLuckyNumbers}</dd>
+                  </div>
+                </dl>
+              ) : null}
+
+              <CashLuckyNumberGroup
+                isExpanded={isCurrentLuckyNumberListExpanded}
+                numbers={createdLuckyNumbers}
+                onToggle={() => setIsCurrentLuckyNumberListExpanded((current) => !current)}
+                title={previousLuckyNumbers.length > 0 ? 'Números adquiridos agora' : 'Números gerados'}
+              />
+
+              {previousLuckyNumbers.length > 0 ? (
+                <CashLuckyNumberGroup
+                  isExpanded={isPreviousLuckyNumberListExpanded}
+                  numbers={previousLuckyNumbers}
+                  onToggle={() => setIsPreviousLuckyNumberListExpanded((current) => !current)}
+                  title="Números adquiridos anteriormente"
+                />
+              ) : null}
 
               <a
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"
@@ -177,5 +184,56 @@ export function AdminCashPaymentPage() {
         </Card>
       </section>
     </main>
+  );
+}
+
+function CashLuckyNumberGroup({
+  isExpanded,
+  numbers,
+  onToggle,
+  title,
+}: {
+  isExpanded: boolean;
+  numbers: string[];
+  onToggle: () => void;
+  title: string;
+}) {
+  const hasMoreLuckyNumbers = numbers.length > 8;
+  const displayedLuckyNumbers = isExpanded ? numbers : numbers.slice(0, 8);
+
+  return (
+    <section aria-label={title} className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-charcoal">{title}</h3>
+        <span className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-warm-gray">{numbers.length}</span>
+      </div>
+      <button
+        aria-expanded={hasMoreLuckyNumbers ? isExpanded : undefined}
+        className={`w-full rounded-lg border border-gold/40 bg-white/55 p-3 text-left ${
+          hasMoreLuckyNumbers ? 'cursor-pointer transition hover:bg-white/80' : 'cursor-default'
+        }`}
+        disabled={!hasMoreLuckyNumbers}
+        onClick={onToggle}
+        type="button"
+      >
+        <div className="grid w-full grid-cols-4 gap-2">
+          {displayedLuckyNumbers.map((number) => (
+            <span
+              className="flex min-w-0 items-center justify-center whitespace-nowrap rounded-md bg-gold px-2 py-1.5 font-mono text-xs font-bold tabular-nums text-charcoal"
+              key={number}
+              title={number}
+            >
+              {number}
+            </span>
+          ))}
+        </div>
+        {hasMoreLuckyNumbers ? (
+          <ChevronDown
+            aria-hidden="true"
+            className={`mx-auto mt-3 h-4 w-4 text-terracotta transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          />
+        ) : null}
+      </button>
+    </section>
   );
 }

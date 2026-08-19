@@ -23,6 +23,7 @@ import com.weddingraffle.rifa.service.RaffleConfigService;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
@@ -155,6 +156,11 @@ public class TransactionServiceImpl implements TransactionService {
             publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
         }
 
+        List<String> luckyNumbers = luckyNumberService.findNumbers(transaction.getExternalReference());
+        List<String> previousLuckyNumbers = transaction.getStatus() == PaymentStatus.APPROVED
+                ? luckyNumberService.findPreviousApprovedNumbers(transaction.getPhone(), transaction.getExternalReference())
+                : List.of();
+
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
                 StringUtils.hasText(transaction.getEmail()),
@@ -163,7 +169,9 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getTotalAmount(),
                 transaction.getParticipantFlagName(),
                 transaction.getParticipantFlagEmoji(),
-                luckyNumberService.findNumbers(transaction.getExternalReference()));
+                luckyNumbers,
+                previousLuckyNumbers,
+                luckyNumbers.size() + previousLuckyNumbers.size());
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {

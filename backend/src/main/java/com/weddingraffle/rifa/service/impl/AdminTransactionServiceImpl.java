@@ -104,6 +104,8 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 .map(LuckyNumber::getNumber)
                 .sorted()
                 .toList();
+        List<String> previousLuckyNumbers =
+                luckyNumberService.findPreviousApprovedNumbers(transaction.getPhone(), transaction.getExternalReference());
 
         applicationEventPublisher.publishEvent(new PaymentApprovedEvent(transaction.getExternalReference()));
 
@@ -116,7 +118,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
-                luckyNumbers);
+                luckyNumbers,
+                previousLuckyNumbers,
+                luckyNumbers.size() + previousLuckyNumbers.size());
     }
 
     @Override

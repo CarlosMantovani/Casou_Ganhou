@@ -15,6 +15,12 @@ export interface AdminTransactionResponse {
   luckyNumbers: string[];
 }
 
+export interface AdminTransactionSummaryResponse {
+  totalTransactions: number;
+  approvedLuckyNumbers: number;
+  approvedRevenue: string;
+}
+
 export interface CashTransactionCreateRequest {
   name: string;
   phone: string;

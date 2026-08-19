@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.controller;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -29,6 +30,12 @@ public class AdminTransactionController {
 
     public AdminTransactionController(AdminTransactionService adminTransactionService) {
         this.adminTransactionService = adminTransactionService;
+    }
+
+    @Operation(summary = "Get transaction summary for admin")
+    @GetMapping("/summary")
+    public ResponseEntity<AdminTransactionSummaryResponse> getSummary() {
+        return ResponseEntity.ok(adminTransactionService.getSummary());
     }
 
     @Operation(summary = "List transactions for admin")

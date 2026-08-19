@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
@@ -69,6 +70,15 @@ class AdminTransactionServiceImplTests {
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.getContent().getFirst().externalReference()).isEqualTo("external");
         assertThat(response.getContent().getFirst().luckyNumbers()).containsExactly("00001", "00002");
+    }
+
+    @Test
+    void returnsGlobalTransactionSummary() {
+        AdminTransactionServiceImpl service = service();
+        AdminTransactionSummaryResponse summary = new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00"));
+        when(transactionRepository.getAdminSummary()).thenReturn(summary);
+
+        assertThat(service.getSummary()).isEqualTo(summary);
     }
 
     @Test

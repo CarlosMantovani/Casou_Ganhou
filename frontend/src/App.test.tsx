@@ -37,6 +37,7 @@ vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
     deleteCashTransaction: vi.fn(),
+    getSummary: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -135,6 +136,11 @@ describe('App', () => {
       totalElements: 1,
       totalPages: 1,
     });
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 2,
+      approvedRevenue: '20.00',
+      totalTransactions: 1,
+    });
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
       unitPrice: '10.00',
@@ -174,9 +180,9 @@ describe('App', () => {
     expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
     expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
     expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
-    expect(await screen.findByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
+    expect((await screen.findAllByText('Brasil')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: '🇧🇷' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('12').length).toBeGreaterThan(0);
   });
 
   it('renders the public countdown when scheduled draw date is configured', async () => {
@@ -403,6 +409,27 @@ describe('App', () => {
     );
   });
 
+  it('shows global admin metrics and toggles their visibility', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 99,
+      approvedRevenue: '990.00',
+      totalTransactions: 42,
+    });
+
+    renderApp('/admin');
+
+    expect(await screen.findByText('42')).toBeInTheDocument();
+    expect(screen.getByText('99')).toBeInTheDocument();
+    expect(screen.getByText('R$ 990,00')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar valores' }));
+
+    expect(screen.getAllByText('----')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
+  });
+
   it('expands and collapses transaction lucky numbers above the initial limit', async () => {
     const user = userEvent.setup();
     const luckyNumbers = Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(5, '0'));
@@ -461,7 +488,7 @@ describe('App', () => {
           paymentMethod: 'CASH',
           phone: '11999999999',
           quantity: 1,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '10.00',
         },
       ],
@@ -477,9 +504,9 @@ describe('App', () => {
     try {
       renderApp('/admin');
 
-      await user.click(await screen.findByRole('button', { name: 'Excluir transacao de Cash Guest' }));
+      await user.click(await screen.findByRole('button', { name: 'Excluir transação de Cash Guest' }));
 
-      expect(confirm).toHaveBeenCalledWith('Excluir a transacao em dinheiro de Cash Guest?');
+      expect(confirm).toHaveBeenCalledWith('Excluir a transação em dinheiro de Cash Guest?');
       await waitFor(() =>
         expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
       );

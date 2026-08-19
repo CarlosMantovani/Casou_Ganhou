@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, Eye, EyeOff, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
-import type { AdminTransactionResponse } from '../../types/admin';
+import type { AdminTransactionResponse, AdminTransactionSummaryResponse } from '../../types/admin';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { formatPhoneNumber } from '../../utils/phone';
 import { useAuth } from './AuthContext';
@@ -20,27 +20,26 @@ export function AdminDashboardPage() {
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
+  const [areMetricsVisible, setAreMetricsVisible] = useState(true);
 
   const transactionsQuery = useQuery({
     queryKey: ['admin-transactions', submittedQueryFilter, page],
     queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE }),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ['admin-transaction-summary'],
+    queryFn: () => adminTransactionService.getSummary(),
   });
   const deleteCashTransactionMutation = useMutation({
     mutationFn: (externalReference: string) =>
       adminTransactionService.deleteCashTransaction(externalReference),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-transaction-summary'] });
     },
   });
 
   const transactions = transactionsQuery.data?.content ?? EMPTY_TRANSACTIONS;
-  const approvedTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.status === 'APROVADO'),
-    [transactions],
-  );
-  const soldNumbersCount = approvedTransactions.reduce((total, transaction) => total + transaction.luckyNumbers.length, 0);
-  const approvedAmount = approvedTransactions.reduce((total, transaction) => total + Number(transaction.totalAmount), 0);
-
   const submitFilter = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPage(0);
@@ -92,11 +91,7 @@ export function AdminDashboardPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 py-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Transações nesta página" value={String(transactions.length)} />
-          <MetricCard label="Números aprovados nesta página" value={String(soldNumbersCount)} />
-          <MetricCard label="Receita aprovada nesta página" value={formatCurrency(approvedAmount)} />
-        </div>
+        <MetricsSummary areValuesVisible={areMetricsVisible} onToggleVisibility={() => setAreMetricsVisible((current) => !current)} summary={summaryQuery.data} />
 
         <Card className="mt-6 overflow-hidden">
           <form className="mb-6 flex flex-col gap-3 md:flex-row md:items-end" onSubmit={submitFilter}>
@@ -174,12 +169,46 @@ export function AdminDashboardPage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricsSummary({
+  areValuesVisible,
+  onToggleVisibility,
+  summary,
+}: {
+  areValuesVisible: boolean;
+  onToggleVisibility: () => void;
+  summary?: AdminTransactionSummaryResponse;
+}) {
+  const values = [
+    { label: 'Transações', value: String(summary?.totalTransactions ?? 0) },
+    { label: 'Números aprovados', value: String(summary?.approvedLuckyNumbers ?? 0) },
+    { label: 'Receita aprovada', value: formatCurrency(summary?.approvedRevenue ?? 0) },
+  ];
+
   return (
-    <Card className="text-center">
-      <p className="text-xs font-bold uppercase tracking-wide text-warm-gray">{label}</p>
-      <p className="mt-3 font-serif text-3xl font-bold text-charcoal">{value}</p>
-    </Card>
+    <section aria-label="Resumo geral" className="overflow-hidden rounded-lg bg-white shadow-soft">
+      <div className="flex items-center justify-between border-b border-[#EEE6DF] px-4 py-3 sm:px-6">
+        <p className="text-sm font-bold text-charcoal">Resumo geral</p>
+        <button
+          aria-label={areValuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-warm-gray transition hover:bg-cream hover:text-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-terracotta"
+          onClick={onToggleVisibility}
+          title={areValuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          type="button"
+        >
+          {areValuesVisible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+        </button>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-[#EEE6DF]">
+        {values.map((metric) => (
+          <div className="flex min-w-0 flex-col items-center px-2 py-4 text-center sm:px-5 sm:py-5" key={metric.label}>
+            <p className="flex min-h-8 items-center text-[10px] font-bold uppercase tracking-wide text-warm-gray sm:text-xs">{metric.label}</p>
+            <p className="mt-2 break-words font-serif text-lg font-bold tabular-nums text-charcoal sm:text-2xl" aria-live="polite">
+              {areValuesVisible ? metric.value : '----'}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

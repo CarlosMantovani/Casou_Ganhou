@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
@@ -54,6 +55,12 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
         this.applicationEventPublisher = applicationEventPublisher;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminTransactionSummaryResponse getSummary() {
+        return transactionRepository.getAdminSummary();
     }
 
     @Override

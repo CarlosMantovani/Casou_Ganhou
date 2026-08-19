@@ -1,5 +1,6 @@
 package com.weddingraffle.rifa.repository;
 
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.entity.Transaction;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    @Query(
+            """
+            select new com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse(
+                count(raffleTransaction),
+                coalesce(sum(case when raffleTransaction.status = com.weddingraffle.rifa.entity.PaymentStatus.APPROVED then raffleTransaction.quantity else 0 end), 0),
+                coalesce(sum(case when raffleTransaction.status = com.weddingraffle.rifa.entity.PaymentStatus.APPROVED then raffleTransaction.totalAmount else 0 end), 0)
+            )
+            from RaffleTransaction raffleTransaction
+            """)
+    AdminTransactionSummaryResponse getAdminSummary();
 
     Optional<Transaction> findByExternalReference(String externalReference);
 

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 import { BuyNumbersPage } from './features/buy-numbers/BuyNumbersPage';
+import { FlagRankingPage } from './features/flag-ranking/FlagRankingPage';
 import { PaymentReturnPage } from './features/payment-return/PaymentReturnPage';
 
 const AdminApp = lazy(() => import('./features/admin/AdminApp'));
@@ -24,6 +25,10 @@ export function App() {
 
   if (path.startsWith('/payment-return/')) {
     return <PaymentReturnPage />;
+  }
+
+  if (path === '/flag-ranking') {
+    return <FlagRankingPage />;
   }
 
   return <BuyNumbersPage />;

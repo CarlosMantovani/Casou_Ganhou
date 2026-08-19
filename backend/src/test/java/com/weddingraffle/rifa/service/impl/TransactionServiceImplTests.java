@@ -309,6 +309,8 @@ class TransactionServiceImplTests {
         when(transactionRepository.findByExternalReference("external-reference-123"))
                 .thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
+        when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external-reference-123"))
+                .thenReturn(List.of("00090", "00091"));
 
         var response = transactionService.getStatus("external-reference-123");
 
@@ -318,6 +320,8 @@ class TransactionServiceImplTests {
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001", "00002");
+        assertThat(response.previousLuckyNumbers()).containsExactly("00090", "00091");
+        assertThat(response.totalLuckyNumbers()).isEqualTo(4);
     }
 
     @Test
@@ -337,6 +341,8 @@ class TransactionServiceImplTests {
         when(paymentProviderClient.getPayment("123"))
                 .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
+        when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external-reference-123"))
+                .thenReturn(List.of());
 
         var response = transactionService.getStatus("external-reference-123");
 

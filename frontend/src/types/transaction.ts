@@ -38,4 +38,6 @@ export interface TransactionStatusResponse {
   participantFlagName: string;
   participantFlagEmoji: string;
   luckyNumbers: string[];
+  previousLuckyNumbers?: string[];
+  totalLuckyNumbers?: number;
 }

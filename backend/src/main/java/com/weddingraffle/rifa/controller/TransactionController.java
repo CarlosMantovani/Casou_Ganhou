@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/transactions")
 public class TransactionController {
 
+    private static final int PDF_FILENAME_REFERENCE_LENGTH = 8;
+
     private final TransactionService transactionService;
     private final LuckyNumberPdfService luckyNumberPdfService;
 
@@ -59,9 +61,17 @@ public class TransactionController {
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment()
-                                .filename("lucky-numbers-" + externalReference + ".pdf")
+                                .filename("Numeros_da_sorte_" + shortReference(externalReference) + ".pdf")
                                 .build()
                                 .toString())
                 .body(pdf);
+    }
+
+    private static String shortReference(String externalReference) {
+        String sanitizedReference = externalReference.replaceAll("[^A-Za-z0-9]", "");
+        if (sanitizedReference.length() <= PDF_FILENAME_REFERENCE_LENGTH) {
+            return sanitizedReference;
+        }
+        return sanitizedReference.substring(0, PDF_FILENAME_REFERENCE_LENGTH);
     }
 }

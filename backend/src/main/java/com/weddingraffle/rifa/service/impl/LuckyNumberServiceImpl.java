@@ -2,6 +2,7 @@ package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.entity.LuckyNumber;
+import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.service.LuckyNumberCandidateGenerator;
@@ -44,6 +45,12 @@ public class LuckyNumberServiceImpl implements LuckyNumberService {
     @Override
     public List<String> findNumbers(String externalReference) {
         return luckyNumberRepository.findNumbersByTransactionExternalReference(externalReference);
+    }
+
+    @Override
+    public List<String> findPreviousApprovedNumbers(String phone, String externalReference) {
+        return luckyNumberRepository.findNumbersByPhoneAndStatusExcludingExternalReference(
+                phone, PaymentStatus.APPROVED, externalReference);
     }
 
     private String nextAvailableNumber(NumberRange range, List<LuckyNumber> pendingNumbers) {

@@ -38,6 +38,8 @@ export interface CashTransactionCreateResponse {
   totalAmount: string;
   status: PaymentStatus;
   luckyNumbers: string[];
+  previousLuckyNumbers?: string[];
+  totalLuckyNumbers?: number;
 }
 
 export interface RaffleDrawResponse {

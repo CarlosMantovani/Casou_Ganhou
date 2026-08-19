@@ -1,7 +1,9 @@
 package com.weddingraffle.rifa.controller;
 
+import com.weddingraffle.rifa.dto.FlagRankingResponse;
 import com.weddingraffle.rifa.dto.HomeSummaryResponse;
 import com.weddingraffle.rifa.service.PublicHomeService;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,5 +22,10 @@ public class PublicHomeController {
     @GetMapping("/home-summary")
     public ResponseEntity<HomeSummaryResponse> getSummary() {
         return ResponseEntity.ok(publicHomeService.getSummary());
+    }
+
+    @GetMapping("/flag-ranking")
+    public ResponseEntity<List<FlagRankingResponse>> getFlagRanking() {
+        return ResponseEntity.ok(publicHomeService.getFlagRanking());
     }
 }

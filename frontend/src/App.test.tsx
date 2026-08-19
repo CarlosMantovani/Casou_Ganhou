@@ -23,6 +23,7 @@ vi.mock('./services/transactionService', () => ({
 
 vi.mock('./services/homeService', () => ({
   homeService: {
+    getFlagRanking: vi.fn(),
     getSummary: vi.fn(),
   },
 }));
@@ -115,6 +116,14 @@ describe('App', () => {
         },
       ],
     });
+    mockedHomeService.getFlagRanking.mockResolvedValue([
+      {
+        code: 'BRAZIL',
+        emoji: '🇧🇷',
+        name: 'Brasil',
+        totalNumbers: 12,
+      },
+    ]);
     mockedAdminTransactionService.list.mockResolvedValue({
       content: [
         {
@@ -184,6 +193,57 @@ describe('App', () => {
     expect(await screen.findAllByText('Brasil')).toHaveLength(2);
     expect(screen.getAllByRole('img', { name: '🇧🇷' })).toHaveLength(2);
     expect(screen.getAllByText('12')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Ver top 30' })).toHaveAttribute('href', '/flag-ranking');
+  });
+
+  it('renders the top thirty flag ranking page', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: null,
+      flagRanking: [],
+    });
+    mockedHomeService.getFlagRanking.mockResolvedValue(
+      Array.from({ length: 30 }, (_, index) => ({
+        code: `FLAG_${index + 1}`,
+        emoji: '🇧🇷',
+        name: `Bandeira ${index + 1}`,
+        totalNumbers: 30 - index,
+      })),
+    );
+
+    renderApp('/flag-ranking');
+
+    expect(await screen.findByText('Top 30 bandeiras')).toBeInTheDocument();
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.getByText('Atualiza a cada 5 minutos')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/');
+    expect((await screen.findAllByText('Bandeira 30')).length).toBeGreaterThan(0);
+    expect(mockedHomeService.getFlagRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes the top thirty flag ranking every five minutes', async () => {
+    vi.useFakeTimers();
+    mockedHomeService.getFlagRanking.mockResolvedValue([
+      {
+        code: 'BRAZIL',
+        emoji: '🇧🇷',
+        name: 'Brasil',
+        totalNumbers: 12,
+      },
+    ]);
+
+    try {
+      renderApp('/flag-ranking');
+
+      await Promise.resolve();
+
+      expect(mockedHomeService.getFlagRanking).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+      expect(mockedHomeService.getFlagRanking).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders the public countdown when scheduled draw date is configured', async () => {

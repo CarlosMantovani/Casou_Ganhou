@@ -248,6 +248,26 @@ describe('App', () => {
     expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
   });
 
+  it('does not render the raffle winner before the scheduled draw is closed', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: {
+        drawnAt: '2026-08-01T03:00:00Z',
+        participantFlagEmoji: '🇧🇷',
+        participantFlagName: 'Brasil',
+        winnerName: 'Winner Guest',
+        winningNumber: '00042',
+      },
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.queryByText('Número ganhador')).not.toBeInTheDocument();
+    expect(screen.queryByText('00042')).not.toBeInTheDocument();
+  });
+
   it('requires name and phone before the quantity step', async () => {
     const user = userEvent.setup();
     renderApp();

@@ -249,7 +249,7 @@ export function BuyNumbersPage() {
             </p>
           </section>
         )}
-        <RaffleResultPanel result={homeSummaryQuery.data?.raffleResult ?? null} />
+        <RaffleResultPanel isDrawClosed={isDrawClosed} result={homeSummaryQuery.data?.raffleResult ?? null} />
         <FlagRankingPanel
           isLoading={homeSummaryQuery.isLoading}
           ranking={homeSummaryQuery.data?.flagRanking ?? []}
@@ -259,8 +259,8 @@ export function BuyNumbersPage() {
   );
 }
 
-function RaffleResultPanel({ result }: { result: RaffleResult | null }) {
-  if (!result) return null;
+function RaffleResultPanel({ isDrawClosed, result }: { isDrawClosed: boolean; result: RaffleResult | null }) {
+  if (!isDrawClosed || !result) return null;
 
   return (
     <aside>

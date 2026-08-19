@@ -203,7 +203,7 @@ function MetricsSummary({
           <div className="flex min-w-0 flex-col items-center px-2 py-4 text-center sm:px-5 sm:py-5" key={metric.label}>
             <p className="flex min-h-8 items-center text-[10px] font-bold uppercase tracking-wide text-warm-gray sm:text-xs">{metric.label}</p>
             <p className="mt-2 break-words font-serif text-lg font-bold tabular-nums text-charcoal sm:text-2xl" aria-live="polite">
-              {areValuesVisible ? metric.value : '----'}
+              {areValuesVisible ? metric.value : '****'}
             </p>
           </div>
         ))}

@@ -426,7 +426,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ocultar valores' }));
 
-    expect(screen.getAllByText('----')).toHaveLength(3);
+    expect(screen.getAllByText('****')).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
   });
 

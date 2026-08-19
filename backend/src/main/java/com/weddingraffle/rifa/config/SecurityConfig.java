@@ -58,6 +58,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/public/home-summary")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/public/flag-ranking")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/payments/webhook")
                         .permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS)
@@ -74,7 +76,12 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/admin/raffle-config/scheduled-at")
                         .hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/raffle/result", "/raffle/eligible-numbers", "/transactions", "/transactions/summary")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/raffle/result",
+                                "/raffle/eligible-numbers",
+                                "/transactions",
+                                "/transactions/summary")
                         .hasRole("ADMIN")
                         .anyRequest()
                         .denyAll())
@@ -127,7 +134,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(AppProperties appProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(appProperties.frontendOrigin(), "https://*.ngrok-free.dev", "https://*.ngrok-free.app"));
+        configuration.setAllowedOriginPatterns(
+                List.of(appProperties.frontendOrigin(), "https://*.ngrok-free.dev", "https://*.ngrok-free.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "ngrok-skip-browser-warning"));
         configuration.setAllowCredentials(false);

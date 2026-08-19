@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
+import { ChevronRight, CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -18,6 +18,7 @@ import type { FlagRankingItem, RaffleResult } from '../../types/home';
 import { isPastDateTime } from '../../utils/dateTime';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
+import { FlagRankingList } from '../flag-ranking/FlagRankingList';
 import { CountdownPanel } from './CountdownPanel';
 import { buyerSchema, type BuyerFormData } from './schemas';
 
@@ -305,93 +306,15 @@ function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking:
             </div>
           </div>
 
-          <div className="grid gap-2 sm:hidden">
-            {isLoading ? (
-              <p className="rounded-lg bg-ivory-deep px-4 py-6 text-center text-sm text-warm-gray">
-                Carregando ranking...
-              </p>
-            ) : null}
+          <FlagRankingList isLoading={isLoading} ranking={ranking} />
 
-            {!isLoading && ranking.length === 0 ? (
-              <p className="rounded-lg bg-ivory-deep px-4 py-6 text-center text-sm text-warm-gray">
-                Nenhuma bandeira pontuou ainda.
-              </p>
-            ) : null}
-
-            {!isLoading
-              ? ranking.map((item, index) => (
-                  <div
-                    className="flex min-w-0 items-center gap-3 rounded-lg border border-line bg-white px-3 py-3"
-                    key={item.code}
-                  >
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ivory-deep text-xs font-bold text-green">
-                      {index + 1}
-                    </span>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ivory-deep">
-                      <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-bold text-charcoal">{item.name}</span>
-                      <span className="block truncate text-xs text-warm-gray">{item.code}</span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block font-bold text-green">{item.totalNumbers}</span>
-                      <span className="block text-[11px] font-semibold uppercase text-warm-gray">números</span>
-                    </span>
-                  </div>
-                ))
-              : null}
-          </div>
-
-          <div className="hidden overflow-hidden rounded-lg border border-line sm:block">
-            <table className="w-full table-fixed text-left text-sm">
-              <caption className="sr-only">Ranking das bandeiras por números aprovados</caption>
-              <thead className="bg-ivory-deep text-xs uppercase text-warm-gray">
-                <tr>
-                  <th className="w-16 px-4 py-3 font-bold">Pos.</th>
-                  <th className="px-4 py-3 font-bold">Bandeira</th>
-                  <th className="w-24 px-4 py-3 text-right font-bold">Números</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line bg-white">
-                {isLoading ? (
-                  <tr>
-                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
-                      Carregando ranking...
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isLoading && ranking.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-6 text-center text-warm-gray" colSpan={3}>
-                      Nenhuma bandeira pontuou ainda.
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isLoading
-                  ? ranking.map((item, index) => (
-                      <tr key={item.code}>
-                        <td className="px-4 py-3 font-bold text-charcoal">{index + 1}</td>
-                        <td className="min-w-0 px-4 py-3">
-                          <span className="flex items-center gap-3">
-                            <span className="grid h-10 w-10 place-items-center rounded-full bg-ivory-deep">
-                              <FlagEmoji className="h-6 w-6" emoji={item.emoji} />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate font-bold text-charcoal">{item.name}</span>
-                              <span className="block truncate text-xs text-warm-gray">{item.code}</span>
-                            </span>
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green">{item.totalNumbers}</td>
-                      </tr>
-                    ))
-                  : null}
-              </tbody>
-            </table>
-          </div>
+          <a
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-green bg-transparent px-5 py-3 text-sm font-semibold text-green transition hover:bg-ivory-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+            href="/flag-ranking"
+          >
+            Ver top 30
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </a>
         </div>
       </Card>
     </aside>

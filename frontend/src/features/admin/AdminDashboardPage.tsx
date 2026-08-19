@@ -20,7 +20,7 @@ export function AdminDashboardPage() {
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
-  const [areMetricsVisible, setAreMetricsVisible] = useState(true);
+  const [areMetricsVisible, setAreMetricsVisible] = useState(false);
 
   const transactionsQuery = useQuery({
     queryKey: ['admin-transactions', submittedQueryFilter, page],

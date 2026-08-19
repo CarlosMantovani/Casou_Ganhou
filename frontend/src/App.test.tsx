@@ -420,14 +420,15 @@ describe('App', () => {
 
     renderApp('/admin');
 
+    expect(await screen.findAllByText('****')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar valores' }));
+
     expect(await screen.findByText('42')).toBeInTheDocument();
     expect(screen.getByText('99')).toBeInTheDocument();
     expect(screen.getByText('R$ 990,00')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Ocultar valores' }));
-
-    expect(screen.getAllByText('****')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocultar valores' })).toBeInTheDocument();
   });
 
   it('expands and collapses transaction lucky numbers above the initial limit', async () => {

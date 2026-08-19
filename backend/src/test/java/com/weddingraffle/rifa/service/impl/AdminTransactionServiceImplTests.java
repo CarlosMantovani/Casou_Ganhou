@@ -15,6 +15,7 @@ import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
+import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
@@ -75,10 +76,26 @@ class AdminTransactionServiceImplTests {
     @Test
     void returnsGlobalTransactionSummary() {
         AdminTransactionServiceImpl service = service();
-        AdminTransactionSummaryResponse summary = new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00"));
+        AdminTransactionSummaryProjection summary = new AdminTransactionSummaryProjection() {
+            @Override
+            public long getTotalTransactions() {
+                return 12;
+            }
+
+            @Override
+            public long getApprovedLuckyNumbers() {
+                return 48;
+            }
+
+            @Override
+            public BigDecimal getApprovedRevenue() {
+                return new BigDecimal("480.00");
+            }
+        };
         when(transactionRepository.getAdminSummary()).thenReturn(summary);
 
-        assertThat(service.getSummary()).isEqualTo(summary);
+        assertThat(service.getSummary())
+                .isEqualTo(new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00")));
     }
 
     @Test

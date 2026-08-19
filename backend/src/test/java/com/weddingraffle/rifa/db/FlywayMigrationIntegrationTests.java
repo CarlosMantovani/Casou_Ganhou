@@ -59,6 +59,7 @@ class FlywayMigrationIntegrationTests {
             assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
             assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
+            assertThat(adminTransactionSummaryQueryWorks(statement)).isTrue();
         }
     }
 
@@ -144,6 +145,24 @@ class FlywayMigrationIntegrationTests {
             return resultSet.next()
                     && "BRAZIL".equals(resultSet.getString("code"))
                     && resultSet.getLong("total_numbers") == 3L;
+        }
+    }
+
+    private static boolean adminTransactionSummaryQueryWorks(Statement statement) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                """
+                select
+                    cast(count(id) as bigint) as total_transactions,
+                    cast(coalesce(sum(case when status = 'APPROVED' then quantity else 0 end), 0) as bigint)
+                        as approved_lucky_numbers,
+                    coalesce(sum(case when status = 'APPROVED' then total_amount else 0 end), 0)
+                        as approved_revenue
+                from transaction
+                """)) {
+            return resultSet.next()
+                    && resultSet.getLong("total_transactions") == 1L
+                    && resultSet.getLong("approved_lucky_numbers") == 3L
+                    && resultSet.getBigDecimal("approved_revenue").compareTo(new java.math.BigDecimal("30.00")) == 0;
         }
     }
 }

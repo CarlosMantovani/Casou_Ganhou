@@ -11,6 +11,7 @@ import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
+import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -60,7 +61,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     @Override
     @Transactional(readOnly = true)
     public AdminTransactionSummaryResponse getSummary() {
-        return transactionRepository.getAdminSummary();
+        AdminTransactionSummaryProjection summary = transactionRepository.getAdminSummary();
+        return new AdminTransactionSummaryResponse(
+                summary.getTotalTransactions(), summary.getApprovedLuckyNumbers(), summary.getApprovedRevenue());
     }
 
     @Override

@@ -10,15 +10,12 @@ import com.weddingraffle.rifa.service.LuckyNumberService;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.stereotype.Service;
@@ -27,12 +24,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
 
-    private static final Color CHARCOAL = new Color(46, 42, 39);
-    private static final Color TERRACOTTA = new Color(184, 92, 74);
-    private static final Color GOLD = new Color(201, 162, 39);
-    private static final Color BLUSH = new Color(243, 225, 220);
+    private static final String WEDDING_COUPLE_TITLE = "José Carlos e Paula";
+    private static final String RAFFLE_TITLE = "Presente Premiado";
+    private static final Color IVORY = new Color(247, 241, 230);
+    private static final Color IVORY_DEEP = new Color(240, 232, 216);
+    private static final Color CHARCOAL = new Color(43, 36, 25);
+    private static final Color WARM_GRAY = new Color(91, 81, 64);
+    private static final Color GREEN = new Color(36, 64, 46);
+    private static final Color GREEN_DEEP = new Color(21, 42, 29);
+    private static final Color WINE = new Color(122, 46, 51);
+    private static final Color GOLD = new Color(184, 147, 90);
     private static final float PAGE_MARGIN = 48;
-    private static final float HEADER_HEIGHT = 92;
+    private static final float HEADER_HEIGHT = 112;
     private static final float FOOTER_HEIGHT = 44;
     private static final float CONTENT_BOTTOM = FOOTER_HEIGHT + 20;
     private static final int NUMBER_COLUMNS = 4;
@@ -74,11 +77,9 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             PDFont titleFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
             PDFont numberFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
             PDFont textFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-            PDFont emojiFont = loadEmojiFont(document);
 
             PdfPage currentPage = createPage(document, 1, titleFont, textFont, false);
-            float y = writeTransactionDetails(
-                    currentPage.content(), titleFont, textFont, emojiFont, transaction, luckyNumbers.size());
+            float y = writeTransactionDetails(currentPage.content(), titleFont, textFont, transaction, luckyNumbers.size());
             y = writeNumbersSectionHeader(currentPage.content(), titleFont, textFont, y, luckyNumbers.size(), false);
             float numberCardWidth =
                     (PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2) - (NUMBER_GAP * (NUMBER_COLUMNS - 1)))
@@ -123,19 +124,30 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         PDPageContentStream content = new PDPageContentStream(document, page);
         float pageHeight = page.getMediaBox().getHeight();
 
-        content.setNonStrokingColor(CHARCOAL);
+        content.setNonStrokingColor(IVORY);
+        content.addRect(0, 0, page.getMediaBox().getWidth(), pageHeight);
+        content.fill();
+
+        content.setNonStrokingColor(GREEN);
         content.addRect(0, pageHeight - HEADER_HEIGHT, page.getMediaBox().getWidth(), HEADER_HEIGHT);
         content.fill();
 
-        writeLine(content, titleFont, 24, PAGE_MARGIN, pageHeight - 42, "Presente Premiado", GOLD);
+        content.setStrokingColor(GOLD);
+        content.setLineWidth(1.2f);
+        content.moveTo(PAGE_MARGIN, pageHeight - HEADER_HEIGHT + 18);
+        content.lineTo(page.getMediaBox().getWidth() - PAGE_MARGIN, pageHeight - HEADER_HEIGHT + 18);
+        content.stroke();
+
+        writeLine(content, titleFont, 26, PAGE_MARGIN, pageHeight - 42, WEDDING_COUPLE_TITLE, GOLD);
+        writeLine(content, titleFont, 18, PAGE_MARGIN, pageHeight - 68, RAFFLE_TITLE, Color.WHITE);
         writeLine(
                 content,
                 textFont,
                 10,
                 PAGE_MARGIN,
-                pageHeight - 66,
+                pageHeight - 92,
                 isContinuation ? "Números da sorte - continuação" : "Números da sorte",
-                Color.WHITE);
+                IVORY_DEEP);
         return new PdfPage(content, pageNumber);
     }
 
@@ -143,7 +155,6 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             PDPageContentStream content,
             PDFont titleFont,
             PDFont textFont,
-            PDFont emojiFont,
             Transaction transaction,
             int luckyNumberCount)
             throws IOException {
@@ -162,7 +173,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         y -= 8;
 
         if (transaction.getParticipantFlagName() != null) {
-            writeParticipantFlag(content, textFont, emojiFont, transaction, (int) PAGE_MARGIN, (int) y);
+            writeParticipantFlag(content, textFont, transaction, (int) PAGE_MARGIN, (int) y);
             y -= 26;
         }
 
@@ -172,7 +183,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         y -= 28;
 
         String summary = luckyNumberCount == 1 ? "1 número gerado" : luckyNumberCount + " números gerados";
-        writeLine(content, textFont, 11, PAGE_MARGIN, y, summary, TERRACOTTA);
+        writeLine(content, textFont, 11, PAGE_MARGIN, y, summary, WINE);
         return y - 30;
     }
 
@@ -200,7 +211,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 PAGE_MARGIN,
                 y,
                 "Comprovante com " + luckyNumberCount + " número(s) desta compra.",
-                TERRACOTTA);
+                WARM_GRAY);
         return y - 18;
     }
 
@@ -239,16 +250,16 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             throws IOException {
         float cardY = y - NUMBER_CARD_HEIGHT;
 
-        content.setNonStrokingColor(BLUSH);
+        content.setNonStrokingColor(IVORY_DEEP);
         addRoundedRectangle(content, x, cardY, width, NUMBER_CARD_HEIGHT, NUMBER_CARD_RADIUS);
         content.fill();
 
-        content.setStrokingColor(TERRACOTTA);
+        content.setStrokingColor(GOLD);
         addRoundedRectangle(content, x, cardY, width, NUMBER_CARD_HEIGHT, NUMBER_CARD_RADIUS);
         content.stroke();
 
         float textWidth = numberFont.getStringWidth(luckyNumber) / 1000 * 14;
-        writeLine(content, numberFont, 14, x + ((width - textWidth) / 2), y - 22, luckyNumber, CHARCOAL);
+        writeLine(content, numberFont, 14, x + ((width - textWidth) / 2), y - 22, luckyNumber, GREEN_DEEP);
     }
 
     private static void addRoundedRectangle(
@@ -270,7 +281,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static void closePage(PdfPage page, PDFont textFont) throws IOException {
-        writeLine(page.content(), textFont, 9, PAGE_MARGIN, FOOTER_HEIGHT - 10, "Boa sorte no sorteio!", TERRACOTTA);
+        writeLine(page.content(), textFont, 9, PAGE_MARGIN, FOOTER_HEIGHT - 10, "Boa sorte no sorteio!", WINE);
         String pageText = "Página " + page.number();
         float pageTextWidth = textFont.getStringWidth(pageText) / 1000 * 9;
         writeLine(
@@ -302,47 +313,14 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         }
     }
 
-    private static PDFont loadEmojiFont(PDDocument document) {
-        List<Path> candidates = List.of(
-                Path.of("C:\\Windows\\Fonts\\seguiemj.ttf"),
-                Path.of("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
-                Path.of("/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf"));
-
-        for (Path candidate : candidates) {
-            if (Files.exists(candidate)) {
-                try {
-                    return PDType0Font.load(document, candidate.toFile());
-                } catch (IOException | RuntimeException ignored) {
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
-
     private static void writeParticipantFlag(
-            PDPageContentStream content, PDFont textFont, PDFont emojiFont, Transaction transaction, int x, int y)
+            PDPageContentStream content, PDFont textFont, Transaction transaction, int x, int y)
             throws IOException {
         if (transaction.getParticipantFlagName() == null) {
             return;
         }
 
-        writeLine(content, textFont, 12, x, y, "Sua bandeira:", CHARCOAL);
-        if (emojiFont == null) {
-            writeLine(content, textFont, 12, x + 95, y, transaction.getParticipantFlagName(), CHARCOAL);
-            return;
-        }
-
-        try {
-            if (transaction.getParticipantFlagEmoji() != null) {
-                writeLine(content, emojiFont, 14, x + 95, y, transaction.getParticipantFlagEmoji(), CHARCOAL);
-                writeLine(content, textFont, 12, x + 125, y, transaction.getParticipantFlagName(), CHARCOAL);
-                return;
-            }
-        } catch (IOException | RuntimeException exception) {
-            // Falls back to the flag name when the local PDF font cannot render the emoji glyph.
-        }
-        writeLine(content, textFont, 12, x + 95, y, transaction.getParticipantFlagName(), CHARCOAL);
+        writeLine(content, textFont, 12, x, y, "Sua bandeira: " + transaction.getParticipantFlagName(), CHARCOAL);
     }
 
     private record PdfPage(PDPageContentStream content, int number) {}

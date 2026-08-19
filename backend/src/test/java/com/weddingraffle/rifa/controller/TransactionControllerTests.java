@@ -121,7 +121,11 @@ class TransactionControllerTests {
         mockMvc.perform(get("/transactions/external-reference-123/lucky-numbers.pdf"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
-                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")));
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
+                .andExpect(header()
+                        .string(
+                                "Content-Disposition",
+                                org.hamcrest.Matchers.containsString("Numeros_da_sorte_external.pdf")));
     }
 
     @Test

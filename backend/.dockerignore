@@ -1,0 +1,9 @@
+.env
+.env.*
+.git
+.github
+.mvn
+target
+*.log
+ngrok.yml
+ngrok.log

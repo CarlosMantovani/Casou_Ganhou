@@ -37,6 +37,7 @@ vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
     deleteCashTransaction: vi.fn(),
+    getSummary: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -104,6 +105,7 @@ describe('App', () => {
     );
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: null,
+      raffleResult: null,
       flagRanking: [
         {
           code: 'BRAZIL',
@@ -134,6 +136,11 @@ describe('App', () => {
       size: 20,
       totalElements: 1,
       totalPages: 1,
+    });
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 2,
+      approvedRevenue: '20.00',
+      totalTransactions: 1,
     });
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
@@ -171,15 +178,18 @@ describe('App', () => {
     renderApp();
 
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
-    expect(screen.getByText(/primeiro lugar também ganhará um prêmio/i)).toBeInTheDocument();
-    expect(await screen.findByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
+    expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
+    expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
+    expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
+    expect(await screen.findAllByText('Brasil')).toHaveLength(2);
+    expect(screen.getAllByRole('img', { name: '🇧🇷' })).toHaveLength(2);
+    expect(screen.getAllByText('12')).toHaveLength(2);
   });
 
   it('renders the public countdown when scheduled draw date is configured', async () => {
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: null,
       flagRanking: [],
     });
 
@@ -205,6 +215,63 @@ describe('App', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('shows draw closed and blocks public purchase when scheduled draw has passed', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-08-01T02:00:00Z',
+      raffleResult: null,
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findAllByText('Sorteio encerrado')).toHaveLength(2);
+    expect(screen.getByText('Sorteio encerrado. Não é mais possível comprar números.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continuar' })).not.toBeInTheDocument();
+    expect(mockedTransactionService.quote).not.toHaveBeenCalled();
+  });
+
+  it('renders the raffle winner on the purchase page when result exists', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-08-01T02:00:00Z',
+      raffleResult: {
+        drawnAt: '2026-08-01T03:00:00Z',
+        participantFlagEmoji: '🇧🇷',
+        participantFlagName: 'Brasil',
+        winnerName: 'Winner Guest',
+        winningNumber: '00042',
+      },
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Número ganhador')).toBeInTheDocument();
+    expect(screen.getByText('00042')).toBeInTheDocument();
+    expect(screen.getByText('Winner Guest')).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
+  });
+
+  it('does not render the raffle winner before the scheduled draw is closed', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: {
+        drawnAt: '2026-08-01T03:00:00Z',
+        participantFlagEmoji: '🇧🇷',
+        participantFlagName: 'Brasil',
+        winnerName: 'Winner Guest',
+        winningNumber: '00042',
+      },
+      flagRanking: [],
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
+    expect(screen.queryByText('Número ganhador')).not.toBeInTheDocument();
+    expect(screen.queryByText('00042')).not.toBeInTheDocument();
   });
 
   it('requires name and phone before the quantity step', async () => {
@@ -388,6 +455,8 @@ describe('App', () => {
 
     renderApp('/admin');
 
+    await user.click(await screen.findByRole('button', { name: 'Mostrar valores' }));
+
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
@@ -399,6 +468,35 @@ describe('App', () => {
     await waitFor(() =>
       expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
     );
+  });
+
+  it('shows global admin metrics and toggles their visibility', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 99,
+      approvedRevenue: '990.00',
+      totalTransactions: 42,
+    });
+
+    renderApp('/admin');
+
+    expect(await screen.findByText('00001')).toBeInTheDocument();
+    expect((await screen.findAllByText('****')).length).toBeGreaterThanOrEqual(7);
+    expect(screen.queryByText('Guest User')).not.toBeInTheDocument();
+    expect(screen.queryByText('(11) 99999-9999')).not.toBeInTheDocument();
+    expect(screen.queryByText('R$ 20,00')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar valores' }));
+
+    expect(await screen.findByText('42')).toBeInTheDocument();
+    expect(screen.getByText('99')).toBeInTheDocument();
+    expect(screen.getByText('R$ 990,00')).toBeInTheDocument();
+    expect(screen.getByText('Guest User')).toBeInTheDocument();
+    expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
+    expect(screen.getByText('R$ 20,00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocultar valores' })).toBeInTheDocument();
   });
 
   it('expands and collapses transaction lucky numbers above the initial limit', async () => {
@@ -430,7 +528,7 @@ describe('App', () => {
 
     renderApp('/admin');
 
-    const transactionRow = await screen.findByRole('button', { name: /Guest User/ });
+    const transactionRow = await screen.findByRole('button', { name: /00008/ });
     expect(screen.getByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
 
@@ -459,7 +557,7 @@ describe('App', () => {
           paymentMethod: 'CASH',
           phone: '11999999999',
           quantity: 1,
-          status: 'APPROVED',
+          status: 'APROVADO',
           totalAmount: '10.00',
         },
       ],
@@ -475,9 +573,9 @@ describe('App', () => {
     try {
       renderApp('/admin');
 
-      await user.click(await screen.findByRole('button', { name: 'Excluir transacao de Cash Guest' }));
+      await user.click(await screen.findByRole('button', { name: 'Excluir transação' }));
 
-      expect(confirm).toHaveBeenCalledWith('Excluir a transacao em dinheiro de Cash Guest?');
+      expect(confirm).toHaveBeenCalledWith('Excluir esta transação em dinheiro?');
       await waitFor(() =>
         expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
       );

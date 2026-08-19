@@ -1,5 +1,10 @@
 import { apiClient } from '../config/apiClient';
-import type { AdminTransactionResponse, CashTransactionCreateRequest, CashTransactionCreateResponse } from '../types/admin';
+import type {
+  AdminTransactionResponse,
+  AdminTransactionSummaryResponse,
+  CashTransactionCreateRequest,
+  CashTransactionCreateResponse,
+} from '../types/admin';
 import type { PageResponse } from '../types/page';
 
 export interface AdminTransactionListParams {
@@ -9,6 +14,11 @@ export interface AdminTransactionListParams {
 }
 
 export const adminTransactionService = {
+  async getSummary(): Promise<AdminTransactionSummaryResponse> {
+    const response = await apiClient.get<AdminTransactionSummaryResponse>('/transactions/summary');
+    return response.data;
+  },
+
   async list(params: AdminTransactionListParams): Promise<PageResponse<AdminTransactionResponse>> {
     const response = await apiClient.get<PageResponse<AdminTransactionResponse>>('/transactions', {
       params: {

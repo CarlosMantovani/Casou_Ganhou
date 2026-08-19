@@ -1,14 +1,15 @@
 package com.weddingraffle.rifa.service.impl;
 
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
-import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
@@ -61,6 +62,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionQuoteResponse quote(TransactionQuoteRequest request) {
+        ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
@@ -72,6 +74,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransactionCreateResponse create(TransactionCreateRequest request) {
+        ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
@@ -176,6 +179,12 @@ public class TransactionServiceImpl implements TransactionService {
             case "in_mediation" -> PaymentStatus.IN_MEDIATION;
             default -> PaymentStatus.PENDING;
         };
+    }
+
+    private void ensureDrawIsOpen() {
+        if (raffleConfigService.isDrawClosed()) {
+            throw new InvalidRaffleStateException("Draw is closed. No more numbers can be purchased.");
+        }
     }
 
     private void publishPaymentApprovedEvent(

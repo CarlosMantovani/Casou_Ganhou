@@ -1,19 +1,21 @@
 package com.weddingraffle.rifa.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
-import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
@@ -77,6 +79,23 @@ class TransactionServiceImplTests {
     }
 
     @Test
+    void quoteRejectsPurchaseAfterDrawIsClosed() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                raffleConfigService,
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                participantFlagService,
+                applicationEventPublisher);
+        when(raffleConfigService.isDrawClosed()).thenReturn(true);
+
+        assertThatThrownBy(() -> transactionService.quote(
+                        new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3)))
+                .isInstanceOf(InvalidRaffleStateException.class)
+                .hasMessage("Draw is closed. No more numbers can be purchased.");
+    }
+
+    @Test
     void createsPendingTransactionWithCheckoutPreference() {
         TransactionServiceImpl transactionService = new TransactionServiceImpl(
                 raffleConfigService,
@@ -120,6 +139,25 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagName()).isEqualTo("Brasil");
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
+    }
+
+    @Test
+    void createRejectsPurchaseAfterDrawIsClosed() {
+        TransactionServiceImpl transactionService = new TransactionServiceImpl(
+                raffleConfigService,
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                participantFlagService,
+                applicationEventPublisher);
+        when(raffleConfigService.isDrawClosed()).thenReturn(true);
+
+        assertThatThrownBy(() -> transactionService.create(
+                        new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2)))
+                .isInstanceOf(InvalidRaffleStateException.class)
+                .hasMessage("Draw is closed. No more numbers can be purchased.");
+        verify(paymentProviderClient, never()).createPreference(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test

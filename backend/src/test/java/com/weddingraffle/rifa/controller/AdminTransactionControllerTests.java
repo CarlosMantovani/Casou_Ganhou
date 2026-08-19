@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
@@ -50,6 +51,18 @@ class AdminTransactionControllerTests {
     @Test
     void listRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/transactions")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void summaryReturnsGlobalMetricsForAdmin() throws Exception {
+        when(adminTransactionService.getSummary())
+                .thenReturn(new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00")));
+
+        mockMvc.perform(get("/transactions/summary").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalTransactions").value(12))
+                .andExpect(jsonPath("$.approvedLuckyNumbers").value(48))
+                .andExpect(jsonPath("$.approvedRevenue").value(480.00));
     }
 
     @Test

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
@@ -13,7 +14,9 @@ import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
+import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
+import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
@@ -72,6 +75,31 @@ class AdminTransactionServiceImplTests {
     }
 
     @Test
+    void returnsGlobalTransactionSummary() {
+        AdminTransactionServiceImpl service = service();
+        AdminTransactionSummaryProjection summary = new AdminTransactionSummaryProjection() {
+            @Override
+            public long getTotalTransactions() {
+                return 12;
+            }
+
+            @Override
+            public long getApprovedLuckyNumbers() {
+                return 48;
+            }
+
+            @Override
+            public BigDecimal getApprovedRevenue() {
+                return new BigDecimal("480.00");
+            }
+        };
+        when(transactionRepository.getAdminSummary()).thenReturn(summary);
+
+        assertThat(service.getSummary())
+                .isEqualTo(new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00")));
+    }
+
+    @Test
     void filtersTransactionsByNameOrEmailWhenProvided() {
         AdminTransactionServiceImpl service = service();
         Transaction transaction =
@@ -117,6 +145,17 @@ class AdminTransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
+    }
+
+    @Test
+    void createCashTransactionRejectsPurchaseAfterDrawIsClosed() {
+        AdminTransactionServiceImpl service = service();
+        when(raffleConfigService.isDrawClosed()).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createCashTransaction(
+                        new CashTransactionCreateRequest("Guest User", "(11) 99999-9999", "GUEST@example.com", 2)))
+                .isInstanceOf(InvalidRaffleStateException.class)
+                .hasMessage("Draw is closed. No more numbers can be purchased.");
     }
 
     @Test

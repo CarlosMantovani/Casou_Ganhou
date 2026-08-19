@@ -1,12 +1,15 @@
 package com.weddingraffle.rifa.service;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface AdminTransactionService {
+
+    AdminTransactionSummaryResponse getSummary();
 
     Page<AdminTransactionResponse> list(String email, Pageable pageable);
 

@@ -30,6 +30,13 @@ public class RaffleConfigServiceImpl implements RaffleConfigService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean isDrawClosed() {
+        OffsetDateTime scheduledDrawAt = getCurrentConfig().getScheduledDrawAt();
+        return scheduledDrawAt != null && !scheduledDrawAt.isAfter(OffsetDateTime.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public RaffleConfigResponse getConfig() {
         return toResponse(getCurrentConfig());
     }

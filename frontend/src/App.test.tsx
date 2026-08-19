@@ -197,6 +197,11 @@ describe('App', () => {
   });
 
   it('renders the top thirty flag ranking page', async () => {
+    mockedHomeService.getSummary.mockResolvedValue({
+      scheduledDrawAt: '2026-09-06T02:00:00Z',
+      raffleResult: null,
+      flagRanking: [],
+    });
     mockedHomeService.getFlagRanking.mockResolvedValue(
       Array.from({ length: 30 }, (_, index) => ({
         code: `FLAG_${index + 1}`,
@@ -209,6 +214,7 @@ describe('App', () => {
     renderApp('/flag-ranking');
 
     expect(await screen.findByText('Top 30 bandeiras')).toBeInTheDocument();
+    expect(await screen.findByText('Contagem para o sorteio')).toBeInTheDocument();
     expect(screen.getByText('Atualiza a cada 5 minutos')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/');
     expect((await screen.findAllByText('Bandeira 30')).length).toBeGreaterThan(0);

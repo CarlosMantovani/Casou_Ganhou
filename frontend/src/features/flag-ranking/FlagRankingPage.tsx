@@ -4,11 +4,16 @@ import { ArrowLeft, RefreshCw, Trophy } from 'lucide-react';
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { Card } from '../../components/ui/Card';
 import { homeService } from '../../services/homeService';
+import { CountdownPanel } from '../buy-numbers/CountdownPanel';
 import { FlagRankingList } from './FlagRankingList';
 
 const FLAG_RANKING_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export function FlagRankingPage() {
+  const homeSummaryQuery = useQuery({
+    queryKey: ['home-summary'],
+    queryFn: homeService.getSummary,
+  });
   const flagRankingQuery = useQuery({
     queryKey: ['flag-ranking', 'top-30'],
     queryFn: homeService.getFlagRanking,
@@ -35,6 +40,8 @@ export function FlagRankingPage() {
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           Voltar
         </a>
+
+        <CountdownPanel scheduledDrawAt={homeSummaryQuery.data?.scheduledDrawAt ?? null} />
 
         <Card className="bg-white/90">
           <div className="space-y-5">

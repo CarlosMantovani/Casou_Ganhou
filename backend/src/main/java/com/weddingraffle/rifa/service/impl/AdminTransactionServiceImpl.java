@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
@@ -11,6 +12,7 @@ import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
+import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -55,6 +57,14 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
         this.applicationEventPublisher = applicationEventPublisher;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminTransactionSummaryResponse getSummary() {
+        AdminTransactionSummaryProjection summary = transactionRepository.getAdminSummary();
+        return new AdminTransactionSummaryResponse(
+                summary.getTotalTransactions(), summary.getApprovedLuckyNumbers(), summary.getApprovedRevenue());
     }
 
     @Override

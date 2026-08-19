@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, Eye, EyeOff, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
-import type { AdminTransactionResponse } from '../../types/admin';
+import type { AdminTransactionResponse, AdminTransactionSummaryResponse } from '../../types/admin';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { formatPhoneNumber } from '../../utils/phone';
 import { useAuth } from './AuthContext';
@@ -20,27 +20,26 @@ export function AdminDashboardPage() {
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
+  const [areMetricsVisible, setAreMetricsVisible] = useState(false);
 
   const transactionsQuery = useQuery({
     queryKey: ['admin-transactions', submittedQueryFilter, page],
     queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE }),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ['admin-transaction-summary'],
+    queryFn: () => adminTransactionService.getSummary(),
   });
   const deleteCashTransactionMutation = useMutation({
     mutationFn: (externalReference: string) =>
       adminTransactionService.deleteCashTransaction(externalReference),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-transaction-summary'] });
     },
   });
 
   const transactions = transactionsQuery.data?.content ?? EMPTY_TRANSACTIONS;
-  const approvedTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.status === 'APROVADO'),
-    [transactions],
-  );
-  const soldNumbersCount = approvedTransactions.reduce((total, transaction) => total + transaction.luckyNumbers.length, 0);
-  const approvedAmount = approvedTransactions.reduce((total, transaction) => total + Number(transaction.totalAmount), 0);
-
   const submitFilter = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPage(0);
@@ -92,11 +91,7 @@ export function AdminDashboardPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 py-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Transações nesta página" value={String(transactions.length)} />
-          <MetricCard label="Números aprovados nesta página" value={String(soldNumbersCount)} />
-          <MetricCard label="Receita aprovada nesta página" value={formatCurrency(approvedAmount)} />
-        </div>
+        <MetricsSummary areValuesVisible={areMetricsVisible} onToggleVisibility={() => setAreMetricsVisible((current) => !current)} summary={summaryQuery.data} />
 
         <Card className="mt-6 overflow-hidden">
           <form className="mb-6 flex flex-col gap-3 md:flex-row md:items-end" onSubmit={submitFilter}>
@@ -131,10 +126,15 @@ export function AdminDashboardPage() {
 
           {transactions.length > 0 ? (
             <TransactionTable
+              areSensitiveValuesVisible={areMetricsVisible}
               deletingExternalReference={deleteCashTransactionMutation.variables ?? null}
               isDeleting={deleteCashTransactionMutation.isPending}
               onDeleteCashTransaction={(transaction) => {
-                const confirmed = window.confirm(`Excluir a transação em dinheiro de ${transaction.name}?`);
+                const confirmed = window.confirm(
+                  areMetricsVisible
+                    ? `Excluir a transação em dinheiro de ${transaction.name}?`
+                    : 'Excluir esta transação em dinheiro?',
+                );
                 if (confirmed) {
                   deleteCashTransactionMutation.mutate(transaction.externalReference);
                 }
@@ -174,21 +174,57 @@ export function AdminDashboardPage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricsSummary({
+  areValuesVisible,
+  onToggleVisibility,
+  summary,
+}: {
+  areValuesVisible: boolean;
+  onToggleVisibility: () => void;
+  summary?: AdminTransactionSummaryResponse;
+}) {
+  const values = [
+    { label: 'Transações', value: String(summary?.totalTransactions ?? 0) },
+    { label: 'Números aprovados', value: String(summary?.approvedLuckyNumbers ?? 0) },
+    { label: 'Receita aprovada', value: formatCurrency(summary?.approvedRevenue ?? 0) },
+  ];
+
   return (
-    <Card className="text-center">
-      <p className="text-xs font-bold uppercase tracking-wide text-warm-gray">{label}</p>
-      <p className="mt-3 font-serif text-3xl font-bold text-charcoal">{value}</p>
-    </Card>
+    <section aria-label="Resumo geral" className="overflow-hidden rounded-lg bg-white shadow-soft">
+      <div className="flex items-center justify-between border-b border-[#EEE6DF] px-4 py-3 sm:px-6">
+        <p className="text-sm font-bold text-charcoal">Resumo geral</p>
+        <button
+          aria-label={areValuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-warm-gray transition hover:bg-cream hover:text-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-terracotta"
+          onClick={onToggleVisibility}
+          title={areValuesVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          type="button"
+        >
+          {areValuesVisible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+        </button>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-[#EEE6DF]">
+        {values.map((metric) => (
+          <div className="flex min-w-0 flex-col items-center px-2 py-4 text-center sm:px-5 sm:py-5" key={metric.label}>
+            <p className="flex min-h-8 items-center text-[10px] font-bold uppercase tracking-wide text-warm-gray sm:text-xs">{metric.label}</p>
+            <p className="mt-2 break-words font-serif text-lg font-bold tabular-nums text-charcoal sm:text-2xl" aria-live="polite">
+              {areValuesVisible ? metric.value : '****'}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function TransactionTable({
+  areSensitiveValuesVisible,
   deletingExternalReference,
   isDeleting,
   onDeleteCashTransaction,
   transactions,
 }: {
+  areSensitiveValuesVisible: boolean;
   deletingExternalReference: string | null;
   isDeleting: boolean;
   onDeleteCashTransaction: (transaction: AdminTransactionResponse) => void;
@@ -231,6 +267,7 @@ function TransactionTable({
             const hasMoreLuckyNumbers = transaction.luckyNumbers.length > 8;
             const isExpanded = expandedTransactions.has(transaction.externalReference);
             const displayedLuckyNumbers = isExpanded ? transaction.luckyNumbers : transaction.luckyNumbers.slice(0, 8);
+            const maskedValue = '****';
 
             return (
             <tr
@@ -251,15 +288,15 @@ function TransactionTable({
               role={hasMoreLuckyNumbers ? 'button' : undefined}
               tabIndex={hasMoreLuckyNumbers ? 0 : undefined}
             >
-              <td className="px-3 py-4 font-medium text-charcoal">{transaction.name}</td>
+              <td className="px-3 py-4 font-medium text-charcoal">{areSensitiveValuesVisible ? transaction.name : maskedValue}</td>
               <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">
-                <span className="block">{formatPhoneNumber(transaction.phone) || '-'}</span>
-                <span className="block text-xs">{transaction.email || '-'}</span>
+                <span className="block">{areSensitiveValuesVisible ? formatPhoneNumber(transaction.phone) || '-' : maskedValue}</span>
+                <span className="block text-xs">{areSensitiveValuesVisible ? transaction.email || '-' : maskedValue}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
-              <td className="px-3 py-4 text-warm-gray">{transaction.quantity}</td>
-              <td className="px-3 py-4 text-warm-gray">{formatCurrency(transaction.totalAmount)}</td>
+              <td className="px-3 py-4 text-warm-gray">{areSensitiveValuesVisible ? transaction.quantity : maskedValue}</td>
+              <td className="px-3 py-4 text-warm-gray">{areSensitiveValuesVisible ? formatCurrency(transaction.totalAmount) : maskedValue}</td>
               <td className="px-3 py-4">
                 <StatusBadge status={transaction.status} />
               </td>
@@ -289,7 +326,9 @@ function TransactionTable({
               <td className="px-3 py-4 text-right">
                 {transaction.paymentMethod === 'CASH' ? (
                   <button
-                    aria-label={`Excluir transação de ${transaction.name}`}
+                    aria-label={
+                      areSensitiveValuesVisible ? `Excluir transação de ${transaction.name}` : 'Excluir transação'
+                    }
                     className="inline-flex min-h-9 items-center justify-center rounded-lg border border-terracotta/30 px-3 py-2 text-xs font-bold text-terracotta-dark transition hover:bg-blush disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={isDeleting && deletingExternalReference === transaction.externalReference}
                     onClick={(event) => {

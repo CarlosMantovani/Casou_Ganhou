@@ -10,6 +10,20 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
+    @Query(
+            value =
+                    """
+                    select
+                        cast(count(id) as bigint) as "totalTransactions",
+                        cast(coalesce(sum(case when status = 'APPROVED' then quantity else 0 end), 0) as bigint)
+                            as "approvedLuckyNumbers",
+                        coalesce(sum(case when status = 'APPROVED' then total_amount else 0 end), 0)
+                            as "approvedRevenue"
+                    from transaction
+                    """,
+            nativeQuery = true)
+    AdminTransactionSummaryProjection getAdminSummary();
+
     Optional<Transaction> findByExternalReference(String externalReference);
 
     Optional<Transaction> findFirstByPhoneOrderByCreatedAtAsc(String phone);

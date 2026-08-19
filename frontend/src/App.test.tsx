@@ -37,6 +37,7 @@ vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
     deleteCashTransaction: vi.fn(),
+    getSummary: vi.fn(),
     list: vi.fn(),
   },
 }));
@@ -135,6 +136,11 @@ describe('App', () => {
       size: 20,
       totalElements: 1,
       totalPages: 1,
+    });
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 2,
+      approvedRevenue: '20.00',
+      totalTransactions: 1,
     });
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
@@ -449,6 +455,8 @@ describe('App', () => {
 
     renderApp('/admin');
 
+    await user.click(await screen.findByRole('button', { name: 'Mostrar valores' }));
+
     expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
@@ -460,6 +468,35 @@ describe('App', () => {
     await waitFor(() =>
       expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
     );
+  });
+
+  it('shows global admin metrics and toggles their visibility', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.getSummary.mockResolvedValue({
+      approvedLuckyNumbers: 99,
+      approvedRevenue: '990.00',
+      totalTransactions: 42,
+    });
+
+    renderApp('/admin');
+
+    expect(await screen.findByText('00001')).toBeInTheDocument();
+    expect((await screen.findAllByText('****')).length).toBeGreaterThanOrEqual(7);
+    expect(screen.queryByText('Guest User')).not.toBeInTheDocument();
+    expect(screen.queryByText('(11) 99999-9999')).not.toBeInTheDocument();
+    expect(screen.queryByText('R$ 20,00')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mostrar valores' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar valores' }));
+
+    expect(await screen.findByText('42')).toBeInTheDocument();
+    expect(screen.getByText('99')).toBeInTheDocument();
+    expect(screen.getByText('R$ 990,00')).toBeInTheDocument();
+    expect(screen.getByText('Guest User')).toBeInTheDocument();
+    expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
+    expect(screen.getByText('R$ 20,00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocultar valores' })).toBeInTheDocument();
   });
 
   it('expands and collapses transaction lucky numbers above the initial limit', async () => {
@@ -491,7 +528,7 @@ describe('App', () => {
 
     renderApp('/admin');
 
-    const transactionRow = await screen.findByRole('button', { name: /Guest User/ });
+    const transactionRow = await screen.findByRole('button', { name: /00008/ });
     expect(screen.getByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
 
@@ -536,9 +573,9 @@ describe('App', () => {
     try {
       renderApp('/admin');
 
-      await user.click(await screen.findByRole('button', { name: 'Excluir transação de Cash Guest' }));
+      await user.click(await screen.findByRole('button', { name: 'Excluir transação' }));
 
-      expect(confirm).toHaveBeenCalledWith('Excluir a transação em dinheiro de Cash Guest?');
+      expect(confirm).toHaveBeenCalledWith('Excluir esta transação em dinheiro?');
       await waitFor(() =>
         expect(mockedAdminTransactionService.deleteCashTransaction).toHaveBeenCalledWith('cash-reference'),
       );

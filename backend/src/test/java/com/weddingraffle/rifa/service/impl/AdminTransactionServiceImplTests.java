@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.LuckyNumber;
@@ -15,6 +16,7 @@ import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
+import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
@@ -70,6 +72,31 @@ class AdminTransactionServiceImplTests {
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.getContent().getFirst().externalReference()).isEqualTo("external");
         assertThat(response.getContent().getFirst().luckyNumbers()).containsExactly("00001", "00002");
+    }
+
+    @Test
+    void returnsGlobalTransactionSummary() {
+        AdminTransactionServiceImpl service = service();
+        AdminTransactionSummaryProjection summary = new AdminTransactionSummaryProjection() {
+            @Override
+            public long getTotalTransactions() {
+                return 12;
+            }
+
+            @Override
+            public long getApprovedLuckyNumbers() {
+                return 48;
+            }
+
+            @Override
+            public BigDecimal getApprovedRevenue() {
+                return new BigDecimal("480.00");
+            }
+        };
+        when(transactionRepository.getAdminSummary()).thenReturn(summary);
+
+        assertThat(service.getSummary())
+                .isEqualTo(new AdminTransactionSummaryResponse(12, 48, new BigDecimal("480.00")));
     }
 
     @Test

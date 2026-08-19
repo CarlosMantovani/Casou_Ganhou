@@ -16,11 +16,11 @@ import java.util.List;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,11 +77,12 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             PDFont emojiFont = loadEmojiFont(document);
 
             PdfPage currentPage = createPage(document, 1, titleFont, textFont, false);
-            float y =
-                    writeTransactionDetails(currentPage.content(), titleFont, textFont, emojiFont, transaction, luckyNumbers.size());
+            float y = writeTransactionDetails(
+                    currentPage.content(), titleFont, textFont, emojiFont, transaction, luckyNumbers.size());
             y = writeNumbersSectionHeader(currentPage.content(), titleFont, textFont, y, luckyNumbers.size(), false);
-            float numberCardWidth = (PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2) - (NUMBER_GAP * (NUMBER_COLUMNS - 1)))
-                    / NUMBER_COLUMNS;
+            float numberCardWidth =
+                    (PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2) - (NUMBER_GAP * (NUMBER_COLUMNS - 1)))
+                            / NUMBER_COLUMNS;
 
             for (int index = 0; index < luckyNumbers.size(); index++) {
                 if (y - NUMBER_CARD_HEIGHT < CONTENT_BOTTOM) {
@@ -115,7 +116,8 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static PdfPage createPage(
-            PDDocument document, int pageNumber, PDFont titleFont, PDFont textFont, boolean isContinuation) throws IOException {
+            PDDocument document, int pageNumber, PDFont titleFont, PDFont textFont, boolean isContinuation)
+            throws IOException {
         PDPage page = new PDPage(PDRectangle.A4);
         document.addPage(page);
         PDPageContentStream content = new PDPageContentStream(document, page);
@@ -233,7 +235,8 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static void drawNumberCard(
-            PDPageContentStream content, PDFont numberFont, float x, float y, float width, String luckyNumber) throws IOException {
+            PDPageContentStream content, PDFont numberFont, float x, float y, float width, String luckyNumber)
+            throws IOException {
         float cardY = y - NUMBER_CARD_HEIGHT;
 
         content.setNonStrokingColor(BLUSH);
@@ -267,14 +270,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static void closePage(PdfPage page, PDFont textFont) throws IOException {
-        writeLine(
-                page.content(),
-                textFont,
-                9,
-                PAGE_MARGIN,
-                FOOTER_HEIGHT - 10,
-                "Boa sorte no sorteio!",
-                TERRACOTTA);
+        writeLine(page.content(), textFont, 9, PAGE_MARGIN, FOOTER_HEIGHT - 10, "Boa sorte no sorteio!", TERRACOTTA);
         String pageText = "Página " + page.number();
         float pageTextWidth = textFont.getStringWidth(pageText) / 1000 * 9;
         writeLine(
@@ -288,7 +284,8 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         page.content().close();
     }
 
-    private static void writeLine(PDPageContentStream content, PDFont font, int fontSize, float x, float y, String text, Color color)
+    private static void writeLine(
+            PDPageContentStream content, PDFont font, int fontSize, float x, float y, String text, Color color)
             throws IOException {
         boolean textBlockStarted = false;
         content.beginText();

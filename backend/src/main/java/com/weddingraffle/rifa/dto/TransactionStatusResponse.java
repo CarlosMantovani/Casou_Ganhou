@@ -11,4 +11,6 @@ public record TransactionStatusResponse(
         BigDecimal totalAmount,
         String participantFlagName,
         String participantFlagEmoji,
-        List<String> luckyNumbers) {}
+        List<String> luckyNumbers,
+        List<String> previousLuckyNumbers,
+        Integer totalLuckyNumbers) {}

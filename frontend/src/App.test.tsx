@@ -379,6 +379,39 @@ describe('App', () => {
     expect(screen.getByText('Confirmação enviada por e-mail')).toBeInTheDocument();
   });
 
+  it('renders previous and current lucky numbers for repeat buyers', async () => {
+    mockedTransactionService.getStatus.mockResolvedValue({
+      externalReference: 'external-reference',
+      emailProvided: true,
+      luckyNumbers: ['00042', '12345'],
+      previousLuckyNumbers: ['00001', '00002'],
+      totalLuckyNumbers: 4,
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
+      quantity: 2,
+      status: 'APROVADO',
+      totalAmount: '20.00',
+    });
+
+    renderApp('/payment-return/success?external_reference=external-reference');
+
+    expect(await screen.findByText('Resumo dos seus números')).toBeInTheDocument();
+    expect(screen.getByText('Números adquiridos anteriormente:')).toBeInTheDocument();
+    expect(screen.getByText('Números adquiridos agora:')).toBeInTheDocument();
+    expect(screen.getByText('Total de números com esta compra:')).toBeInTheDocument();
+    const currentTitle = screen.getByRole('region', { name: 'Números adquiridos agora' });
+    const previousTitle = screen.getByRole('region', { name: 'Números adquiridos anteriormente' });
+    expect(
+      currentTitle.compareDocumentPosition(previousTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getAllByText('2', { selector: 'dd' })).toHaveLength(2);
+    expect(screen.getByText('4', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.getByText('00001')).toBeInTheDocument();
+    expect(screen.getByText('00002')).toBeInTheDocument();
+    expect(screen.getByText('00042')).toBeInTheDocument();
+    expect(screen.getByText('12345')).toBeInTheDocument();
+  });
+
   it('renders pdf download when approved payment has no email', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
@@ -595,9 +628,11 @@ describe('App', () => {
       name: 'Cash Guest',
       paymentMethod: 'CASH',
       phone: '11999999999',
+      previousLuckyNumbers: ['00090', '00091'],
       quantity: 1,
       status: 'APROVADO',
       totalAmount: '10.00',
+      totalLuckyNumbers: 12,
     });
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
       'http://localhost:8080/transactions/cash-reference/lucky-numbers.pdf',
@@ -620,8 +655,14 @@ describe('App', () => {
         quantity: 10,
       }),
     );
+    expect(await screen.findByText('Números adquiridos anteriormente:')).toBeInTheDocument();
+    expect(screen.getByText('Números adquiridos agora:')).toBeInTheDocument();
+    expect(screen.getByText('Total de números com esta compra:')).toBeInTheDocument();
+    expect(screen.getByText('12', { selector: 'dd' })).toBeInTheDocument();
     expect(await screen.findByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
+    expect(screen.getByText('00090')).toBeInTheDocument();
+    expect(screen.getByText('00091')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /00001/ }));
 

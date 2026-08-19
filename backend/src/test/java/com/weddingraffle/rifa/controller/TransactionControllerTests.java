@@ -139,12 +139,16 @@ class TransactionControllerTests {
                         new BigDecimal("20.00"),
                         "Brasil",
                         "🇧🇷",
-                        List.of("00001", "00002")));
+                        List.of("00001", "00002"),
+                        List.of("00099"),
+                        3));
 
         mockMvc.perform(get("/transactions/external-reference-123/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
-                .andExpect(jsonPath("$.status").value("APROVADO"));
+                .andExpect(jsonPath("$.status").value("APROVADO"))
+                .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00099"))
+                .andExpect(jsonPath("$.totalLuckyNumbers").value(3));
     }
 
     @TestConfiguration

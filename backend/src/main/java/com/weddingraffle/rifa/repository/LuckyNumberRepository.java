@@ -41,4 +41,18 @@ public interface LuckyNumberRepository extends JpaRepository<LuckyNumber, Long> 
             order by luckyNumber.number
             """)
     List<String> findNumbersByTransactionExternalReference(@Param("externalReference") String externalReference);
+
+    @Query(
+            """
+            select luckyNumber.number
+            from LuckyNumber luckyNumber
+            where luckyNumber.transaction.phone = :phone
+                and luckyNumber.transaction.status = :status
+                and luckyNumber.transaction.externalReference <> :externalReference
+            order by luckyNumber.number
+            """)
+    List<String> findNumbersByPhoneAndStatusExcludingExternalReference(
+            @Param("phone") String phone,
+            @Param("status") PaymentStatus status,
+            @Param("externalReference") String externalReference);
 }

@@ -46,6 +46,7 @@ class LuckyNumberPdfServiceImplTests {
         transaction.assignParticipantFlag(new ParticipantFlag("UY", "Uruguai", "🇺🇾"));
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
+        when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external")).thenReturn(List.of());
 
         byte[] pdf = service.generate("external");
 
@@ -66,6 +67,49 @@ class LuckyNumberPdfServiceImplTests {
     }
 
     @Test
+    void separatesPreviousAndCurrentLuckyNumbersForRepeatBuyer() throws IOException {
+        LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
+        Transaction transaction = new Transaction(
+                "Maria Convidada",
+                "11999999999",
+                "guest@example.com",
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.CASH,
+                "external");
+        when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
+        when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00003", "00004"));
+        when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external"))
+                .thenReturn(List.of("00001", "00002"));
+
+        byte[] pdf = service.generate("external");
+
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document);
+
+            assertThat(text)
+                    .contains(
+                            "Números adquiridos anteriormente: 2",
+                            "Números adquiridos agora: 2",
+                            "Total de números com esta compra: 4",
+                            "Números adquiridos anteriormente",
+                            "Números adquiridos agora",
+                            "00001",
+                            "00002",
+                            "00003",
+                            "00004");
+            assertThat(text).containsSubsequence("Números adquiridos agora", "00003", "Números adquiridos anteriormente", "00001");
+            assertThat(text)
+                    .doesNotContain(
+                            "Esta compra gerou",
+                            "Você já tinha",
+                            "Números adquiridos agora - continuação",
+                            "Números adquiridos anteriormente - continuação");
+        }
+    }
+
+    @Test
     void generatesMultiplePagesWithoutOmittingLuckyNumbers() throws IOException {
         LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
         Transaction transaction = new Transaction(
@@ -75,6 +119,7 @@ class LuckyNumberPdfServiceImplTests {
                 .toList();
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(luckyNumbers);
+        when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external")).thenReturn(List.of());
 
         byte[] pdf = service.generate("external");
 

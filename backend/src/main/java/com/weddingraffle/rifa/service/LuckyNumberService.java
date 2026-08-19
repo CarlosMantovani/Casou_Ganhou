@@ -9,4 +9,6 @@ public interface LuckyNumberService {
     List<LuckyNumber> generateFor(Transaction transaction);
 
     List<String> findNumbers(String externalReference);
+
+    List<String> findPreviousApprovedNumbers(String phone, String externalReference);
 }

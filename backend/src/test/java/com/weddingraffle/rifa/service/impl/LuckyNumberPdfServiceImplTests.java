@@ -56,7 +56,7 @@ class LuckyNumberPdfServiceImplTests {
 
             assertThat(text)
                     .contains(
-                            "José Carlos e Paula",
+                            "Paula e José Carlos",
                             "Presente Premiado",
                             "Obrigado pela sua contribuição, Maria Convidada.",
                             "Sua bandeira: Uruguai",

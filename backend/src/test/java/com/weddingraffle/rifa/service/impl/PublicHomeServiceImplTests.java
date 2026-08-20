@@ -36,18 +36,24 @@ class PublicHomeServiceImplTests {
     void returnsTopThirtyFlagRanking() {
         var pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         when(transactionRepository.findApprovedFlagRanking(pageableCaptor.capture()))
-                .thenReturn(List.of(flagRanking("BRAZIL", "Brasil", "BR", 12)));
+                .thenReturn(List.of(
+                        flagRanking("BRAZIL", "Brasil", "BR", 12), flagRanking("NICARAGUA", "Nicarágua", "NI", 8)));
+        when(transactionRepository.sumApprovedQuantity()).thenReturn(30L);
 
         var ranking = service().getFlagRanking();
 
-        assertThat(ranking).hasSize(1);
+        assertThat(ranking).hasSize(2);
         assertThat(ranking.getFirst().code()).isEqualTo("BRAZIL");
         assertThat(ranking.getFirst().name()).isEqualTo("Brasil");
         assertThat(ranking.getFirst().emoji()).isEqualTo("BR");
-        assertThat(ranking.getFirst().totalNumbers()).isEqualTo(12);
+        assertThat(ranking.getFirst().position()).isEqualTo(1);
+        assertThat(ranking.getFirst().progressPercent()).isEqualByComparingTo("40.00");
+        assertThat(ranking.get(1).position()).isEqualTo(2);
+        assertThat(ranking.get(1).progressPercent()).isEqualByComparingTo("26.67");
         assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(30);
         verify(transactionRepository).findApprovedFlagRanking(pageableCaptor.getValue());
+        verify(transactionRepository).sumApprovedQuantity();
     }
 
     private PublicHomeServiceImpl service() {

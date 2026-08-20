@@ -112,7 +112,8 @@ describe('App', () => {
           code: 'BRAZIL',
           emoji: '🇧🇷',
           name: 'Brasil',
-          totalNumbers: 12,
+          position: 1,
+          progressPercent: 100.0,
         },
       ],
     });
@@ -121,7 +122,8 @@ describe('App', () => {
         code: 'BRAZIL',
         emoji: '🇧🇷',
         name: 'Brasil',
-        totalNumbers: 12,
+        position: 1,
+        progressPercent: 100.0,
       },
     ]);
     mockedAdminTransactionService.list.mockResolvedValue({
@@ -192,7 +194,8 @@ describe('App', () => {
     expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
     expect(await screen.findAllByText('Brasil')).toHaveLength(2);
     expect(screen.getAllByRole('img', { name: '🇧🇷' })).toHaveLength(2);
-    expect(screen.getAllByText('12')).toHaveLength(2);
+    expect(screen.getAllByRole('progressbar', { name: 'Progresso relativo de Brasil' })).toHaveLength(2);
+    expect(screen.queryByText('12')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver top 30' })).toHaveAttribute('href', '/flag-ranking');
   });
 
@@ -207,7 +210,8 @@ describe('App', () => {
         code: `FLAG_${index + 1}`,
         emoji: '🇧🇷',
         name: `Bandeira ${index + 1}`,
-        totalNumbers: 30 - index,
+        position: index + 1,
+        progressPercent: Number((((30 - index) * 100) / 30).toFixed(2)),
       })),
     );
 
@@ -228,7 +232,8 @@ describe('App', () => {
         code: 'BRAZIL',
         emoji: '🇧🇷',
         name: 'Brasil',
-        totalNumbers: 12,
+        position: 1,
+        progressPercent: 100.0,
       },
     ]);
 

@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
 
-    private static final String WEDDING_COUPLE_TITLE = "José Carlos e Paula";
+    private static final String WEDDING_COUPLE_TITLE = "Paula e José Carlos";
     private static final String RAFFLE_TITLE = "Presente Premiado";
     private static final Color IVORY = new Color(247, 241, 230);
     private static final Color IVORY_DEEP = new Color(240, 232, 216);

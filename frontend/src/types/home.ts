@@ -2,7 +2,8 @@ export interface FlagRankingItem {
   code: string;
   name: string;
   emoji: string;
-  totalNumbers: number;
+  position: number;
+  progressPercent: number;
 }
 
 export interface HomeSummaryResponse {

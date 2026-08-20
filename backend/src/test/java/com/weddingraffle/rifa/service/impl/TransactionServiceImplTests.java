@@ -12,7 +12,9 @@ import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.dto.TransactionRecoveryRequest;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
+import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
@@ -23,8 +25,8 @@ import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
-import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.RaffleConfigService;
+import com.weddingraffle.rifa.service.RecoveryCodeService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +35,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceImplTests {
@@ -54,25 +55,18 @@ class TransactionServiceImplTests {
     private RaffleConfigService raffleConfigService;
 
     @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    private RecoveryCodeService recoveryCodeService;
 
     @Test
     void calculatesQuoteFromConfiguredUnitPrice() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
 
-        TransactionQuoteResponse response = transactionService.quote(
-                new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3));
+        TransactionQuoteResponse response =
+                transactionService.quote(new TransactionQuoteRequest("Guest User", "(11) 99999-9999", 3));
 
         assertThat(response.name()).isEqualTo("Guest User");
         assertThat(response.phone()).isEqualTo("11999999999");
-        assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.quantity()).isEqualTo(3);
         assertThat(response.unitPrice()).isEqualByComparingTo("10.00");
         assertThat(response.totalAmount()).isEqualByComparingTo("30.00");
@@ -80,40 +74,30 @@ class TransactionServiceImplTests {
 
     @Test
     void quoteRejectsPurchaseAfterDrawIsClosed() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.isDrawClosed()).thenReturn(true);
 
-        assertThatThrownBy(() -> transactionService.quote(
-                        new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3)))
+        assertThatThrownBy(
+                        () -> transactionService.quote(new TransactionQuoteRequest("Guest User", "(11) 99999-9999", 3)))
                 .isInstanceOf(InvalidRaffleStateException.class)
                 .hasMessage("Draw is closed. No more numbers can be purchased.");
     }
 
     @Test
     void createsPendingTransactionWithCheckoutPreference() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
         when(paymentProviderClient.createPreference(any()))
                 .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
         when(participantFlagService.resolveForPhone("11999999999"))
                 .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
+        when(recoveryCodeService.resolveForPhone("11999999999")).thenReturn("4821");
 
-        TransactionCreateResponse response = transactionService.create(
-                new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2));
+        TransactionCreateResponse response =
+                transactionService.create(new TransactionCreateRequest("Guest User", "(11) 99999-9999", 2));
 
         assertThat(response.externalReference()).isNotBlank();
+        assertThat(response.recoveryCode()).isEqualTo("4821");
         assertThat(response.preferenceId()).isEqualTo("preference-123");
         assertThat(response.checkoutUrl()).isEqualTo("https://checkout.example.com");
 
@@ -121,7 +105,7 @@ class TransactionServiceImplTests {
                 ArgumentCaptor.forClass(CheckoutPreferenceRequest.class);
         verify(paymentProviderClient).createPreference(preferenceCaptor.capture());
         assertThat(preferenceCaptor.getValue().name()).isEqualTo("Guest User");
-        assertThat(preferenceCaptor.getValue().email()).isEqualTo("guest@example.com");
+        assertThat(preferenceCaptor.getValue().email()).isNull();
         assertThat(preferenceCaptor.getValue().quantity()).isEqualTo(2);
         assertThat(preferenceCaptor.getValue().unitPrice()).isEqualByComparingTo("10.00");
         assertThat(preferenceCaptor.getValue().externalReference()).isEqualTo(response.externalReference());
@@ -131,10 +115,11 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(transactionCaptor.getValue().getName()).isEqualTo("Guest User");
         assertThat(transactionCaptor.getValue().getPhone()).isEqualTo("11999999999");
-        assertThat(transactionCaptor.getValue().getEmail()).isEqualTo("guest@example.com");
+        assertThat(transactionCaptor.getValue().getEmail()).isNull();
         assertThat(transactionCaptor.getValue().getQuantity()).isEqualTo(2);
         assertThat(transactionCaptor.getValue().getTotalAmount()).isEqualByComparingTo("20.00");
         assertThat(transactionCaptor.getValue().getExternalReference()).isEqualTo(response.externalReference());
+        assertThat(transactionCaptor.getValue().getRecoveryCode()).isEqualTo("4821");
         assertThat(transactionCaptor.getValue().getMpPreferenceId()).isEqualTo("preference-123");
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagName()).isEqualTo("Brasil");
@@ -143,17 +128,11 @@ class TransactionServiceImplTests {
 
     @Test
     void createRejectsPurchaseAfterDrawIsClosed() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.isDrawClosed()).thenReturn(true);
 
-        assertThatThrownBy(() -> transactionService.create(
-                        new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2)))
+        assertThatThrownBy(() ->
+                        transactionService.create(new TransactionCreateRequest("Guest User", "(11) 99999-9999", 2)))
                 .isInstanceOf(InvalidRaffleStateException.class)
                 .hasMessage("Draw is closed. No more numbers can be purchased.");
         verify(paymentProviderClient, never()).createPreference(any());
@@ -162,13 +141,7 @@ class TransactionServiceImplTests {
 
     @Test
     void processesApprovedPaymentNotification() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
         when(paymentProviderClient.getPayment("123"))
@@ -182,20 +155,11 @@ class TransactionServiceImplTests {
         assertThat(transaction.getMpPaymentId()).isEqualTo("123");
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
-        ArgumentCaptor<PaymentApprovedEvent> eventCaptor = ArgumentCaptor.forClass(PaymentApprovedEvent.class);
-        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().externalReference()).isEqualTo("external-reference-123");
     }
 
     @Test
     void processesRejectedPaymentNotificationWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
         when(paymentProviderClient.getPayment("123"))
@@ -208,18 +172,11 @@ class TransactionServiceImplTests {
         assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REJECTED);
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository).save(transaction);
-        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void ignoresDuplicateNotificationForApprovedTransaction() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
         transaction.markPayment(PaymentStatus.APPROVED, "123");
@@ -232,18 +189,11 @@ class TransactionServiceImplTests {
 
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository, never()).save(transaction);
-        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void updatesApprovedTransactionWhenPaymentIsRefundedWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
         transaction.markPayment(PaymentStatus.APPROVED, "123");
@@ -257,18 +207,11 @@ class TransactionServiceImplTests {
         assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
         verify(luckyNumberService, never()).generateFor(transaction);
         verify(transactionRepository).save(transaction);
-        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void mapsChargebackAndMediationStatusesWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction chargebackTransaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
         chargebackTransaction.markPayment(PaymentStatus.APPROVED, "123");
@@ -292,20 +235,14 @@ class TransactionServiceImplTests {
         verify(luckyNumberService, never()).generateFor(any());
         verify(transactionRepository).save(chargebackTransaction);
         verify(transactionRepository).save(mediationTransaction);
-        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void returnsCurrentStatusWithLuckyNumbers() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
+        transaction.assignRecoveryCode("4821");
         when(transactionRepository.findByExternalReference("external-reference-123"))
                 .thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
@@ -315,7 +252,7 @@ class TransactionServiceImplTests {
         var response = transactionService.getStatus("external-reference-123");
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
-        assertThat(response.emailProvided()).isTrue();
+        assertThat(response.recoveryCode()).isEqualTo("4821");
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
@@ -325,14 +262,8 @@ class TransactionServiceImplTests {
     }
 
     @Test
-    void statusFallbackPublishesEventWhenPaymentBecomesApproved() {
-        TransactionServiceImpl transactionService = new TransactionServiceImpl(
-                raffleConfigService,
-                transactionRepository,
-                paymentProviderClient,
-                luckyNumberService,
-                participantFlagService,
-                applicationEventPublisher);
+    void statusFallbackGeneratesLuckyNumbersWhenPaymentBecomesApproved() {
+        TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
         transaction.markPayment(PaymentStatus.PENDING, "123");
@@ -349,6 +280,43 @@ class TransactionServiceImplTests {
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
-        verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
+    }
+
+    @Test
+    void recoversTransactionByPhoneAndRecoveryCode() {
+        TransactionServiceImpl transactionService = transactionService();
+        Transaction transaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                null,
+                1,
+                new BigDecimal("10.00"),
+                PaymentStatus.APPROVED,
+                PaymentMethod.MERCADO_PAGO,
+                "external-reference-123");
+        transaction.assignRecoveryCode("4821");
+        when(transactionRepository.findByPhoneAndRecoveryCodeOrderByCreatedAtDesc("11999999999", "4821"))
+                .thenReturn(List.of(transaction));
+        when(luckyNumberService.findApprovedNumbersByPhone("11999999999"))
+                .thenReturn(List.of("00042", "00090", "00091"));
+
+        var response = transactionService.recover(new TransactionRecoveryRequest("(11) 99999-9999", "4821"));
+
+        assertThat(response.externalReference()).isEqualTo("external-reference-123");
+        assertThat(response.recoveryCode()).isEqualTo("4821");
+        assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
+        assertThat(response.luckyNumbers()).containsExactly("00042", "00090", "00091");
+        assertThat(response.previousLuckyNumbers()).isEmpty();
+        assertThat(response.totalLuckyNumbers()).isEqualTo(3);
+    }
+
+    private TransactionServiceImpl transactionService() {
+        return new TransactionServiceImpl(
+                raffleConfigService,
+                transactionRepository,
+                paymentProviderClient,
+                luckyNumberService,
+                participantFlagService,
+                recoveryCodeService);
     }
 }

@@ -23,8 +23,8 @@ import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
-import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.RaffleConfigService;
+import com.weddingraffle.rifa.service.RecoveryCodeService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -55,7 +54,7 @@ class AdminTransactionServiceImplTests {
     private RaffleConfigService raffleConfigService;
 
     @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    private RecoveryCodeService recoveryCodeService;
 
     @Test
     void listsTransactionsWithLuckyNumbers() {
@@ -102,18 +101,17 @@ class AdminTransactionServiceImplTests {
     }
 
     @Test
-    void filtersTransactionsByNameOrEmailWhenProvided() {
+    void filtersTransactionsByNameOrPhoneWhenProvided() {
         AdminTransactionServiceImpl service = service();
         Transaction transaction =
                 new Transaction("guest@example.com", 1, new BigDecimal("10.00"), PaymentStatus.PENDING, "external");
         PageRequest pageable = PageRequest.of(0, 20);
-        when(transactionRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                        "guest", "guest", pageable))
+        when(transactionRepository.findByNameOrPhone("(11) 99999-9999", "11999999999", pageable))
                 .thenReturn(new PageImpl<>(List.of(transaction), pageable, 1));
         when(luckyNumberRepository.findByTransactionInOrderByNumberAsc(List.of(transaction)))
                 .thenReturn(List.of());
 
-        var response = service.list("guest", pageable);
+        var response = service.list("(11) 99999-9999", pageable);
 
         assertThat(response.getContent().getFirst().email()).isEqualTo("guest@example.com");
         assertThat(response.getContent().getFirst().luckyNumbers()).isEmpty();
@@ -125,6 +123,7 @@ class AdminTransactionServiceImplTests {
         when(participantFlagService.resolveForPhone("11999999999"))
                 .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
+        when(recoveryCodeService.resolveForPhone("11999999999")).thenReturn("4821");
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -140,6 +139,7 @@ class AdminTransactionServiceImplTests {
         assertThat(response.phone()).isEqualTo("11999999999");
         assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+        assertThat(response.recoveryCode()).isEqualTo("4821");
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001");
@@ -149,9 +149,9 @@ class AdminTransactionServiceImplTests {
         verify(transactionRepository).save(transactionCaptor.capture());
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
+        assertThat(transactionCaptor.getValue().getRecoveryCode()).isEqualTo("4821");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(luckyNumberService).findPreviousApprovedNumbers(eq("11999999999"), anyString());
-        verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
     }
 
     @Test
@@ -210,6 +210,6 @@ class AdminTransactionServiceImplTests {
                 luckyNumberRepository,
                 luckyNumberService,
                 participantFlagService,
-                applicationEventPublisher);
+                recoveryCodeService);
     }
 }

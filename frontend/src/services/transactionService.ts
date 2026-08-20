@@ -4,6 +4,7 @@ import type {
   TransactionCreateResponse,
   TransactionQuoteRequest,
   TransactionQuoteResponse,
+  TransactionRecoveryRequest,
   TransactionStatusResponse,
 } from '../types/transaction';
 
@@ -20,6 +21,11 @@ export const transactionService = {
 
   async getStatus(externalReference: string): Promise<TransactionStatusResponse> {
     const response = await apiClient.get<TransactionStatusResponse>(`/transactions/${externalReference}/status`);
+    return response.data;
+  },
+
+  async recover(request: TransactionRecoveryRequest): Promise<TransactionStatusResponse> {
+    const response = await apiClient.post<TransactionStatusResponse>('/transactions/recovery', request);
     return response.data;
   },
 

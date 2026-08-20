@@ -4,6 +4,7 @@ import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.dto.TransactionRecoveryRequest;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
 import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import com.weddingraffle.rifa.service.TransactionService;
@@ -44,6 +45,12 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionCreateResponse> create(@Valid @RequestBody TransactionCreateRequest request) {
         return ResponseEntity.ok(transactionService.create(request));
+    }
+
+    @Operation(summary = "Recover lucky numbers by phone and recovery code")
+    @PostMapping("/recovery")
+    public ResponseEntity<TransactionStatusResponse> recover(@Valid @RequestBody TransactionRecoveryRequest request) {
+        return ResponseEntity.ok(transactionService.recover(request));
     }
 
     @Operation(summary = "Get transaction payment status")

@@ -5,7 +5,7 @@ import java.util.List;
 
 public record TransactionStatusResponse(
         String externalReference,
-        boolean emailProvided,
+        String recoveryCode,
         PaymentStatusResponse status,
         Integer quantity,
         BigDecimal totalAmount,

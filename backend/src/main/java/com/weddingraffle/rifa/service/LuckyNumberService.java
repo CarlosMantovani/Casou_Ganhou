@@ -10,5 +10,7 @@ public interface LuckyNumberService {
 
     List<String> findNumbers(String externalReference);
 
+    List<String> findApprovedNumbersByPhone(String phone);
+
     List<String> findPreviousApprovedNumbers(String phone, String externalReference);
 }

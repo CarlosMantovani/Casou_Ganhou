@@ -49,22 +49,14 @@ class TransactionControllerTests {
     void quoteReturnsTotalWithoutAuthentication() throws Exception {
         when(transactionService.quote(any()))
                 .thenReturn(new TransactionQuoteResponse(
-                        "Guest User",
-                        "11999999999",
-                        "guest@example.com",
-                        2,
-                        new BigDecimal("10.00"),
-                        new BigDecimal("20.00")));
+                        "Guest User", "11999999999", 2, new BigDecimal("10.00"), new BigDecimal("20.00")));
 
-        mockMvc.perform(
-                        post("/transactions/quote")
-                                .contentType("application/json")
-                                .content(
-                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+        mockMvc.perform(post("/transactions/quote")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Guest User"))
                 .andExpect(jsonPath("$.phone").value("11999999999"))
-                .andExpect(jsonPath("$.email").value("guest@example.com"))
                 .andExpect(jsonPath("$.quantity").value(2))
                 .andExpect(jsonPath("$.unitPrice").value(10.00))
                 .andExpect(jsonPath("$.totalAmount").value(20.00));
@@ -74,7 +66,7 @@ class TransactionControllerTests {
     void quoteReturnsValidationErrorForInvalidRequest() throws Exception {
         mockMvc.perform(post("/transactions/quote")
                         .contentType("application/json")
-                        .content("{\"name\":\"\",\"phone\":\"\",\"email\":\"invalid\",\"quantity\":0}"))
+                        .content("{\"name\":\"\",\"phone\":\"\",\"quantity\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.fieldErrors").isArray());
@@ -101,15 +93,14 @@ class TransactionControllerTests {
     void createReturnsCheckoutWithoutAuthentication() throws Exception {
         when(transactionService.create(any()))
                 .thenReturn(new TransactionCreateResponse(
-                        "external-reference-123", "preference-123", "https://checkout.example.com"));
+                        "external-reference-123", "4821", "preference-123", "https://checkout.example.com"));
 
-        mockMvc.perform(
-                        post("/transactions")
-                                .contentType("application/json")
-                                .content(
-                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+        mockMvc.perform(post("/transactions")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.preferenceId").value("preference-123"))
                 .andExpect(jsonPath("$.checkoutUrl").value("https://checkout.example.com"));
     }
@@ -122,8 +113,7 @@ class TransactionControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
-                .andExpect(header()
-                        .string(
+                .andExpect(header().string(
                                 "Content-Disposition",
                                 org.hamcrest.Matchers.containsString("Numeros_da_sorte_external.pdf")));
     }
@@ -133,7 +123,7 @@ class TransactionControllerTests {
         when(transactionService.getStatus("external-reference-123"))
                 .thenReturn(new TransactionStatusResponse(
                         "external-reference-123",
-                        true,
+                        "4821",
                         PaymentStatusResponse.APROVADO,
                         2,
                         new BigDecimal("20.00"),
@@ -146,9 +136,34 @@ class TransactionControllerTests {
         mockMvc.perform(get("/transactions/external-reference-123/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.status").value("APROVADO"))
                 .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00099"))
                 .andExpect(jsonPath("$.totalLuckyNumbers").value(3));
+    }
+
+    @Test
+    void recoversLuckyNumbersWithoutAuthentication() throws Exception {
+        when(transactionService.recover(any()))
+                .thenReturn(new TransactionStatusResponse(
+                        "external-reference-123",
+                        "4821",
+                        PaymentStatusResponse.APROVADO,
+                        1,
+                        new BigDecimal("10.00"),
+                        "Brasil",
+                        "🇧🇷",
+                        List.of("00042"),
+                        List.of(),
+                        1));
+
+        mockMvc.perform(post("/transactions/recovery")
+                        .contentType("application/json")
+                        .content("{\"phone\":\"(11) 99999-9999\",\"recoveryCode\":\"4821\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
+                .andExpect(jsonPath("$.luckyNumbers[0]").value("00042"));
     }
 
     @TestConfiguration
@@ -167,8 +182,7 @@ class TransactionControllerTests {
                             "http://localhost:5173/payment-return/success",
                             "http://localhost:5173/payment-return/failure",
                             "http://localhost:5173/payment-return/pending",
-                            new AppProperties.Retry(3, 500, 2)),
-                    new AppProperties.Mail("no-reply@example.com"));
+                            new AppProperties.Retry(3, 500, 2)));
         }
     }
 }

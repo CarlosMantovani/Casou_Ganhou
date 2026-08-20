@@ -18,8 +18,8 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
-import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.RaffleConfigService;
+import com.weddingraffle.rifa.service.RecoveryCodeService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     private final LuckyNumberRepository luckyNumberRepository;
     private final LuckyNumberService luckyNumberService;
     private final ParticipantFlagService participantFlagService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final RecoveryCodeService recoveryCodeService;
 
     public AdminTransactionServiceImpl(
             RaffleConfigService raffleConfigService,
@@ -50,13 +49,13 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             LuckyNumberRepository luckyNumberRepository,
             LuckyNumberService luckyNumberService,
             ParticipantFlagService participantFlagService,
-            ApplicationEventPublisher applicationEventPublisher) {
+            RecoveryCodeService recoveryCodeService) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.luckyNumberRepository = luckyNumberRepository;
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.recoveryCodeService = recoveryCodeService;
     }
 
     @Override
@@ -71,8 +70,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     @Transactional(readOnly = true)
     public Page<AdminTransactionResponse> list(String query, Pageable pageable) {
         Page<Transaction> transactions = StringUtils.hasText(query)
-                ? transactionRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                        query, query, pageable)
+                ? transactionRepository.findByNameOrPhone(query.trim(), normalizePhoneSearch(query), pageable)
                 : transactionRepository.findAll(pageable);
         Map<Transaction, List<String>> numbersByTransaction = numbersByTransaction(transactions.getContent());
         return transactions.map(transaction -> toResponse(transaction, numbersByTransaction));
@@ -99,18 +97,18 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 PaymentMethod.CASH,
                 UUID.randomUUID().toString());
         transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
+        transaction.assignRecoveryCode(recoveryCodeService.resolveForPhone(phone));
         transactionRepository.save(transaction);
         List<String> luckyNumbers = luckyNumberService.generateFor(transaction).stream()
                 .map(LuckyNumber::getNumber)
                 .sorted()
                 .toList();
-        List<String> previousLuckyNumbers =
-                luckyNumberService.findPreviousApprovedNumbers(transaction.getPhone(), transaction.getExternalReference());
-
-        applicationEventPublisher.publishEvent(new PaymentApprovedEvent(transaction.getExternalReference()));
+        List<String> previousLuckyNumbers = luckyNumberService.findPreviousApprovedNumbers(
+                transaction.getPhone(), transaction.getExternalReference());
 
         return new CashTransactionCreateResponse(
                 transaction.getExternalReference(),
+                transaction.getRecoveryCode(),
                 transaction.getName(),
                 transaction.getPhone(),
                 transaction.getEmail(),
@@ -151,6 +149,10 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         if (raffleConfigService.isDrawClosed()) {
             throw new InvalidRaffleStateException("Draw is closed. No more numbers can be purchased.");
         }
+    }
+
+    private static String normalizePhoneSearch(String query) {
+        return query.replaceAll("\\D", "");
     }
 
     private static AdminTransactionResponse toResponse(

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, MercadoPago mercadoPago, Mail mail) {
+public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, MercadoPago mercadoPago) {
 
     public record Jwt(String secret, long expirationSeconds, String issuer) {}
 
@@ -20,6 +20,4 @@ public record AppProperties(String frontendOrigin, Jwt jwt, Raffle raffle, Merca
             Retry retry) {}
 
     public record Retry(int maxAttempts, long delayMillis, double multiplier) {}
-
-    public record Mail(String from) {}
 }

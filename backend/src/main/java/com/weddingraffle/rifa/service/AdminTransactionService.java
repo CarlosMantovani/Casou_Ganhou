@@ -11,7 +11,7 @@ public interface AdminTransactionService {
 
     AdminTransactionSummaryResponse getSummary();
 
-    Page<AdminTransactionResponse> list(String email, Pageable pageable);
+    Page<AdminTransactionResponse> list(String query, Pageable pageable);
 
     CashTransactionCreateResponse createCashTransaction(CashTransactionCreateRequest request);
 

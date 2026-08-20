@@ -5,6 +5,7 @@ import com.weddingraffle.rifa.dto.TransactionCreateRequest;
 import com.weddingraffle.rifa.dto.TransactionCreateResponse;
 import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
+import com.weddingraffle.rifa.dto.TransactionRecoveryRequest;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
@@ -18,8 +19,8 @@ import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
-import com.weddingraffle.rifa.service.PaymentApprovedEvent;
 import com.weddingraffle.rifa.service.RaffleConfigService;
+import com.weddingraffle.rifa.service.RecoveryCodeService;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import java.math.BigDecimal;
@@ -29,7 +30,6 @@ import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -44,7 +44,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
     private final ParticipantFlagService participantFlagService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final RecoveryCodeService recoveryCodeService;
 
     public TransactionServiceImpl(
             RaffleConfigService raffleConfigService,
@@ -52,13 +52,13 @@ public class TransactionServiceImpl implements TransactionService {
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
             ParticipantFlagService participantFlagService,
-            ApplicationEventPublisher applicationEventPublisher) {
+            RecoveryCodeService recoveryCodeService) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.recoveryCodeService = recoveryCodeService;
     }
 
     @Override
@@ -66,10 +66,9 @@ public class TransactionServiceImpl implements TransactionService {
         ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
-        String email = ParticipantNormalizer.normalizeEmail(request.email());
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
-        return new TransactionQuoteResponse(name, phone, email, request.quantity(), unitPrice, totalAmount);
+        return new TransactionQuoteResponse(name, phone, request.quantity(), unitPrice, totalAmount);
     }
 
     @Override
@@ -78,18 +77,17 @@ public class TransactionServiceImpl implements TransactionService {
         ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
-        String email = ParticipantNormalizer.normalizeEmail(request.email());
         String externalReference = UUID.randomUUID().toString();
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(
-                new CheckoutPreferenceRequest(name, email, request.quantity(), unitPrice, externalReference));
+                new CheckoutPreferenceRequest(name, null, request.quantity(), unitPrice, externalReference));
 
         Transaction transaction = new Transaction(
                 name,
                 phone,
-                email,
+                null,
                 request.quantity(),
                 unitPrice,
                 totalAmount,
@@ -97,12 +95,14 @@ public class TransactionServiceImpl implements TransactionService {
                 PaymentMethod.MERCADO_PAGO,
                 externalReference);
         transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
+        transaction.assignRecoveryCode(recoveryCodeService.resolveForPhone(phone));
         transaction.assignPreference(preference.preferenceId());
         transactionRepository.save(transaction);
 
         LOGGER.info("Created pending transaction with externalReference={}", externalReference);
 
-        return new TransactionCreateResponse(externalReference, preference.preferenceId(), preference.checkoutUrl());
+        return new TransactionCreateResponse(
+                externalReference, transaction.getRecoveryCode(), preference.preferenceId(), preference.checkoutUrl());
     }
 
     @Override
@@ -130,7 +130,6 @@ public class TransactionServiceImpl implements TransactionService {
         }
         transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
-        publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
         LOGGER.info(
                 "Updated transaction externalReference={} to status={}",
                 transaction.getExternalReference(),
@@ -145,25 +144,55 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
 
         if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
-            PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
-            PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-            PaymentStatus currentStatus = transaction.getStatus();
-            if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
-                luckyNumberService.generateFor(transaction);
-            }
-            transaction.markPayment(paymentStatus, payment.paymentId());
-            transactionRepository.save(transaction);
-            publishPaymentApprovedEvent(currentStatus, transaction, paymentStatus);
+            refreshPendingTransaction(transaction);
         }
 
+        return toStatusResponse(transaction);
+    }
+
+    @Override
+    @Transactional
+    public TransactionStatusResponse recover(TransactionRecoveryRequest request) {
+        String phone = ParticipantNormalizer.normalizePhone(request.phone());
+        List<Transaction> transactions =
+                transactionRepository.findByPhoneAndRecoveryCodeOrderByCreatedAtDesc(phone, request.recoveryCode());
+        if (transactions.isEmpty()) {
+            throw new ResourceNotFoundException("Transaction not found.");
+        }
+
+        for (Transaction transaction : transactions) {
+            if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
+                refreshPendingTransaction(transaction);
+            }
+        }
+
+        return transactions.stream()
+                .filter(transaction -> transaction.getStatus() == PaymentStatus.APPROVED)
+                .findFirst()
+                .map(this::toRecoveryResponse)
+                .orElseGet(() -> toStatusResponse(transactions.getFirst()));
+    }
+
+    private void refreshPendingTransaction(Transaction transaction) {
+        PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
+        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
+        PaymentStatus currentStatus = transaction.getStatus();
+        if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
+            luckyNumberService.generateFor(transaction);
+        }
+        transaction.markPayment(paymentStatus, payment.paymentId());
+        transactionRepository.save(transaction);
+    }
+
+    private TransactionStatusResponse toStatusResponse(Transaction transaction) {
         List<String> luckyNumbers = luckyNumberService.findNumbers(transaction.getExternalReference());
         List<String> previousLuckyNumbers = transaction.getStatus() == PaymentStatus.APPROVED
-                ? luckyNumberService.findPreviousApprovedNumbers(transaction.getPhone(), transaction.getExternalReference())
+                ? luckyNumberService.findPreviousApprovedNumbers(
+                        transaction.getPhone(), transaction.getExternalReference())
                 : List.of();
-
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
-                StringUtils.hasText(transaction.getEmail()),
+                transaction.getRecoveryCode(),
                 PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
@@ -172,6 +201,21 @@ public class TransactionServiceImpl implements TransactionService {
                 luckyNumbers,
                 previousLuckyNumbers,
                 luckyNumbers.size() + previousLuckyNumbers.size());
+    }
+
+    private TransactionStatusResponse toRecoveryResponse(Transaction transaction) {
+        List<String> luckyNumbers = luckyNumberService.findApprovedNumbersByPhone(transaction.getPhone());
+        return new TransactionStatusResponse(
+                transaction.getExternalReference(),
+                transaction.getRecoveryCode(),
+                PaymentStatusResponse.from(PaymentStatus.APPROVED),
+                luckyNumbers.size(),
+                BigDecimal.ZERO,
+                transaction.getParticipantFlagName(),
+                transaction.getParticipantFlagEmoji(),
+                luckyNumbers,
+                List.of(),
+                luckyNumbers.size());
     }
 
     private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {
@@ -192,13 +236,6 @@ public class TransactionServiceImpl implements TransactionService {
     private void ensureDrawIsOpen() {
         if (raffleConfigService.isDrawClosed()) {
             throw new InvalidRaffleStateException("Draw is closed. No more numbers can be purchased.");
-        }
-    }
-
-    private void publishPaymentApprovedEvent(
-            PaymentStatus previousStatus, Transaction transaction, PaymentStatus paymentStatus) {
-        if (paymentStatus == PaymentStatus.APPROVED && previousStatus != PaymentStatus.APPROVED) {
-            applicationEventPublisher.publishEvent(new PaymentApprovedEvent(transaction.getExternalReference()));
         }
     }
 }

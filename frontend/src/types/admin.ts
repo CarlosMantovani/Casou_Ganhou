@@ -30,6 +30,7 @@ export interface CashTransactionCreateRequest {
 
 export interface CashTransactionCreateResponse {
   externalReference: string;
+  recoveryCode: string;
   name: string;
   phone: string;
   email: string | null;

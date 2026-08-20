@@ -49,22 +49,14 @@ class TransactionControllerTests {
     void quoteReturnsTotalWithoutAuthentication() throws Exception {
         when(transactionService.quote(any()))
                 .thenReturn(new TransactionQuoteResponse(
-                        "Guest User",
-                        "11999999999",
-                        "guest@example.com",
-                        2,
-                        new BigDecimal("10.00"),
-                        new BigDecimal("20.00")));
+                        "Guest User", "11999999999", 2, new BigDecimal("10.00"), new BigDecimal("20.00")));
 
-        mockMvc.perform(
-                        post("/transactions/quote")
-                                .contentType("application/json")
-                                .content(
-                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+        mockMvc.perform(post("/transactions/quote")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Guest User"))
                 .andExpect(jsonPath("$.phone").value("11999999999"))
-                .andExpect(jsonPath("$.email").value("guest@example.com"))
                 .andExpect(jsonPath("$.quantity").value(2))
                 .andExpect(jsonPath("$.unitPrice").value(10.00))
                 .andExpect(jsonPath("$.totalAmount").value(20.00));
@@ -74,7 +66,7 @@ class TransactionControllerTests {
     void quoteReturnsValidationErrorForInvalidRequest() throws Exception {
         mockMvc.perform(post("/transactions/quote")
                         .contentType("application/json")
-                        .content("{\"name\":\"\",\"phone\":\"\",\"email\":\"invalid\",\"quantity\":0}"))
+                        .content("{\"name\":\"\",\"phone\":\"\",\"quantity\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.fieldErrors").isArray());
@@ -103,11 +95,9 @@ class TransactionControllerTests {
                 .thenReturn(new TransactionCreateResponse(
                         "external-reference-123", "4821", "preference-123", "https://checkout.example.com"));
 
-        mockMvc.perform(
-                        post("/transactions")
-                                .contentType("application/json")
-                                .content(
-                                        "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
+        mockMvc.perform(post("/transactions")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
                 .andExpect(jsonPath("$.recoveryCode").value("4821"))
@@ -134,7 +124,6 @@ class TransactionControllerTests {
                 .thenReturn(new TransactionStatusResponse(
                         "external-reference-123",
                         "4821",
-                        true,
                         PaymentStatusResponse.APROVADO,
                         2,
                         new BigDecimal("20.00"),
@@ -159,7 +148,6 @@ class TransactionControllerTests {
                 .thenReturn(new TransactionStatusResponse(
                         "external-reference-123",
                         "4821",
-                        false,
                         PaymentStatusResponse.APROVADO,
                         1,
                         new BigDecimal("10.00"),

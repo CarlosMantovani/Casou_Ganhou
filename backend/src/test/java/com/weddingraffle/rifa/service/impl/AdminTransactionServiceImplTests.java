@@ -101,18 +101,17 @@ class AdminTransactionServiceImplTests {
     }
 
     @Test
-    void filtersTransactionsByNameOrEmailWhenProvided() {
+    void filtersTransactionsByNameOrPhoneWhenProvided() {
         AdminTransactionServiceImpl service = service();
         Transaction transaction =
                 new Transaction("guest@example.com", 1, new BigDecimal("10.00"), PaymentStatus.PENDING, "external");
         PageRequest pageable = PageRequest.of(0, 20);
-        when(transactionRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                        "guest", "guest", pageable))
+        when(transactionRepository.findByNameOrPhone("(11) 99999-9999", "11999999999", pageable))
                 .thenReturn(new PageImpl<>(List.of(transaction), pageable, 1));
         when(luckyNumberRepository.findByTransactionInOrderByNumberAsc(List.of(transaction)))
                 .thenReturn(List.of());
 
-        var response = service.list("guest", pageable);
+        var response = service.list("(11) 99999-9999", pageable);
 
         assertThat(response.getContent().getFirst().email()).isEqualTo("guest@example.com");
         assertThat(response.getContent().getFirst().luckyNumbers()).isEmpty();

@@ -81,7 +81,7 @@ class AdminTransactionControllerTests {
                         List.of("00001", "00002")))));
 
         mockMvc.perform(get("/transactions")
-                        .param("email", "guest")
+                        .param("query", "guest")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].externalReference").value("external"))

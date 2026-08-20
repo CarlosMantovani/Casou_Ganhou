@@ -33,7 +33,7 @@ export function BuyNumbersPage() {
     handleSubmit,
     register,
   } = useForm<BuyerFormData>({
-    defaultValues: { email: '', name: '', phone: '' },
+    defaultValues: { name: '', phone: '' },
     mode: 'onChange',
     resolver: zodResolver(buyerSchema),
   });
@@ -84,7 +84,6 @@ export function BuyNumbersPage() {
     setBuyer({
       name: data.name.trim(),
       phone: normalizePhoneNumber(data.phone),
-      email: data.email?.trim() || undefined,
     });
   };
 
@@ -157,18 +156,6 @@ export function BuyNumbersPage() {
                     event.target.value = formatPhoneNumber(event.target.value);
                   },
                 })}
-              />
-
-              <TextInput
-                autoComplete="email"
-                error={errors.email?.message}
-                helper="Campo opcional para identificação da compra."
-                id="buyer-email"
-                inputMode="email"
-                label="E-mail (opcional)"
-                placeholder="seu@email.com"
-                type="email"
-                {...register('email')}
               />
 
               <Button disabled={!isValid || homeSummaryQuery.isLoading} type="submit">

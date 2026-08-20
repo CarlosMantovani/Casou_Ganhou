@@ -98,9 +98,9 @@ export function AdminDashboardPage() {
             <div className="flex-1">
               <TextInput
                 id="admin-query-filter"
-                label="Buscar por nome ou e-mail"
+                label="Buscar por nome ou telefone"
                 onChange={(event) => setQueryFilter(event.target.value)}
-                placeholder="nome ou email@exemplo.com"
+                placeholder="nome ou (11) 99999-9999"
                 value={queryFilter}
               />
             </div>
@@ -292,7 +292,6 @@ function TransactionTable({
               <td className="px-3 py-4 text-warm-gray">{formatDateTime(transaction.createdAt)}</td>
               <td className="px-3 py-4 text-warm-gray">
                 <span className="block">{areSensitiveValuesVisible ? formatPhoneNumber(transaction.phone) || '-' : maskedValue}</span>
-                <span className="block text-xs">{areSensitiveValuesVisible ? transaction.email || '-' : maskedValue}</span>
               </td>
               <td className="px-3 py-4 text-warm-gray">{transaction.paymentMethod === 'CASH' ? 'Dinheiro' : 'Mercado Pago'}</td>
               <td className="px-3 py-4 text-warm-gray">{areSensitiveValuesVisible ? transaction.quantity : maskedValue}</td>

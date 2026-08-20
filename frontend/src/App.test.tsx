@@ -95,7 +95,6 @@ describe('App', () => {
     window.history.pushState({}, '', '/');
     window.sessionStorage.clear();
     mockedTransactionService.quote.mockResolvedValue({
-      email: 'guest@example.com',
       name: 'Guest User',
       phone: '11999999999',
       quantity: 1,
@@ -175,19 +174,6 @@ describe('App', () => {
         participantFlagName: 'Canada',
       },
     ]);
-  });
-
-  it('blocks invalid email before the quantity step', async () => {
-    const user = userEvent.setup();
-    renderApp();
-
-    await user.type(screen.getByLabelText('Nome'), 'Guest User');
-    await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
-    await user.type(screen.getByLabelText('E-mail (opcional)'), 'invalid');
-
-    expect(await screen.findByText('Informe um e-mail válido.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    expect(screen.queryByText('Quantos números você quer?')).not.toBeInTheDocument();
   });
 
   it('renders the public flag ranking on the purchase page', async () => {
@@ -365,7 +351,6 @@ describe('App', () => {
     const user = userEvent.setup();
     mockedTransactionService.quote
       .mockResolvedValueOnce({
-        email: 'guest@example.com',
         name: 'Guest User',
         phone: '11999999999',
         quantity: 1,
@@ -373,7 +358,6 @@ describe('App', () => {
         totalAmount: '10.00',
       })
       .mockResolvedValueOnce({
-        email: 'guest@example.com',
         name: 'Guest User',
         phone: '11999999999',
         quantity: 2,
@@ -385,7 +369,6 @@ describe('App', () => {
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '11999999999');
-    await user.type(screen.getByLabelText('E-mail (opcional)'), 'guest@example.com');
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findAllByText('R$ 10,00');
 
@@ -412,7 +395,6 @@ describe('App', () => {
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
-    await user.type(screen.getByLabelText('E-mail (opcional)'), 'guest@example.com');
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findAllByText('R$ 10,00');
 
@@ -420,7 +402,6 @@ describe('App', () => {
     await waitFor(() => expect(mockedTransactionService.create).toHaveBeenCalledTimes(1));
 
     expect(mockedTransactionService.create).toHaveBeenCalledWith({
-      email: 'guest@example.com',
       name: 'Guest User',
       phone: '11999999999',
       quantity: 1,
@@ -432,7 +413,6 @@ describe('App', () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
       recoveryCode: '4821',
-      emailProvided: true,
       luckyNumbers: ['00042', '12345'],
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
@@ -456,7 +436,6 @@ describe('App', () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
       recoveryCode: '4821',
-      emailProvided: true,
       luckyNumbers: ['00042', '12345'],
       previousLuckyNumbers: ['00001', '00002'],
       totalLuckyNumbers: 4,
@@ -486,11 +465,10 @@ describe('App', () => {
     expect(screen.getByText('12345')).toBeInTheDocument();
   });
 
-  it('renders pdf download when approved payment has no email', async () => {
+  it('renders pdf download for approved payment', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
       recoveryCode: '4821',
-      emailProvided: false,
       luckyNumbers: ['00042'],
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
@@ -512,7 +490,6 @@ describe('App', () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
       recoveryCode: '4821',
-      emailProvided: false,
       luckyNumbers: [],
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
@@ -533,7 +510,6 @@ describe('App', () => {
     mockedTransactionService.recover.mockResolvedValue({
       externalReference: 'external-reference',
       recoveryCode: '4821',
-      emailProvided: false,
       luckyNumbers: ['00042', '00090'],
       participantFlagEmoji: '🇧🇷',
       participantFlagName: 'Brasil',
@@ -597,7 +573,7 @@ describe('App', () => {
     expect(mockedAuthService.login).toHaveBeenCalledWith({ username: 'admin', password: 'password' });
   });
 
-  it('lists admin transactions with email filter', async () => {
+  it('lists admin transactions with phone or name filter', async () => {
     const user = userEvent.setup();
     storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
 
@@ -605,16 +581,20 @@ describe('App', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Mostrar valores' }));
 
-    expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('Guest User')).toBeInTheDocument();
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
     expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Buscar por nome ou e-mail'), 'guest');
+    await user.type(screen.getByLabelText('Buscar por nome ou telefone'), '(11) 99999-9999');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     await waitFor(() =>
-      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({ query: 'guest', page: 0, size: 20 }),
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({
+        query: '(11) 99999-9999',
+        page: 0,
+        size: 20,
+      }),
     );
   });
 

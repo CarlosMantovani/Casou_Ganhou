@@ -3,14 +3,12 @@ export type PaymentStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO' | 'CANCELADO' 
 export interface TransactionQuoteRequest {
   name: string;
   phone: string;
-  email?: string | null;
   quantity: number;
 }
 
 export interface TransactionQuoteResponse {
   name: string;
   phone: string;
-  email: string | null;
   quantity: number;
   unitPrice: string;
   totalAmount: string;
@@ -19,7 +17,6 @@ export interface TransactionQuoteResponse {
 export interface TransactionCreateRequest {
   name: string;
   phone: string;
-  email?: string | null;
   quantity: number;
 }
 
@@ -38,7 +35,6 @@ export interface TransactionRecoveryRequest {
 export interface TransactionStatusResponse {
   externalReference: string;
   recoveryCode: string;
-  emailProvided: boolean;
   status: PaymentStatus;
   quantity: number;
   totalAmount: string;

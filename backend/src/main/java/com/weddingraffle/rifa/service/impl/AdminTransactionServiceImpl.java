@@ -70,8 +70,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     @Transactional(readOnly = true)
     public Page<AdminTransactionResponse> list(String query, Pageable pageable) {
         Page<Transaction> transactions = StringUtils.hasText(query)
-                ? transactionRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                        query, query, pageable)
+                ? transactionRepository.findByNameOrPhone(query.trim(), normalizePhoneSearch(query), pageable)
                 : transactionRepository.findAll(pageable);
         Map<Transaction, List<String>> numbersByTransaction = numbersByTransaction(transactions.getContent());
         return transactions.map(transaction -> toResponse(transaction, numbersByTransaction));
@@ -150,6 +149,10 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         if (raffleConfigService.isDrawClosed()) {
             throw new InvalidRaffleStateException("Draw is closed. No more numbers can be purchased.");
         }
+    }
+
+    private static String normalizePhoneSearch(String query) {
+        return query.replaceAll("\\D", "");
     }
 
     private static AdminTransactionResponse toResponse(

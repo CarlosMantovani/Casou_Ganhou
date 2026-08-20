@@ -66,10 +66,9 @@ public class TransactionServiceImpl implements TransactionService {
         ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
-        String email = ParticipantNormalizer.normalizeEmail(request.email());
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
-        return new TransactionQuoteResponse(name, phone, email, request.quantity(), unitPrice, totalAmount);
+        return new TransactionQuoteResponse(name, phone, request.quantity(), unitPrice, totalAmount);
     }
 
     @Override
@@ -78,18 +77,17 @@ public class TransactionServiceImpl implements TransactionService {
         ensureDrawIsOpen();
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
-        String email = ParticipantNormalizer.normalizeEmail(request.email());
         String externalReference = UUID.randomUUID().toString();
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
 
         CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(
-                new CheckoutPreferenceRequest(name, email, request.quantity(), unitPrice, externalReference));
+                new CheckoutPreferenceRequest(name, null, request.quantity(), unitPrice, externalReference));
 
         Transaction transaction = new Transaction(
                 name,
                 phone,
-                email,
+                null,
                 request.quantity(),
                 unitPrice,
                 totalAmount,
@@ -195,7 +193,6 @@ public class TransactionServiceImpl implements TransactionService {
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
                 transaction.getRecoveryCode(),
-                StringUtils.hasText(transaction.getEmail()),
                 PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
@@ -211,7 +208,6 @@ public class TransactionServiceImpl implements TransactionService {
         return new TransactionStatusResponse(
                 transaction.getExternalReference(),
                 transaction.getRecoveryCode(),
-                StringUtils.hasText(transaction.getEmail()),
                 PaymentStatusResponse.from(PaymentStatus.APPROVED),
                 luckyNumbers.size(),
                 BigDecimal.ZERO,

@@ -107,7 +107,7 @@ export function PaymentReturnPage() {
 
           <RecoveryCodeCard recoveryCode={transaction.recoveryCode} />
 
-          {!transaction.emailProvided ? <PdfDownloadCard externalReference={transaction.externalReference} /> : null}
+          <PdfDownloadCard externalReference={transaction.externalReference} />
 
           <p className="font-serif text-sm italic leading-relaxed text-terracotta">
             Que este número te traga a alegria de celebrar junto ao casal neste dia tão especial.

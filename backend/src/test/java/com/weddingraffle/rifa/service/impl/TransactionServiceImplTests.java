@@ -62,12 +62,11 @@ class TransactionServiceImplTests {
         TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
 
-        TransactionQuoteResponse response = transactionService.quote(
-                new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3));
+        TransactionQuoteResponse response =
+                transactionService.quote(new TransactionQuoteRequest("Guest User", "(11) 99999-9999", 3));
 
         assertThat(response.name()).isEqualTo("Guest User");
         assertThat(response.phone()).isEqualTo("11999999999");
-        assertThat(response.email()).isEqualTo("guest@example.com");
         assertThat(response.quantity()).isEqualTo(3);
         assertThat(response.unitPrice()).isEqualByComparingTo("10.00");
         assertThat(response.totalAmount()).isEqualByComparingTo("30.00");
@@ -78,8 +77,8 @@ class TransactionServiceImplTests {
         TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.isDrawClosed()).thenReturn(true);
 
-        assertThatThrownBy(() -> transactionService.quote(
-                        new TransactionQuoteRequest("Guest User", "(11) 99999-9999", "guest@example.com", 3)))
+        assertThatThrownBy(
+                        () -> transactionService.quote(new TransactionQuoteRequest("Guest User", "(11) 99999-9999", 3)))
                 .isInstanceOf(InvalidRaffleStateException.class)
                 .hasMessage("Draw is closed. No more numbers can be purchased.");
     }
@@ -94,8 +93,8 @@ class TransactionServiceImplTests {
                 .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(recoveryCodeService.resolveForPhone("11999999999")).thenReturn("4821");
 
-        TransactionCreateResponse response = transactionService.create(
-                new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2));
+        TransactionCreateResponse response =
+                transactionService.create(new TransactionCreateRequest("Guest User", "(11) 99999-9999", 2));
 
         assertThat(response.externalReference()).isNotBlank();
         assertThat(response.recoveryCode()).isEqualTo("4821");
@@ -106,7 +105,7 @@ class TransactionServiceImplTests {
                 ArgumentCaptor.forClass(CheckoutPreferenceRequest.class);
         verify(paymentProviderClient).createPreference(preferenceCaptor.capture());
         assertThat(preferenceCaptor.getValue().name()).isEqualTo("Guest User");
-        assertThat(preferenceCaptor.getValue().email()).isEqualTo("guest@example.com");
+        assertThat(preferenceCaptor.getValue().email()).isNull();
         assertThat(preferenceCaptor.getValue().quantity()).isEqualTo(2);
         assertThat(preferenceCaptor.getValue().unitPrice()).isEqualByComparingTo("10.00");
         assertThat(preferenceCaptor.getValue().externalReference()).isEqualTo(response.externalReference());
@@ -116,7 +115,7 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(transactionCaptor.getValue().getName()).isEqualTo("Guest User");
         assertThat(transactionCaptor.getValue().getPhone()).isEqualTo("11999999999");
-        assertThat(transactionCaptor.getValue().getEmail()).isEqualTo("guest@example.com");
+        assertThat(transactionCaptor.getValue().getEmail()).isNull();
         assertThat(transactionCaptor.getValue().getQuantity()).isEqualTo(2);
         assertThat(transactionCaptor.getValue().getTotalAmount()).isEqualByComparingTo("20.00");
         assertThat(transactionCaptor.getValue().getExternalReference()).isEqualTo(response.externalReference());
@@ -132,8 +131,8 @@ class TransactionServiceImplTests {
         TransactionServiceImpl transactionService = transactionService();
         when(raffleConfigService.isDrawClosed()).thenReturn(true);
 
-        assertThatThrownBy(() -> transactionService.create(
-                        new TransactionCreateRequest("Guest User", "(11) 99999-9999", "guest@example.com", 2)))
+        assertThatThrownBy(() ->
+                        transactionService.create(new TransactionCreateRequest("Guest User", "(11) 99999-9999", 2)))
                 .isInstanceOf(InvalidRaffleStateException.class)
                 .hasMessage("Draw is closed. No more numbers can be purchased.");
         verify(paymentProviderClient, never()).createPreference(any());
@@ -254,7 +253,6 @@ class TransactionServiceImplTests {
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
         assertThat(response.recoveryCode()).isEqualTo("4821");
-        assertThat(response.emailProvided()).isTrue();
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
@@ -306,7 +304,6 @@ class TransactionServiceImplTests {
 
         assertThat(response.externalReference()).isEqualTo("external-reference-123");
         assertThat(response.recoveryCode()).isEqualTo("4821");
-        assertThat(response.emailProvided()).isFalse();
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.luckyNumbers()).containsExactly("00042", "00090", "00091");
         assertThat(response.previousLuckyNumbers()).isEmpty();

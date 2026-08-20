@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
@@ -35,10 +36,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("select distinct raffleTransaction.participantFlagCode from RaffleTransaction raffleTransaction")
     List<String> findDistinctParticipantFlagCodes();
 
-    Page<Transaction> findByEmailContainingIgnoreCase(String email, Pageable pageable);
-
-    Page<Transaction> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-            String name, String email, Pageable pageable);
+    @Query(
+            """
+            select raffleTransaction from RaffleTransaction raffleTransaction
+            where lower(raffleTransaction.name) like lower(concat('%', :query, '%'))
+                or (:phoneQuery <> '' and raffleTransaction.phone like concat('%', :phoneQuery, '%'))
+            """)
+    Page<Transaction> findByNameOrPhone(
+            @Param("query") String query, @Param("phoneQuery") String phoneQuery, Pageable pageable);
 
     @Query(
             value =

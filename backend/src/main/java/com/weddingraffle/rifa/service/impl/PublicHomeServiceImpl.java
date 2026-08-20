@@ -12,7 +12,10 @@ import com.weddingraffle.rifa.repository.RaffleConfigRepository;
 import com.weddingraffle.rifa.repository.RaffleDrawRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.PublicHomeService;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,10 +63,33 @@ public class PublicHomeServiceImpl implements PublicHomeService {
     }
 
     private List<FlagRankingResponse> findFlagRanking(int size) {
-        return transactionRepository.findApprovedFlagRanking(PageRequest.of(0, size)).stream()
-                .map(flag -> new FlagRankingResponse(
-                        flag.getCode(), flag.getName(), flag.getEmoji(), flag.getTotalNumbers()))
+        var flagRanking = transactionRepository.findApprovedFlagRanking(PageRequest.of(0, size));
+        if (flagRanking.isEmpty()) {
+            return List.of();
+        }
+
+        var approvedTotalNumbers = transactionRepository.sumApprovedQuantity();
+        return IntStream.range(0, flagRanking.size())
+                .mapToObj(index -> {
+                    var flag = flagRanking.get(index);
+                    return new FlagRankingResponse(
+                            flag.getCode(),
+                            flag.getName(),
+                            flag.getEmoji(),
+                            index + 1,
+                            calculateProgressPercent(flag.getTotalNumbers(), approvedTotalNumbers));
+                })
                 .toList();
+    }
+
+    private static BigDecimal calculateProgressPercent(long totalNumbers, long approvedTotalNumbers) {
+        if (approvedTotalNumbers <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return BigDecimal.valueOf(totalNumbers)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(approvedTotalNumbers), 2, RoundingMode.HALF_UP);
     }
 
     private RaffleDrawResponse toRaffleResult(RaffleDraw raffleDraw) {

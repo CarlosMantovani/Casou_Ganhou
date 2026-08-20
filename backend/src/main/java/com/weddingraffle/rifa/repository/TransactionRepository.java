@@ -39,6 +39,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query(
             value =
                     """
+                    select cast(coalesce(sum(quantity), 0) as bigint)
+                    from transaction
+                    where status = 'APPROVED'
+                    """,
+            nativeQuery = true)
+    long sumApprovedQuantity();
+
+    @Query(
+            value =
+                    """
                     select
                         participant_flag_code as code,
                         participant_flag_name as name,

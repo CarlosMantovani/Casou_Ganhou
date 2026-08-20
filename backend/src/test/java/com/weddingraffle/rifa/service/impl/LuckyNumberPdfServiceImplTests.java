@@ -46,7 +46,8 @@ class LuckyNumberPdfServiceImplTests {
         transaction.assignParticipantFlag(new ParticipantFlag("UY", "Uruguai", "🇺🇾"));
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
-        when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external")).thenReturn(List.of());
+        when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external"))
+                .thenReturn(List.of());
 
         byte[] pdf = service.generate("external");
 
@@ -99,7 +100,9 @@ class LuckyNumberPdfServiceImplTests {
                             "00002",
                             "00003",
                             "00004");
-            assertThat(text).containsSubsequence("Números adquiridos agora", "00003", "Números adquiridos anteriormente", "00001");
+            assertThat(text)
+                    .containsSubsequence(
+                            "Números adquiridos agora", "00003", "Números adquiridos anteriormente", "00001");
             assertThat(text)
                     .doesNotContain(
                             "Esta compra gerou",
@@ -119,7 +122,8 @@ class LuckyNumberPdfServiceImplTests {
                 .toList();
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(luckyNumbers);
-        when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external")).thenReturn(List.of());
+        when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external"))
+                .thenReturn(List.of());
 
         byte[] pdf = service.generate("external");
 

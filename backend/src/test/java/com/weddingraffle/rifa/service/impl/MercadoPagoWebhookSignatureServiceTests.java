@@ -60,7 +60,6 @@ class MercadoPagoWebhookSignatureServiceTests {
                         "http://localhost:5173/payment-return/success",
                         "http://localhost:5173/payment-return/failure",
                         "http://localhost:5173/payment-return/pending",
-                        new AppProperties.Retry(3, 500, 2)),
-                new AppProperties.Mail("no-reply@example.com"));
+                        new AppProperties.Retry(3, 500, 2)));
     }
 }

@@ -25,12 +25,19 @@ export interface TransactionCreateRequest {
 
 export interface TransactionCreateResponse {
   externalReference: string;
+  recoveryCode: string;
   preferenceId: string;
   checkoutUrl: string;
 }
 
+export interface TransactionRecoveryRequest {
+  phone: string;
+  recoveryCode: string;
+}
+
 export interface TransactionStatusResponse {
   externalReference: string;
+  recoveryCode: string;
   emailProvided: boolean;
   status: PaymentStatus;
   quantity: number;

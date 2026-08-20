@@ -11,6 +11,7 @@ import { adminTransactionService } from '../../services/adminTransactionService'
 import { transactionService } from '../../services/transactionService';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
+import { RecoveryCodeContent } from '../payment-return/PaymentReturnPage';
 import { cashPaymentSchema, type CashPaymentFormData } from './schemas';
 
 export function AdminCashPaymentPage() {
@@ -146,6 +147,10 @@ export function AdminCashPaymentPage() {
                   </div>
                 </dl>
               ) : null}
+
+              <div className="rounded-lg border border-green/20 bg-white/60 p-4">
+                <RecoveryCodeContent recoveryCode={createCashMutation.data.recoveryCode} />
+              </div>
 
               <CashLuckyNumberGroup
                 isExpanded={isCurrentLuckyNumberListExpanded}

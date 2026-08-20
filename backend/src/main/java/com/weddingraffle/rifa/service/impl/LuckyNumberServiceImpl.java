@@ -48,6 +48,11 @@ public class LuckyNumberServiceImpl implements LuckyNumberService {
     }
 
     @Override
+    public List<String> findApprovedNumbersByPhone(String phone) {
+        return luckyNumberRepository.findNumbersByPhoneAndStatus(phone, PaymentStatus.APPROVED);
+    }
+
+    @Override
     public List<String> findPreviousApprovedNumbers(String phone, String externalReference) {
         return luckyNumberRepository.findNumbersByPhoneAndStatusExcludingExternalReference(
                 phone, PaymentStatus.APPROVED, externalReference);

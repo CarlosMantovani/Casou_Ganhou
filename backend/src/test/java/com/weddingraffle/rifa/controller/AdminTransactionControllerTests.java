@@ -104,6 +104,7 @@ class AdminTransactionControllerTests {
         when(adminTransactionService.createCashTransaction(any()))
                 .thenReturn(new CashTransactionCreateResponse(
                         "external",
+                        "4821",
                         "Guest User",
                         "11999999999",
                         null,
@@ -121,6 +122,7 @@ class AdminTransactionControllerTests {
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.paymentMethod").value("CASH"))
                 .andExpect(jsonPath("$.status").value("APROVADO"))
                 .andExpect(jsonPath("$.luckyNumbers[0]").value("00003"))
@@ -158,8 +160,7 @@ class AdminTransactionControllerTests {
                             "http://localhost:5173/payment-return/success",
                             "http://localhost:5173/payment-return/failure",
                             "http://localhost:5173/payment-return/pending",
-                            new AppProperties.Retry(3, 500, 2)),
-                    new AppProperties.Mail("no-reply@example.com"));
+                            new AppProperties.Retry(3, 500, 2)));
         }
     }
 }

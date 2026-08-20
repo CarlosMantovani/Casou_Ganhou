@@ -42,7 +42,7 @@ class PublicHomeControllerTests {
         when(publicHomeService.getSummary())
                 .thenReturn(new HomeSummaryResponse(
                         OffsetDateTime.parse("2026-09-05T20:00:00-03:00"),
-                        List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12)),
+                        List.of(new FlagRankingResponse("BRAZIL", "Brasil", "BR", 1, new BigDecimal("100.00"))),
                         new RaffleDrawResponse(
                                 "00042",
                                 "Winner Guest",
@@ -55,7 +55,9 @@ class PublicHomeControllerTests {
                 .andExpect(jsonPath("$.scheduledDrawAt").value("2026-09-05T20:00:00-03:00"))
                 .andExpect(jsonPath("$.flagRanking[0].code").value("BRAZIL"))
                 .andExpect(jsonPath("$.flagRanking[0].name").value("Brasil"))
-                .andExpect(jsonPath("$.flagRanking[0].totalNumbers").value(12))
+                .andExpect(jsonPath("$.flagRanking[0].position").value(1))
+                .andExpect(jsonPath("$.flagRanking[0].progressPercent").value(100.00))
+                .andExpect(jsonPath("$.flagRanking[0].totalNumbers").doesNotExist())
                 .andExpect(jsonPath("$.raffleResult.winningNumber").value("00042"))
                 .andExpect(jsonPath("$.raffleResult.winnerName").value("Winner Guest"))
                 .andExpect(jsonPath("$.raffleResult.participantFlagName").value("Brasil"))
@@ -66,17 +68,21 @@ class PublicHomeControllerTests {
     void returnsFlagRankingWithoutAuthentication() throws Exception {
         when(publicHomeService.getFlagRanking())
                 .thenReturn(List.of(
-                        new FlagRankingResponse("BRAZIL", "Brasil", "BR", 12),
-                        new FlagRankingResponse("NICARAGUA", "Nicarágua", "NI", 8)));
+                        new FlagRankingResponse("BRAZIL", "Brasil", "BR", 1, new BigDecimal("100.00")),
+                        new FlagRankingResponse("NICARAGUA", "Nicarágua", "NI", 2, new BigDecimal("66.67"))));
 
         mockMvc.perform(get("/public/flag-ranking"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].code").value("BRAZIL"))
                 .andExpect(jsonPath("$[0].name").value("Brasil"))
-                .andExpect(jsonPath("$[0].totalNumbers").value(12))
+                .andExpect(jsonPath("$[0].position").value(1))
+                .andExpect(jsonPath("$[0].progressPercent").value(100.00))
+                .andExpect(jsonPath("$[0].totalNumbers").doesNotExist())
                 .andExpect(jsonPath("$[1].code").value("NICARAGUA"))
                 .andExpect(jsonPath("$[1].name").value("Nicarágua"))
-                .andExpect(jsonPath("$[1].totalNumbers").value(8));
+                .andExpect(jsonPath("$[1].position").value(2))
+                .andExpect(jsonPath("$[1].progressPercent").value(66.67))
+                .andExpect(jsonPath("$[1].totalNumbers").doesNotExist());
     }
 
     @TestConfiguration

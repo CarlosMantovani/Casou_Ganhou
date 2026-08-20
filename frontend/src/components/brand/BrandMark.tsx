@@ -9,13 +9,13 @@ export function BrandMark() {
         <path d="M65 15 L69 23 L65 31 L61 23 Z" fill="#B8935A" opacity="0.72" />
       </svg>
       <h1 className="font-serif text-4xl font-bold leading-tight text-green sm:text-5xl">
-        José Carlos
+        Paula
         <Heart
           aria-label="e"
           className="mx-2 mb-1 inline-block h-6 w-6 text-wine sm:h-7 sm:w-7"
           strokeWidth={1.5}
         />
-        Paula
+        José Carlos
       </h1>
       <p className="mt-2 font-serif text-2xl font-bold leading-tight text-charcoal">
         Presente <span className="italic text-gold">Premiado</span>

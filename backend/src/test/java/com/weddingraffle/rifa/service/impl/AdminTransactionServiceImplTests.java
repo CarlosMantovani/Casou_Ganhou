@@ -3,6 +3,8 @@ package com.weddingraffle.rifa.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -128,6 +130,8 @@ class AdminTransactionServiceImplTests {
             Transaction transaction = invocation.getArgument(0);
             return List.of(new LuckyNumber("00001", transaction.getEmail(), transaction));
         });
+        when(luckyNumberService.findPreviousApprovedNumbers(eq("11999999999"), anyString()))
+                .thenReturn(List.of("00090", "00091"));
 
         var response = service.createCashTransaction(
                 new CashTransactionCreateRequest("Guest User", "(11) 99999-9999", "GUEST@example.com", 2));
@@ -139,11 +143,14 @@ class AdminTransactionServiceImplTests {
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         assertThat(response.totalAmount()).isEqualByComparingTo("20.00");
         assertThat(response.luckyNumbers()).containsExactly("00001");
+        assertThat(response.previousLuckyNumbers()).containsExactly("00090", "00091");
+        assertThat(response.totalLuckyNumbers()).isEqualTo(3);
         var transactionCaptor = org.mockito.ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(transactionCaptor.capture());
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
         verify(luckyNumberService).generateFor(any(Transaction.class));
+        verify(luckyNumberService).findPreviousApprovedNumbers(eq("11999999999"), anyString());
         verify(applicationEventPublisher).publishEvent(any(PaymentApprovedEvent.class));
     }
 

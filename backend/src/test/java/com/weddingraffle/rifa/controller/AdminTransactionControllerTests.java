@@ -111,7 +111,9 @@ class AdminTransactionControllerTests {
                         PaymentStatusResponse.APROVADO,
                         2,
                         new BigDecimal("20.00"),
-                        List.of("00001", "00002")));
+                        List.of("00003", "00004"),
+                        List.of("00001", "00002"),
+                        4));
 
         mockMvc.perform(post("/transactions/cash")
                         .contentType("application/json")
@@ -121,7 +123,9 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.externalReference").value("external"))
                 .andExpect(jsonPath("$.paymentMethod").value("CASH"))
                 .andExpect(jsonPath("$.status").value("APROVADO"))
-                .andExpect(jsonPath("$.luckyNumbers[0]").value("00001"));
+                .andExpect(jsonPath("$.luckyNumbers[0]").value("00003"))
+                .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00001"))
+                .andExpect(jsonPath("$.totalLuckyNumbers").value(4));
     }
 
     @Test

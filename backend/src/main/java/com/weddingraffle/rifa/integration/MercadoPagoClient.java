@@ -22,7 +22,7 @@ import org.springframework.util.StringUtils;
 @Component
 public class MercadoPagoClient implements PaymentProviderClient {
 
-    private static final String ITEM_TITLE = "Lucky number";
+    private static final String ITEM_TITLE = "Número(s) da sorte";
 
     private final AppProperties appProperties;
     private final PaymentClient paymentClient;

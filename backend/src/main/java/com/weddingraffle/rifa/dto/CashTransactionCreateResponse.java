@@ -13,4 +13,6 @@ public record CashTransactionCreateResponse(
         PaymentStatusResponse status,
         Integer quantity,
         BigDecimal totalAmount,
-        List<String> luckyNumbers) {}
+        List<String> luckyNumbers,
+        List<String> previousLuckyNumbers,
+        Integer totalLuckyNumbers) {}

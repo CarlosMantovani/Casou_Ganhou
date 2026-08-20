@@ -53,6 +53,9 @@ public class Transaction {
     @Column(nullable = false, unique = true)
     private String externalReference;
 
+    @Column(nullable = false, length = 4)
+    private String recoveryCode;
+
     private String mpPaymentId;
 
     private String mpPreferenceId;
@@ -65,13 +68,6 @@ public class Transaction {
 
     @Column(nullable = false, length = 20)
     private String participantFlagEmoji;
-
-    private OffsetDateTime confirmationEmailSentAt;
-
-    private OffsetDateTime confirmationEmailFailedAt;
-
-    @Column(length = 500)
-    private String confirmationEmailLastError;
 
     @Column(insertable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -177,6 +173,10 @@ public class Transaction {
         return externalReference;
     }
 
+    public String getRecoveryCode() {
+        return recoveryCode;
+    }
+
     public String getMpPaymentId() {
         return mpPaymentId;
     }
@@ -197,18 +197,6 @@ public class Transaction {
         return participantFlagEmoji;
     }
 
-    public OffsetDateTime getConfirmationEmailSentAt() {
-        return confirmationEmailSentAt;
-    }
-
-    public OffsetDateTime getConfirmationEmailFailedAt() {
-        return confirmationEmailFailedAt;
-    }
-
-    public String getConfirmationEmailLastError() {
-        return confirmationEmailLastError;
-    }
-
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -226,21 +214,14 @@ public class Transaction {
         this.mpPreferenceId = mpPreferenceId;
     }
 
+    public void assignRecoveryCode(String recoveryCode) {
+        this.recoveryCode = recoveryCode;
+    }
+
     public void assignParticipantFlag(ParticipantFlag participantFlag) {
         this.participantFlagCode = participantFlag.code();
         this.participantFlagName = participantFlag.name();
         this.participantFlagEmoji = participantFlag.emoji();
-    }
-
-    public void markConfirmationEmailSent(OffsetDateTime sentAt) {
-        this.confirmationEmailSentAt = sentAt;
-        this.confirmationEmailFailedAt = null;
-        this.confirmationEmailLastError = null;
-    }
-
-    public void markConfirmationEmailFailed(OffsetDateTime failedAt, String error) {
-        this.confirmationEmailFailedAt = failedAt;
-        this.confirmationEmailLastError = error;
     }
 
     private static BigDecimal inferUnitPrice(BigDecimal totalAmount, Integer quantity) {

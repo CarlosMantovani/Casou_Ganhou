@@ -18,4 +18,17 @@ export const buyerSchema = z.object({
   email: optionalEmailSchema,
 });
 
+export const recoverySchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Informe seu telefone.')
+    .refine((value) => {
+      const digits = value.replace(/\D/g, '');
+      return digits.length === 10 || digits.length === 11;
+    }, 'Informe um telefone com DDD.'),
+  recoveryCode: z.string().trim().regex(/^\d{4}$/, 'Informe o código de 4 dígitos.'),
+});
+
 export type BuyerFormData = z.infer<typeof buyerSchema>;
+export type RecoveryFormData = z.infer<typeof recoverySchema>;

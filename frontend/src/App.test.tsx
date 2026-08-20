@@ -18,6 +18,7 @@ vi.mock('./services/transactionService', () => ({
     getLuckyNumbersPdfUrl: vi.fn(),
     getStatus: vi.fn(),
     quote: vi.fn(),
+    recover: vi.fn(),
   },
 }));
 
@@ -104,6 +105,10 @@ describe('App', () => {
     mockedTransactionService.getLuckyNumbersPdfUrl.mockReturnValue(
       'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
     );
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
     mockedHomeService.getSummary.mockResolvedValue({
       scheduledDrawAt: null,
       raffleResult: null,
@@ -400,6 +405,7 @@ describe('App', () => {
       checkoutUrl: 'https://checkout.example.com',
       externalReference: 'external-reference',
       preferenceId: 'preference-id',
+      recoveryCode: '4821',
     });
 
     renderApp();
@@ -425,6 +431,7 @@ describe('App', () => {
   it('renders approved payment numbers from backend status', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      recoveryCode: '4821',
       emailProvided: true,
       luckyNumbers: ['00042', '12345'],
       participantFlagEmoji: '🇧🇷',
@@ -439,14 +446,16 @@ describe('App', () => {
     expect(await screen.findByText('00042')).toBeInTheDocument();
     expect(screen.getByText('12345')).toBeInTheDocument();
     expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
-    expect(screen.getByText('Brasil')).toBeInTheDocument();
-    expect(screen.getByText('Confirmação enviada por e-mail')).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: '🇧🇷' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Brasil').length).toBeGreaterThan(0);
+    expect(screen.getByText('4821')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copiar código' })).toBeInTheDocument();
   });
 
   it('renders previous and current lucky numbers for repeat buyers', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      recoveryCode: '4821',
       emailProvided: true,
       luckyNumbers: ['00042', '12345'],
       previousLuckyNumbers: ['00001', '00002'],
@@ -480,6 +489,7 @@ describe('App', () => {
   it('renders pdf download when approved payment has no email', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      recoveryCode: '4821',
       emailProvided: false,
       luckyNumbers: ['00042'],
       participantFlagEmoji: '🇧🇷',
@@ -501,6 +511,7 @@ describe('App', () => {
   it('renders pending payment message', async () => {
     mockedTransactionService.getStatus.mockResolvedValue({
       externalReference: 'external-reference',
+      recoveryCode: '4821',
       emailProvided: false,
       luckyNumbers: [],
       participantFlagEmoji: '🇧🇷',
@@ -514,6 +525,45 @@ describe('App', () => {
 
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
     expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
+    expect(screen.getByText('4821')).toBeInTheDocument();
+  });
+
+  it('recovers lucky numbers by phone and code from the home page', async () => {
+    const user = userEvent.setup();
+    mockedTransactionService.recover.mockResolvedValue({
+      externalReference: 'external-reference',
+      recoveryCode: '4821',
+      emailProvided: false,
+      luckyNumbers: ['00042', '00090'],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
+      quantity: 1,
+      status: 'APROVADO',
+      totalAmount: '10.00',
+    });
+
+    renderApp();
+
+    await user.type(await screen.findByLabelText('Telefone da compra'), '11999999999');
+    await user.type(screen.getByLabelText('Código de 4 dígitos'), '4821');
+    await user.click(screen.getByRole('button', { name: 'Consultar meus números' }));
+
+    await waitFor(() =>
+      expect(mockedTransactionService.recover).toHaveBeenCalledWith({
+        phone: '11999999999',
+        recoveryCode: '4821',
+      }),
+    );
+    expect(await screen.findByText('00042')).toBeInTheDocument();
+    expect(screen.getByText('00090')).toBeInTheDocument();
+    expect(screen.getByText('Sua bandeira')).toBeInTheDocument();
+    expect(screen.getAllByText('Brasil').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: '🇧🇷' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Copiar código' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Baixar PDF/i })).toHaveAttribute(
+      'href',
+      'http://localhost:8080/transactions/external-reference/lucky-numbers.pdf',
+    );
   });
 
   it('renders a friendly error when external reference is missing', () => {
@@ -695,6 +745,7 @@ describe('App', () => {
       phone: '11999999999',
       previousLuckyNumbers: ['00090', '00091'],
       quantity: 1,
+      recoveryCode: '4821',
       status: 'APROVADO',
       totalAmount: '10.00',
       totalLuckyNumbers: 12,
@@ -728,6 +779,7 @@ describe('App', () => {
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
     expect(screen.getByText('00090')).toBeInTheDocument();
     expect(screen.getByText('00091')).toBeInTheDocument();
+    expect(screen.getByText('4821')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /00001/ }));
 

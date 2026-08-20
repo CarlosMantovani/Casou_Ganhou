@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Check, Download, Gift, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, Copy, Download, Gift, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { Card } from '../../components/ui/Card';
@@ -104,7 +105,9 @@ export function PaymentReturnPage() {
             )}
           </Card>
 
-          {transaction.emailProvided ? <EmailConfirmationCard /> : <PdfDownloadCard externalReference={transaction.externalReference} />}
+          <RecoveryCodeCard recoveryCode={transaction.recoveryCode} />
+
+          {!transaction.emailProvided ? <PdfDownloadCard externalReference={transaction.externalReference} /> : null}
 
           <p className="font-serif text-sm italic leading-relaxed text-terracotta">
             Que este número te traga a alegria de celebrar junto ao casal neste dia tão especial.
@@ -119,7 +122,14 @@ export function PaymentReturnPage() {
   }
 
   if (transaction.status === 'PENDENTE') {
-    return <PaymentState title="Pagamento pendente" message={publicMessages.pending} tone="pending" />;
+    return (
+      <PaymentState
+        recoveryCode={transaction.recoveryCode}
+        title="Pagamento pendente"
+        message={publicMessages.pending}
+        tone="pending"
+      />
+    );
   }
 
   if (transaction.status === 'CANCELADO') {
@@ -127,6 +137,48 @@ export function PaymentReturnPage() {
   }
 
   return <PaymentState title="Pagamento recusado" message={publicMessages.rejected} tone="error" />;
+}
+
+export function RecoveryCodeCard({ recoveryCode }: { recoveryCode: string }) {
+  return (
+    <Card className="border border-green/30 bg-white text-left shadow-none">
+      <RecoveryCodeContent recoveryCode={recoveryCode} />
+    </Card>
+  );
+}
+
+export function RecoveryCodeContent({ recoveryCode }: { recoveryCode: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard?.writeText(recoveryCode);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <h2 className="text-sm font-bold">Código de consulta</h2>
+        <p className="mt-1 text-sm leading-relaxed text-warm-gray">
+          Guarde este código para consultar seus números pelo telefone na tela inicial.
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="rounded-lg bg-ivory-deep px-4 py-2 font-serif text-2xl font-bold tracking-normal text-green">
+          {recoveryCode}
+        </span>
+        <button
+          aria-label={copied ? 'Código copiado' : 'Copiar código'}
+          className="grid h-11 w-11 place-items-center rounded-lg bg-green text-white transition hover:bg-green-deep"
+          onClick={handleCopy}
+          type="button"
+        >
+          {copied ? <Check aria-hidden="true" className="h-5 w-5" /> : <Copy aria-hidden="true" className="h-5 w-5" />}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function LuckyNumberGroup({
@@ -171,57 +223,46 @@ function LuckyNumberList({
   );
 }
 
-function EmailConfirmationCard() {
+function PdfDownloadCard({ externalReference }: { externalReference: string }) {
   return (
-    <Card className="border border-[#EEE6DF] bg-cream text-left shadow-none">
-      <div className="flex gap-4">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-terracotta">
-          <Check aria-hidden="true" className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="text-sm font-bold">Confirmação enviada por e-mail</h2>
-          <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-            Seus números também foram enviados para o e-mail informado na compra.
-          </p>
-        </div>
-      </div>
+    <Card className="border border-gold bg-gold/10 text-left shadow-none">
+      <PdfDownloadContent externalReference={externalReference} />
     </Card>
   );
 }
 
-function PdfDownloadCard({ externalReference }: { externalReference: string }) {
+export function PdfDownloadContent({ externalReference }: { externalReference: string }) {
   return (
-    <Card className="border border-gold bg-gold/10 text-left shadow-none">
-      <div className="flex gap-4">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gold text-charcoal">
-          <Download aria-hidden="true" className="h-5 w-5" />
-        </span>
-        <div className="flex-1">
-          <h2 className="text-sm font-bold">Baixe seus números agora</h2>
-          <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-            Como nenhum e-mail foi informado, esta é a única forma de guardar seus números.
-          </p>
-          <a
-            className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"
-            href={transactionService.getLuckyNumbersPdfUrl(externalReference)}
-          >
-            <Download aria-hidden="true" className="h-4 w-4" />
-            Baixar PDF
-          </a>
-        </div>
+    <div className="flex gap-4 text-left">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gold text-charcoal">
+        <Download aria-hidden="true" className="h-5 w-5" />
+      </span>
+      <div className="flex-1">
+        <h2 className="text-sm font-bold">Baixe seus números agora</h2>
+        <p className="mt-1 text-sm leading-relaxed text-warm-gray">
+          Baixe o PDF para guardar seus números junto com o código de consulta.
+        </p>
+        <a
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white shadow-button transition hover:bg-terracotta-dark"
+          href={transactionService.getLuckyNumbersPdfUrl(externalReference)}
+        >
+          <Download aria-hidden="true" className="h-4 w-4" />
+          Baixar PDF
+        </a>
       </div>
-    </Card>
+    </div>
   );
 }
 
 interface PaymentStateProps {
   icon?: ReactNode;
   message: string;
+  recoveryCode?: string;
   title: string;
   tone: 'error' | 'neutral' | 'pending';
 }
 
-function PaymentState({ icon, message, title, tone }: PaymentStateProps) {
+function PaymentState({ icon, message, recoveryCode, title, tone }: PaymentStateProps) {
   const iconColor = tone === 'pending' ? 'text-gold' : tone === 'neutral' ? 'text-terracotta' : 'text-terracotta-dark';
 
   return (
@@ -235,6 +276,7 @@ function PaymentState({ icon, message, title, tone }: PaymentStateProps) {
           <h1 className="font-serif text-3xl font-bold">{title}</h1>
           <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-warm-gray">{message}</p>
         </div>
+        {recoveryCode ? <RecoveryCodeCard recoveryCode={recoveryCode} /> : null}
         <div className="flex w-full flex-col gap-3">
           {tone !== 'pending' ? (
             <a

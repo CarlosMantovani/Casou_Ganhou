@@ -101,7 +101,7 @@ class TransactionControllerTests {
     void createReturnsCheckoutWithoutAuthentication() throws Exception {
         when(transactionService.create(any()))
                 .thenReturn(new TransactionCreateResponse(
-                        "external-reference-123", "preference-123", "https://checkout.example.com"));
+                        "external-reference-123", "4821", "preference-123", "https://checkout.example.com"));
 
         mockMvc.perform(
                         post("/transactions")
@@ -110,6 +110,7 @@ class TransactionControllerTests {
                                         "{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"email\":\"guest@example.com\",\"quantity\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.preferenceId").value("preference-123"))
                 .andExpect(jsonPath("$.checkoutUrl").value("https://checkout.example.com"));
     }
@@ -122,8 +123,7 @@ class TransactionControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
-                .andExpect(header()
-                        .string(
+                .andExpect(header().string(
                                 "Content-Disposition",
                                 org.hamcrest.Matchers.containsString("Numeros_da_sorte_external.pdf")));
     }
@@ -133,6 +133,7 @@ class TransactionControllerTests {
         when(transactionService.getStatus("external-reference-123"))
                 .thenReturn(new TransactionStatusResponse(
                         "external-reference-123",
+                        "4821",
                         true,
                         PaymentStatusResponse.APROVADO,
                         2,
@@ -146,9 +147,35 @@ class TransactionControllerTests {
         mockMvc.perform(get("/transactions/external-reference-123/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.status").value("APROVADO"))
                 .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00099"))
                 .andExpect(jsonPath("$.totalLuckyNumbers").value(3));
+    }
+
+    @Test
+    void recoversLuckyNumbersWithoutAuthentication() throws Exception {
+        when(transactionService.recover(any()))
+                .thenReturn(new TransactionStatusResponse(
+                        "external-reference-123",
+                        "4821",
+                        false,
+                        PaymentStatusResponse.APROVADO,
+                        1,
+                        new BigDecimal("10.00"),
+                        "Brasil",
+                        "🇧🇷",
+                        List.of("00042"),
+                        List.of(),
+                        1));
+
+        mockMvc.perform(post("/transactions/recovery")
+                        .contentType("application/json")
+                        .content("{\"phone\":\"(11) 99999-9999\",\"recoveryCode\":\"4821\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.externalReference").value("external-reference-123"))
+                .andExpect(jsonPath("$.recoveryCode").value("4821"))
+                .andExpect(jsonPath("$.luckyNumbers[0]").value("00042"));
     }
 
     @TestConfiguration
@@ -167,8 +194,7 @@ class TransactionControllerTests {
                             "http://localhost:5173/payment-return/success",
                             "http://localhost:5173/payment-return/failure",
                             "http://localhost:5173/payment-return/pending",
-                            new AppProperties.Retry(3, 500, 2)),
-                    new AppProperties.Mail("no-reply@example.com"));
+                            new AppProperties.Retry(3, 500, 2)));
         }
     }
 }

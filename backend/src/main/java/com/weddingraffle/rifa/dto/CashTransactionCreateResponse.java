@@ -6,6 +6,7 @@ import java.util.List;
 
 public record CashTransactionCreateResponse(
         String externalReference,
+        String recoveryCode,
         String name,
         String phone,
         String email,

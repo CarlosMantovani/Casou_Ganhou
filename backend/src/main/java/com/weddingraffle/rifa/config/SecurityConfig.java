@@ -52,6 +52,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/transactions")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/transactions/recovery")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/transactions/{externalReference}/status")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/transactions/{externalReference}/lucky-numbers.pdf")

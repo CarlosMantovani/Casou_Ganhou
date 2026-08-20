@@ -85,7 +85,12 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                     (PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2) - (NUMBER_GAP * (NUMBER_COLUMNS - 1)))
                             / NUMBER_COLUMNS;
             float y = writeTransactionDetails(
-                    currentPage.content(), titleFont, textFont, transaction, luckyNumbers.size(), previousLuckyNumbers.size());
+                    currentPage.content(),
+                    titleFont,
+                    textFont,
+                    transaction,
+                    luckyNumbers.size(),
+                    previousLuckyNumbers.size());
 
             if (!previousLuckyNumbers.isEmpty()) {
                 PageCursor cursor = writeNumberSection(
@@ -259,10 +264,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                 closePage(currentPage, textFont);
                 currentPage = createPage(document, currentPage.number() + 1, titleFont, textFont, true);
                 y = writeNumbersSectionHeader(
-                        currentPage.content(),
-                        titleFont,
-                        PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34,
-                        title);
+                        currentPage.content(), titleFont, PDRectangle.A4.getHeight() - HEADER_HEIGHT - 34, title);
             }
 
             int column = index % NUMBER_COLUMNS;
@@ -277,8 +279,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         return new PageCursor(currentPage, y);
     }
 
-    private static float writeNumbersSectionHeader(
-            PDPageContentStream content, PDFont titleFont, float y, String title)
+    private static float writeNumbersSectionHeader(PDPageContentStream content, PDFont titleFont, float y, String title)
             throws IOException {
         writeLine(content, titleFont, 15, PAGE_MARGIN, y, title, CHARCOAL);
         return y - 24;
@@ -383,8 +384,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
     }
 
     private static void writeParticipantFlag(
-            PDPageContentStream content, PDFont textFont, Transaction transaction, int x, int y)
-            throws IOException {
+            PDPageContentStream content, PDFont textFont, Transaction transaction, int x, int y) throws IOException {
         if (transaction.getParticipantFlagName() == null) {
             return;
         }

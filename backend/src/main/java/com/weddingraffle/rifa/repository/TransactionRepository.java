@@ -26,6 +26,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Optional<Transaction> findByExternalReference(String externalReference);
 
+    List<Transaction> findByPhoneAndRecoveryCodeOrderByCreatedAtDesc(String phone, String recoveryCode);
+
+    boolean existsByRecoveryCode(String recoveryCode);
+
     Optional<Transaction> findFirstByPhoneOrderByCreatedAtAsc(String phone);
 
     @Query("select distinct raffleTransaction.participantFlagCode from RaffleTransaction raffleTransaction")

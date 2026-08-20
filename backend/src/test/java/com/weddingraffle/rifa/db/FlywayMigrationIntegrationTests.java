@@ -51,11 +51,11 @@ class FlywayMigrationIntegrationTests {
             assertThat(indexExists(statement, "idx_transaction_status")).isTrue();
             assertThat(indexExists(statement, "idx_lucky_number_email")).isTrue();
             assertThat(columnExists(statement, "transaction", "confirmation_email_sent_at"))
-                    .isTrue();
+                    .isFalse();
             assertThat(columnExists(statement, "transaction", "confirmation_email_failed_at"))
-                    .isTrue();
+                    .isFalse();
             assertThat(columnExists(statement, "transaction", "confirmation_email_last_error"))
-                    .isTrue();
+                    .isFalse();
             assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
             assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
@@ -111,6 +111,7 @@ class FlywayMigrationIntegrationTests {
                     status,
                     payment_method,
                     external_reference,
+                    recovery_code,
                     participant_flag_code,
                     participant_flag_name,
                     participant_flag_emoji
@@ -124,6 +125,7 @@ class FlywayMigrationIntegrationTests {
                     'APPROVED',
                     'CASH',
                     'external-reference-ranking-test',
+                    '4821',
                     'BRAZIL',
                     'Brasil',
                     '🇧🇷'

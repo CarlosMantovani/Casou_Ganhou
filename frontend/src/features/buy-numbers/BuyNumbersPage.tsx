@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronRight, CreditCard, Flag, Minus, Plus, RotateCcw, Trophy } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ChevronRight, CreditCard, Flag, Minus, Plus, RotateCcw, Search, Trophy } from 'lucide-react';
+import type { BaseSyntheticEvent, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { StepProgress } from '../../components/brand/StepProgress';
@@ -19,8 +19,9 @@ import { isPastDateTime } from '../../utils/dateTime';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
 import { FlagRankingList } from '../flag-ranking/FlagRankingList';
+import { PdfDownloadContent, RecoveryCodeContent } from '../payment-return/PaymentReturnPage';
 import { CountdownPanel } from './CountdownPanel';
-import { buyerSchema, type BuyerFormData } from './schemas';
+import { buyerSchema, recoverySchema, type BuyerFormData, type RecoveryFormData } from './schemas';
 
 export function BuyNumbersPage() {
   const [buyer, setBuyer] = useState<BuyerFormData | null>(null);
@@ -35,6 +36,15 @@ export function BuyNumbersPage() {
     defaultValues: { email: '', name: '', phone: '' },
     mode: 'onChange',
     resolver: zodResolver(buyerSchema),
+  });
+  const {
+    formState: { errors: recoveryErrors, isValid: isRecoveryValid },
+    handleSubmit: handleRecoverySubmit,
+    register: registerRecovery,
+  } = useForm<RecoveryFormData>({
+    defaultValues: { phone: '', recoveryCode: '' },
+    mode: 'onChange',
+    resolver: zodResolver(recoverySchema),
   });
 
   const homeSummaryQuery = useQuery({
@@ -62,6 +72,13 @@ export function BuyNumbersPage() {
       window.location.assign(response.checkoutUrl);
     },
   });
+  const recoveryMutation = useMutation({
+    mutationFn: (request: RecoveryFormData) =>
+      transactionService.recover({
+        phone: normalizePhoneNumber(request.phone),
+        recoveryCode: request.recoveryCode,
+      }),
+  });
 
   const onSubmitBuyer = (data: BuyerFormData) => {
     setBuyer({
@@ -77,6 +94,9 @@ export function BuyNumbersPage() {
   const handlePay = () => {
     if (!buyer || isDrawClosed || createTransactionMutation.isPending) return;
     createTransactionMutation.mutate({ ...buyer, quantity });
+  };
+  const handleRecover = (data: RecoveryFormData) => {
+    recoveryMutation.mutate(data);
   };
 
   const currentStep: 1 | 2 = buyer ? 2 : 1;
@@ -142,7 +162,7 @@ export function BuyNumbersPage() {
               <TextInput
                 autoComplete="email"
                 error={errors.email?.message}
-                helper="Informe seu e-mail para receber os números automaticamente, ou deixe em branco e baixe um PDF ao final."
+                helper="Campo opcional para identificação da compra."
                 id="buyer-email"
                 inputMode="email"
                 label="E-mail (opcional)"
@@ -251,12 +271,130 @@ export function BuyNumbersPage() {
           </section>
         )}
         <RaffleResultPanel isDrawClosed={isDrawClosed} result={homeSummaryQuery.data?.raffleResult ?? null} />
+        <RecoveryLookupPanel
+          errors={recoveryErrors}
+          isValid={isRecoveryValid}
+          onSubmit={handleRecoverySubmit(handleRecover)}
+          register={registerRecovery}
+          transaction={recoveryMutation.data}
+          isError={recoveryMutation.isError}
+          isPending={recoveryMutation.isPending}
+        />
         <FlagRankingPanel
           isLoading={homeSummaryQuery.isLoading}
           ranking={homeSummaryQuery.data?.flagRanking ?? []}
         />
       </div>
     </main>
+  );
+}
+
+function RecoveryLookupPanel({
+  errors,
+  isError,
+  isPending,
+  isValid,
+  onSubmit,
+  register,
+  transaction,
+}: {
+  errors: FieldErrors<RecoveryFormData>;
+  isError: boolean;
+  isPending: boolean;
+  isValid: boolean;
+  onSubmit: (event?: BaseSyntheticEvent) => Promise<void>;
+  register: UseFormRegister<RecoveryFormData>;
+  transaction?: Awaited<ReturnType<typeof transactionService.recover>>;
+}) {
+  return (
+    <aside>
+      <Card className="bg-white/90">
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-green">Consultar números</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Já tenho um código</h2>
+          </div>
+
+          <TextInput
+            autoComplete="tel"
+            error={errors.phone?.message}
+            id="recovery-phone"
+            inputMode="tel"
+            label="Telefone da compra"
+            maxLength={15}
+            placeholder="(11) 99999-9999"
+            type="tel"
+            {...register('phone', {
+              onChange: (event) => {
+                event.target.value = formatPhoneNumber(event.target.value);
+              },
+            })}
+          />
+
+          <TextInput
+            autoComplete="one-time-code"
+            error={errors.recoveryCode?.message}
+            id="recovery-code"
+            inputMode="numeric"
+            label="Código de 4 dígitos"
+            maxLength={4}
+            placeholder="0000"
+            {...register('recoveryCode', {
+              onChange: (event) => {
+                event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
+              },
+            })}
+          />
+
+          {isError ? (
+            <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
+              {publicMessages.recoveryError}
+            </p>
+          ) : null}
+
+          <Button disabled={!isValid} isLoading={isPending} type="submit">
+            <Search aria-hidden="true" className="h-5 w-5" />
+            Consultar meus números
+          </Button>
+        </form>
+
+        {transaction ? (
+          <div className="mt-5 space-y-4 border-t border-line pt-5">
+            <RecoveryCodeContent recoveryCode={transaction.recoveryCode} />
+            {transaction.participantFlagEmoji && transaction.participantFlagName ? (
+              <div className="rounded-lg border border-[#EEE6DF] bg-white/80 px-4 py-3 text-center shadow-none">
+                <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Sua bandeira</p>
+                <div className="mt-3 flex items-center justify-center gap-3">
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-blush">
+                    <FlagEmoji className="h-8 w-8" emoji={transaction.participantFlagEmoji} />
+                  </span>
+                  <span className="font-serif text-xl font-bold text-charcoal">{transaction.participantFlagName}</span>
+                </div>
+              </div>
+            ) : null}
+            {transaction.status === 'APROVADO' && transaction.luckyNumbers.length > 0 ? (
+              <>
+                <h3 className="text-sm font-bold text-charcoal">Seus números da sorte</h3>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {transaction.luckyNumbers.map((number) => (
+                    <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
+                      {number}
+                    </span>
+                  ))}
+                </div>
+                <div className="rounded-lg border border-gold bg-gold/10 p-4">
+                  <PdfDownloadContent externalReference={transaction.externalReference} />
+                </div>
+              </>
+            ) : (
+              <p className="rounded-lg bg-ivory-deep px-4 py-3 text-sm leading-relaxed text-warm-gray">
+                {transaction.status === 'PENDENTE' ? publicMessages.pending : 'Esta compra ainda não possui números gerados.'}
+              </p>
+            )}
+          </div>
+        ) : null}
+      </Card>
+    </aside>
   );
 }
 

@@ -73,7 +73,30 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         return toPdf(transaction, luckyNumbers, previousLuckyNumbers);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateForParticipant(String externalReference) {
+        Transaction transaction = transactionRepository
+                .findByExternalReference(externalReference)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
+
+        List<String> luckyNumbers = luckyNumberService.findApprovedNumbersByPhone(transaction.getPhone());
+        if (luckyNumbers.isEmpty()) {
+            throw new InvalidTransactionStateException("Participant has no approved lucky numbers.");
+        }
+
+        return toPdf(transaction, luckyNumbers, List.of(), "Todos os números");
+    }
+
     private byte[] toPdf(Transaction transaction, List<String> luckyNumbers, List<String> previousLuckyNumbers) {
+        return toPdf(transaction, luckyNumbers, previousLuckyNumbers, "Números gerados");
+    }
+
+    private byte[] toPdf(
+            Transaction transaction,
+            List<String> luckyNumbers,
+            List<String> previousLuckyNumbers,
+            String singleSectionTitle) {
         try (PDDocument document = new PDDocument();
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDFont titleFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
@@ -124,7 +147,7 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
                         textFont,
                         numberFont,
                         y,
-                        "Números gerados",
+                        singleSectionTitle,
                         luckyNumbers,
                         numberCardWidth);
                 currentPage = cursor.page();
@@ -200,6 +223,9 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
             writeParticipantFlag(content, textFont, transaction, (int) PAGE_MARGIN, (int) y);
             y -= 26;
         }
+
+        y = writeRecoveryCode(content, textFont, transaction, y);
+        y -= 8;
 
         content.setNonStrokingColor(GOLD);
         content.addRect(PAGE_MARGIN, y - 4, 72, 2);
@@ -390,6 +416,25 @@ public class LuckyNumberPdfServiceImpl implements LuckyNumberPdfService {
         }
 
         writeLine(content, textFont, 12, x, y, "Sua bandeira: " + transaction.getParticipantFlagName(), CHARCOAL);
+    }
+
+    private static float writeRecoveryCode(
+            PDPageContentStream content, PDFont textFont, Transaction transaction, float y) throws IOException {
+        if (transaction.getRecoveryCode() == null) {
+            return y;
+        }
+
+        writeLine(content, textFont, 12, PAGE_MARGIN, y, "Código de consulta: " + transaction.getRecoveryCode(), GREEN);
+        y -= 18;
+        return writeWrappedText(
+                content,
+                textFont,
+                10,
+                PAGE_MARGIN,
+                y,
+                PDRectangle.A4.getWidth() - (PAGE_MARGIN * 2),
+                "Use este código com o telefone para consultar seus números na tela inicial. Ele é único para todas as compras e não muda. Não compartilhe com ninguém.",
+                WARM_GRAY);
     }
 
     private static String formatNumberCount(int count) {

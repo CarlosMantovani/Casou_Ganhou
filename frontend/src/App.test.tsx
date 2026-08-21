@@ -39,6 +39,7 @@ vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
     deleteCashTransaction: vi.fn(),
+    getParticipantLuckyNumbersPdf: vi.fn(),
     getSummary: vi.fn(),
     list: vi.fn(),
   },
@@ -157,6 +158,7 @@ describe('App', () => {
       approvedRevenue: '20.00',
       totalTransactions: 1,
     });
+    mockedAdminTransactionService.getParticipantLuckyNumbersPdf.mockResolvedValue(new Blob(['%PDF']));
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
       unitPrice: '10.00',
@@ -588,6 +590,7 @@ describe('App', () => {
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
     expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Baixar PDF dos números de Guest User' })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou telefone'), '(11) 99999-9999');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
@@ -746,6 +749,8 @@ describe('App', () => {
       name: 'Cash Guest',
       paymentMethod: 'CASH',
       phone: '11999999999',
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       previousLuckyNumbers: ['00090', '00091'],
       quantity: 1,
       recoveryCode: '4821',
@@ -778,6 +783,9 @@ describe('App', () => {
     expect(screen.getByText('Números adquiridos agora:')).toBeInTheDocument();
     expect(screen.getByText('Total de números com esta compra:')).toBeInTheDocument();
     expect(screen.getByText('12', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.getByText('Bandeira do participante')).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(await screen.findByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
     expect(screen.getByText('00090')).toBeInTheDocument();

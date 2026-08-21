@@ -116,6 +116,8 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 PaymentStatusResponse.from(transaction.getStatus()),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
+                transaction.getParticipantFlagName(),
+                transaction.getParticipantFlagEmoji(),
                 luckyNumbers,
                 previousLuckyNumbers,
                 luckyNumbers.size() + previousLuckyNumbers.size());

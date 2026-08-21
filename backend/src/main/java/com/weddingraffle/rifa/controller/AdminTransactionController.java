@@ -5,13 +5,17 @@ import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.service.AdminTransactionService;
+import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +30,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/transactions")
 public class AdminTransactionController {
 
-    private final AdminTransactionService adminTransactionService;
+    private static final int PDF_FILENAME_REFERENCE_LENGTH = 8;
 
-    public AdminTransactionController(AdminTransactionService adminTransactionService) {
+    private final AdminTransactionService adminTransactionService;
+    private final LuckyNumberPdfService luckyNumberPdfService;
+
+    public AdminTransactionController(
+            AdminTransactionService adminTransactionService, LuckyNumberPdfService luckyNumberPdfService) {
         this.adminTransactionService = adminTransactionService;
+        this.luckyNumberPdfService = luckyNumberPdfService;
     }
 
     @Operation(summary = "Get transaction summary for admin")
@@ -53,10 +62,33 @@ public class AdminTransactionController {
         return ResponseEntity.ok(adminTransactionService.createCashTransaction(request));
     }
 
+    @Operation(summary = "Download all approved lucky numbers PDF for the transaction participant")
+    @GetMapping("/{externalReference}/participant-lucky-numbers.pdf")
+    public ResponseEntity<byte[]> downloadParticipantLuckyNumbersPdf(@PathVariable String externalReference) {
+        byte[] pdf = luckyNumberPdfService.generateForParticipant(externalReference);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename("Numeros_do_participante_" + shortReference(externalReference) + ".pdf")
+                                .build()
+                                .toString())
+                .body(pdf);
+    }
+
     @Operation(summary = "Delete cash transaction for admin")
     @DeleteMapping("/{externalReference}")
     public ResponseEntity<Void> deleteCashTransaction(@PathVariable String externalReference) {
         adminTransactionService.deleteCashTransaction(externalReference);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    private static String shortReference(String externalReference) {
+        String sanitizedReference = externalReference.replaceAll("[^A-Za-z0-9]", "");
+        if (sanitizedReference.length() <= PDF_FILENAME_REFERENCE_LENGTH) {
+            return sanitizedReference;
+        }
+        return sanitizedReference.substring(0, PDF_FILENAME_REFERENCE_LENGTH);
     }
 }

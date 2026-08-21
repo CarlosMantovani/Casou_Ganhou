@@ -41,4 +41,11 @@ export const adminTransactionService = {
   async deleteCashTransaction(externalReference: string): Promise<void> {
     await apiClient.delete(`/transactions/${externalReference}`);
   },
+
+  async getParticipantLuckyNumbersPdf(externalReference: string): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/transactions/${externalReference}/participant-lucky-numbers.pdf`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };

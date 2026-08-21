@@ -38,6 +38,8 @@ export interface CashTransactionCreateResponse {
   quantity: number;
   totalAmount: string;
   status: PaymentStatus;
+  participantFlagName?: string | null;
+  participantFlagEmoji?: string | null;
   luckyNumbers: string[];
   previousLuckyNumbers?: string[];
   totalLuckyNumbers?: number;

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Eye, EyeOff, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, Download, Eye, EyeOff, Gift, LogOut, ReceiptText, Settings, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -48,6 +48,13 @@ export function AdminDashboardPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-transaction-summary'] });
+    },
+  });
+  const participantPdfMutation = useMutation({
+    mutationFn: (transaction: AdminTransactionResponse) =>
+      adminTransactionService.getParticipantLuckyNumbersPdf(transaction.externalReference),
+    onSuccess: (pdf, transaction) => {
+      downloadPdf(pdf, `Numeros_do_participante_${shortReference(transaction.externalReference)}.pdf`);
     },
   });
 
@@ -160,7 +167,9 @@ export function AdminDashboardPage() {
             <TransactionTable
               areSensitiveValuesVisible={areMetricsVisible}
               deletingExternalReference={deleteCashTransactionMutation.variables ?? null}
+              downloadingPdfExternalReference={participantPdfMutation.variables?.externalReference ?? null}
               isDeleting={deleteCashTransactionMutation.isPending}
+              isDownloadingPdf={participantPdfMutation.isPending}
               onDeleteCashTransaction={(transaction) => {
                 const confirmed = window.confirm(
                   areMetricsVisible
@@ -171,8 +180,15 @@ export function AdminDashboardPage() {
                   deleteCashTransactionMutation.mutate(transaction.externalReference);
                 }
               }}
+              onDownloadParticipantPdf={(transaction) => participantPdfMutation.mutate(transaction)}
               transactions={transactions}
             />
+          ) : null}
+
+          {participantPdfMutation.isError ? (
+            <p className="mt-4 rounded-lg border border-terracotta/30 bg-blush px-4 py-3 text-sm text-terracotta-dark" role="alert">
+              Não foi possível baixar o PDF do participante.
+            </p>
           ) : null}
 
           {transactionsQuery.data ? (
@@ -252,14 +268,20 @@ function MetricsSummary({
 function TransactionTable({
   areSensitiveValuesVisible,
   deletingExternalReference,
+  downloadingPdfExternalReference,
   isDeleting,
+  isDownloadingPdf,
   onDeleteCashTransaction,
+  onDownloadParticipantPdf,
   transactions,
 }: {
   areSensitiveValuesVisible: boolean;
   deletingExternalReference: string | null;
+  downloadingPdfExternalReference: string | null;
   isDeleting: boolean;
+  isDownloadingPdf: boolean;
   onDeleteCashTransaction: (transaction: AdminTransactionResponse) => void;
+  onDownloadParticipantPdf: (transaction: AdminTransactionResponse) => void;
   transactions: AdminTransactionResponse[];
 }) {
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(() => new Set());
@@ -299,6 +321,7 @@ function TransactionTable({
             const hasMoreLuckyNumbers = transaction.luckyNumbers.length > 8;
             const isExpanded = expandedTransactions.has(transaction.externalReference);
             const displayedLuckyNumbers = isExpanded ? transaction.luckyNumbers : transaction.luckyNumbers.slice(0, 8);
+            const canDownloadParticipantPdf = transaction.luckyNumbers.length > 0;
             const maskedValue = '****';
 
             return (
@@ -355,6 +378,27 @@ function TransactionTable({
                 ) : null}
               </td>
               <td className="px-3 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    aria-label={
+                      areSensitiveValuesVisible
+                        ? `Baixar PDF dos números de ${transaction.name}`
+                        : 'Baixar PDF dos números'
+                    }
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-green/30 px-3 py-2 text-xs font-bold text-green transition hover:bg-ivory-deep disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                      !canDownloadParticipantPdf ||
+                      (isDownloadingPdf && downloadingPdfExternalReference === transaction.externalReference)
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDownloadParticipantPdf(transaction);
+                    }}
+                    title="Baixar PDF com todos os números do participante"
+                    type="button"
+                  >
+                    <Download aria-hidden="true" className="h-4 w-4" />
+                  </button>
                 {transaction.paymentMethod === 'CASH' ? (
                   <button
                     aria-label={
@@ -371,8 +415,9 @@ function TransactionTable({
                     <Trash2 aria-hidden="true" className="h-4 w-4" />
                   </button>
                 ) : (
-                  <span className="text-warm-gray">-</span>
+                  null
                 )}
+                </div>
               </td>
             </tr>
             );
@@ -381,6 +426,20 @@ function TransactionTable({
       </table>
     </div>
   );
+}
+
+function downloadPdf(pdf: Blob, filename: string) {
+  const url = window.URL.createObjectURL(pdf);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
+function shortReference(externalReference: string) {
+  const sanitizedReference = externalReference.replace(/[^A-Za-z0-9]/g, '');
+  return sanitizedReference.length <= 8 ? sanitizedReference : sanitizedReference.slice(0, 8);
 }
 
 function StatusBadge({ status }: { status: AdminTransactionResponse['status'] }) {

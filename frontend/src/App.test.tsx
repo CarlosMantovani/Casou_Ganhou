@@ -504,6 +504,8 @@ describe('App', () => {
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
     expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
     expect(screen.getByText('4821')).toBeInTheDocument();
+    expect(screen.getByText(/Este código é único para todas as suas compras/i)).toBeInTheDocument();
+    expect(screen.getByText(/Não compartilhe com ninguém/i)).toBeInTheDocument();
   });
 
   it('recovers lucky numbers by phone and code from the recovery page', async () => {

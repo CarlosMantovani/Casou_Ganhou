@@ -157,14 +157,18 @@ export function RecoveryCodeContent({ recoveryCode }: { recoveryCode: string }) 
   };
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-2">
         <h2 className="text-sm font-bold">Código de consulta</h2>
         <p className="mt-1 text-sm leading-relaxed text-warm-gray">
-          Guarde este código para consultar seus números pelo telefone na tela inicial.
+          Este código é único para todas as suas compras e não muda. Guarde para consultar seus números depois pelo telefone
+          na tela inicial.
+        </p>
+        <p className="text-sm leading-relaxed text-warm-gray">
+          Não compartilhe com ninguém: quem tiver esse código junto com seu telefone também poderá consultar seus números.
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
         <span className="rounded-lg bg-ivory-deep px-4 py-2 font-serif text-2xl font-bold tracking-normal text-green">
           {recoveryCode}
         </span>

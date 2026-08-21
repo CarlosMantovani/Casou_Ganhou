@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,6 +21,7 @@ import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.service.AdminTransactionService;
+import com.weddingraffle.rifa.service.LuckyNumberPdfService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -47,6 +49,9 @@ class AdminTransactionControllerTests {
 
     @MockBean
     private AdminTransactionService adminTransactionService;
+
+    @MockBean
+    private LuckyNumberPdfService luckyNumberPdfService;
 
     @MockBean
     private UserDetailsService userDetailsService;
@@ -143,6 +148,8 @@ class AdminTransactionControllerTests {
                         PaymentStatusResponse.APROVADO,
                         2,
                         new BigDecimal("20.00"),
+                        "Brasil",
+                        "🇧🇷",
                         List.of("00003", "00004"),
                         List.of("00001", "00002"),
                         4));
@@ -156,9 +163,32 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.recoveryCode").value("4821"))
                 .andExpect(jsonPath("$.paymentMethod").value("CASH"))
                 .andExpect(jsonPath("$.status").value("APROVADO"))
+                .andExpect(jsonPath("$.participantFlagName").value("Brasil"))
+                .andExpect(jsonPath("$.participantFlagEmoji").value("🇧🇷"))
                 .andExpect(jsonPath("$.luckyNumbers[0]").value("00003"))
                 .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00001"))
                 .andExpect(jsonPath("$.totalLuckyNumbers").value(4));
+    }
+
+    @Test
+    void downloadParticipantLuckyNumbersPdfRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/transactions/external/participant-lucky-numbers.pdf"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void downloadsParticipantLuckyNumbersPdfForAdmin() throws Exception {
+        when(luckyNumberPdfService.generateForParticipant("external-reference-123"))
+                .thenReturn("%PDF".getBytes());
+
+        mockMvc.perform(get("/transactions/external-reference-123/participant-lucky-numbers.pdf")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
+                .andExpect(header().string(
+                                "Content-Disposition",
+                                org.hamcrest.Matchers.containsString("Numeros_do_participante_external.pdf")));
     }
 
     @Test

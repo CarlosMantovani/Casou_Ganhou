@@ -44,6 +44,7 @@ class LuckyNumberPdfServiceImplTests {
                 com.weddingraffle.rifa.entity.PaymentMethod.CASH,
                 "external");
         transaction.assignParticipantFlag(new ParticipantFlag("UY", "Uruguai", "🇺🇾"));
+        transaction.assignRecoveryCode("4821");
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00001", "00002"));
         when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external"))
@@ -61,6 +62,8 @@ class LuckyNumberPdfServiceImplTests {
                             "Presente Premiado",
                             "Obrigado pela sua contribuição, Maria Convidada.",
                             "Sua bandeira: Uruguai",
+                            "Código de consulta: 4821",
+                            "Use este código com o telefone para consultar seus números na tela inicial.",
                             "00001",
                             "00002");
             assertThat(text).doesNotContain("Sua bandeira: UY");
@@ -79,6 +82,7 @@ class LuckyNumberPdfServiceImplTests {
                 PaymentStatus.APPROVED,
                 com.weddingraffle.rifa.entity.PaymentMethod.CASH,
                 "external");
+        transaction.assignRecoveryCode("4821");
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
         when(luckyNumberService.findNumbers("external")).thenReturn(List.of("00003", "00004"));
         when(luckyNumberService.findPreviousApprovedNumbers("11999999999", "external"))
@@ -94,6 +98,7 @@ class LuckyNumberPdfServiceImplTests {
                             "Números adquiridos anteriormente: 2",
                             "Números adquiridos agora: 2",
                             "Total de números com esta compra: 4",
+                            "Código de consulta: 4821",
                             "Números adquiridos anteriormente",
                             "Números adquiridos agora",
                             "00001",
@@ -109,6 +114,42 @@ class LuckyNumberPdfServiceImplTests {
                             "Você já tinha",
                             "Números adquiridos agora - continuação",
                             "Números adquiridos anteriormente - continuação");
+        }
+    }
+
+    @Test
+    void generatesParticipantPdfWithAllApprovedLuckyNumbersInSingleSection() throws IOException {
+        LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
+        Transaction transaction = new Transaction(
+                "Maria Convidada",
+                "11999999999",
+                "guest@example.com",
+                2,
+                new BigDecimal("20.00"),
+                PaymentStatus.APPROVED,
+                com.weddingraffle.rifa.entity.PaymentMethod.CASH,
+                "external");
+        transaction.assignRecoveryCode("4821");
+        when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
+        when(luckyNumberService.findApprovedNumbersByPhone("11999999999"))
+                .thenReturn(List.of("00001", "00002", "00003", "00004"));
+
+        byte[] pdf = service.generateForParticipant("external");
+
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document);
+
+            assertThat(text)
+                    .contains(
+                            "Obrigado pela sua contribuição, Maria Convidada.",
+                            "Código de consulta: 4821",
+                            "4 números gerados",
+                            "Todos os números",
+                            "00001",
+                            "00002",
+                            "00003",
+                            "00004");
+            assertThat(text).doesNotContain("Números adquiridos agora", "Números adquiridos anteriormente");
         }
     }
 
@@ -144,5 +185,17 @@ class LuckyNumberPdfServiceImplTests {
         when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
 
         assertThatThrownBy(() -> service.generate("external")).isInstanceOf(InvalidTransactionStateException.class);
+    }
+
+    @Test
+    void failsWhenParticipantHasNoApprovedLuckyNumbers() {
+        LuckyNumberPdfServiceImpl service = new LuckyNumberPdfServiceImpl(transactionRepository, luckyNumberService);
+        Transaction transaction =
+                new Transaction("guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external");
+        when(transactionRepository.findByExternalReference("external")).thenReturn(Optional.of(transaction));
+        when(luckyNumberService.findApprovedNumbersByPhone("0000000000")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.generateForParticipant("external"))
+                .isInstanceOf(InvalidTransactionStateException.class);
     }
 }

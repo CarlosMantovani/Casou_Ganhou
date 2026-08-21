@@ -39,6 +39,7 @@ vi.mock('./services/adminTransactionService', () => ({
   adminTransactionService: {
     createCashTransaction: vi.fn(),
     deleteCashTransaction: vi.fn(),
+    getParticipantLuckyNumbersPdf: vi.fn(),
     getSummary: vi.fn(),
     list: vi.fn(),
   },
@@ -157,6 +158,7 @@ describe('App', () => {
       approvedRevenue: '20.00',
       totalTransactions: 1,
     });
+    mockedAdminTransactionService.getParticipantLuckyNumbersPdf.mockResolvedValue(new Blob(['%PDF']));
     mockedRaffleConfigService.getConfig.mockResolvedValue({
       scheduledDrawAt: null,
       unitPrice: '10.00',
@@ -182,6 +184,7 @@ describe('App', () => {
     expect(await screen.findByText('Ranking de bandeiras')).toBeInTheDocument();
     expect(screen.getByText('Uma bandeira exclusiva por telefone.')).toBeInTheDocument();
     expect(screen.getByText('Novas compras somam pontos na mesma bandeira.')).toBeInTheDocument();
+    expect(screen.getByText('Em empate, a compra mais recente fica na frente.')).toBeInTheDocument();
     expect(screen.getByText('A líder também ganhará um prêmio especial.')).toBeInTheDocument();
     expect(await screen.findAllByText('Brasil')).toHaveLength(2);
     expect(screen.getAllByRole('img', { name: '🇧🇷' })).toHaveLength(2);
@@ -280,7 +283,7 @@ describe('App', () => {
       flagRanking: [],
     });
 
-    renderApp();
+    renderApp('/buy');
 
     expect(await screen.findAllByText('Sorteio encerrado')).toHaveLength(2);
     expect(screen.getByText('Sorteio encerrado. Não é mais possível comprar números.')).toBeInTheDocument();
@@ -332,7 +335,7 @@ describe('App', () => {
 
   it('requires name and phone before the quantity step', async () => {
     const user = userEvent.setup();
-    renderApp();
+    renderApp('/buy');
 
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
 
@@ -365,7 +368,7 @@ describe('App', () => {
         totalAmount: '20.00',
       });
 
-    renderApp();
+    renderApp('/buy');
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '11999999999');
@@ -382,7 +385,7 @@ describe('App', () => {
     const assign = vi.fn();
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...window.location, assign },
+      value: { ...window.location, pathname: '/buy', assign },
     });
     mockedTransactionService.create.mockResolvedValue({
       checkoutUrl: 'https://checkout.example.com',
@@ -391,7 +394,7 @@ describe('App', () => {
       recoveryCode: '4821',
     });
 
-    renderApp();
+    renderApp('/buy');
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
@@ -503,9 +506,11 @@ describe('App', () => {
     expect(await screen.findByText('Pagamento pendente')).toBeInTheDocument();
     expect(screen.getByText(/números serão gerados assim que a confirmação/i)).toBeInTheDocument();
     expect(screen.getByText('4821')).toBeInTheDocument();
+    expect(screen.getByText(/Este código é único para todas as suas compras/i)).toBeInTheDocument();
+    expect(screen.getByText(/Não compartilhe com ninguém/i)).toBeInTheDocument();
   });
 
-  it('recovers lucky numbers by phone and code from the home page', async () => {
+  it('recovers lucky numbers by phone and code from the recovery page', async () => {
     const user = userEvent.setup();
     mockedTransactionService.recover.mockResolvedValue({
       externalReference: 'external-reference',
@@ -518,7 +523,7 @@ describe('App', () => {
       totalAmount: '10.00',
     });
 
-    renderApp();
+    renderApp('/recover');
 
     await user.type(await screen.findByLabelText('Telefone da compra'), '11999999999');
     await user.type(screen.getByLabelText('Código de 4 dígitos'), '4821');
@@ -585,6 +590,7 @@ describe('App', () => {
     expect(screen.getByText('14/08/2026, 18:00')).toBeInTheDocument();
     expect(screen.getByText('00001')).toBeInTheDocument();
     expect(screen.getByText('(11) 99999-9999')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Baixar PDF dos números de Guest User' })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Buscar por nome ou telefone'), '(11) 99999-9999');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
@@ -594,6 +600,26 @@ describe('App', () => {
         query: '(11) 99999-9999',
         page: 0,
         size: 20,
+        sort: 'createdAt,desc',
+      }),
+    );
+  });
+
+  it('sorts admin transactions by the selected order', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+
+    renderApp('/admin');
+
+    await screen.findByText('00001');
+    await user.selectOptions(screen.getByLabelText('Ordenar por'), 'totalAmount,desc');
+
+    await waitFor(() =>
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({
+        query: '',
+        page: 0,
+        size: 20,
+        sort: 'totalAmount,desc',
       }),
     );
   });
@@ -723,6 +749,8 @@ describe('App', () => {
       name: 'Cash Guest',
       paymentMethod: 'CASH',
       phone: '11999999999',
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
       previousLuckyNumbers: ['00090', '00091'],
       quantity: 1,
       recoveryCode: '4821',
@@ -737,6 +765,7 @@ describe('App', () => {
     renderApp('/admin/cash-payment');
 
     await user.type(await screen.findByLabelText('Nome'), 'Cash Guest');
+    expect(screen.queryByLabelText('E-mail (opcional)')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Telefone'), '11999999999');
     expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-9999');
     await user.clear(screen.getByLabelText('Quantidade'));
@@ -745,7 +774,6 @@ describe('App', () => {
 
     await waitFor(() =>
       expect(mockedAdminTransactionService.createCashTransaction).toHaveBeenCalledWith({
-        email: undefined,
         name: 'Cash Guest',
         phone: '11999999999',
         quantity: 10,
@@ -755,6 +783,9 @@ describe('App', () => {
     expect(screen.getByText('Números adquiridos agora:')).toBeInTheDocument();
     expect(screen.getByText('Total de números com esta compra:')).toBeInTheDocument();
     expect(screen.getByText('12', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.getByText('Bandeira do participante')).toBeInTheDocument();
+    expect(screen.getByText('Brasil')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '🇧🇷' })).toBeInTheDocument();
     expect(await screen.findByText('00008')).toBeInTheDocument();
     expect(screen.queryByText('00009')).not.toBeInTheDocument();
     expect(screen.getByText('00090')).toBeInTheDocument();

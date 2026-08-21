@@ -70,6 +70,9 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/transactions/cash")
                         .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET, "/transactions/{externalReference}/participant-lucky-numbers.pdf")
+                        .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/transactions/{externalReference}")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/admin/raffle-config")

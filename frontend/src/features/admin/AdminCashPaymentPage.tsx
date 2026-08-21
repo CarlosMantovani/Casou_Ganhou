@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { FlagEmoji } from '../../components/ui/FlagEmoji';
 import { TextInput } from '../../components/ui/TextInput';
 import { adminTransactionService } from '../../services/adminTransactionService';
 import { transactionService } from '../../services/transactionService';
@@ -23,7 +24,7 @@ export function AdminCashPaymentPage() {
     handleSubmit,
     register,
   } = useForm<CashPaymentFormData>({
-    defaultValues: { email: '', name: '', phone: '', quantity: 1 },
+    defaultValues: { name: '', phone: '', quantity: 1 },
     mode: 'onChange',
     resolver: zodResolver(cashPaymentSchema),
   });
@@ -33,7 +34,6 @@ export function AdminCashPaymentPage() {
       adminTransactionService.createCashTransaction({
         name: data.name.trim(),
         phone: normalizePhoneNumber(data.phone),
-        email: data.email?.trim() || undefined,
         quantity: data.quantity,
       }),
     onSuccess: () => {
@@ -91,16 +91,6 @@ export function AdminCashPaymentPage() {
             />
 
             <TextInput
-              id="cash-email"
-              label="E-mail (opcional)"
-              placeholder="convidado@email.com"
-              inputMode="email"
-              type="email"
-              error={errors.email?.message}
-              {...register('email')}
-            />
-
-            <TextInput
               id="cash-quantity"
               label="Quantidade"
               min={1}
@@ -129,6 +119,19 @@ export function AdminCashPaymentPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-warm-gray">Pagamento aprovado</p>
                 <h2 className="mt-2 font-serif text-2xl font-bold">{createCashMutation.data.name}</h2>
                 <p className="mt-1 text-sm text-warm-gray">{formatCurrency(createCashMutation.data.totalAmount)}</p>
+                {createCashMutation.data.participantFlagEmoji && createCashMutation.data.participantFlagName ? (
+                  <div className="mt-4 rounded-lg border border-[#EEE6DF] bg-white/60 px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Bandeira do participante</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="grid h-12 w-12 place-items-center rounded-full bg-blush">
+                        <FlagEmoji className="h-8 w-8" emoji={createCashMutation.data.participantFlagEmoji} />
+                      </span>
+                      <span className="font-serif text-xl font-bold text-charcoal">
+                        {createCashMutation.data.participantFlagName}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {previousLuckyNumbers.length > 0 ? (

@@ -14,6 +14,8 @@ import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.exception.ExternalPaymentException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,8 @@ import org.springframework.util.StringUtils;
 
 @Component
 public class MercadoPagoClient implements PaymentProviderClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoClient.class);
 
     private static final String ITEM_TITLE = "Número(s) da sorte";
 
@@ -61,11 +65,18 @@ public class MercadoPagoClient implements PaymentProviderClient {
                             delayExpression = "${app.mercado-pago.retry.delay-millis}",
                             multiplierExpression = "${app.mercado-pago.retry.multiplier}"))
     public PaymentProviderPayment getPayment(String paymentId) {
+        LOGGER.info("Mercado Pago payment status request paymentId={}", paymentId);
         try {
             Payment payment = paymentClient.get(Long.valueOf(paymentId));
+            LOGGER.info(
+                    "Mercado Pago payment status response paymentId={} externalReference={} status={}",
+                    payment.getId(),
+                    payment.getExternalReference(),
+                    payment.getStatus());
             return new PaymentProviderPayment(
                     String.valueOf(payment.getId()), payment.getExternalReference(), payment.getStatus());
         } catch (MPApiException | MPException | NumberFormatException exception) {
+            LOGGER.warn("Mercado Pago payment status request failed paymentId={}", paymentId, exception);
             throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
         }
     }

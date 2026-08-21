@@ -1,4 +1,4 @@
-import { ChevronRight, Flag, RotateCcw, Trophy } from 'lucide-react';
+import { ChevronRight, Clock, Flag, RotateCcw, Trophy } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Card } from '../../components/ui/Card';
@@ -23,6 +23,10 @@ export function FlagRankingPanel({ isLoading, ranking }: FlagRankingPanelProps) 
               <FlagRule
                 icon={<RotateCcw aria-hidden="true" className="h-4 w-4" />}
                 text="Novas compras somam pontos na mesma bandeira."
+              />
+              <FlagRule
+                icon={<Clock aria-hidden="true" className="h-4 w-4" />}
+                text="Em empate, a compra mais recente fica na frente."
               />
               <FlagRule
                 icon={<Trophy aria-hidden="true" className="h-4 w-4" />}

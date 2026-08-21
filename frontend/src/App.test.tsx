@@ -595,6 +595,26 @@ describe('App', () => {
         query: '(11) 99999-9999',
         page: 0,
         size: 20,
+        sort: 'createdAt,desc',
+      }),
+    );
+  });
+
+  it('sorts admin transactions by the selected order', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+
+    renderApp('/admin');
+
+    await screen.findByText('00001');
+    await user.selectOptions(screen.getByLabelText('Ordenar por'), 'totalAmount,desc');
+
+    await waitFor(() =>
+      expect(mockedAdminTransactionService.list).toHaveBeenLastCalledWith({
+        query: '',
+        page: 0,
+        size: 20,
+        sort: 'totalAmount,desc',
       }),
     );
   });

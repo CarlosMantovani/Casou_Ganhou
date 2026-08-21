@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +41,8 @@ public class AdminTransactionController {
     @Operation(summary = "List transactions for admin")
     @GetMapping
     public ResponseEntity<Page<AdminTransactionResponse>> list(
-            @RequestParam(required = false) String query, @PageableDefault(size = 20) Pageable pageable) {
+            @RequestParam(required = false) String query,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(adminTransactionService.list(query, pageable));
     }
 

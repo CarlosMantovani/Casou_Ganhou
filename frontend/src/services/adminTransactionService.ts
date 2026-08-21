@@ -11,6 +11,7 @@ export interface AdminTransactionListParams {
   query?: string;
   page: number;
   size: number;
+  sort?: string;
 }
 
 export const adminTransactionService = {
@@ -25,6 +26,7 @@ export const adminTransactionService = {
         query: params.query || undefined,
         page: params.page,
         size: params.size,
+        sort: params.sort,
       },
     });
 

@@ -13,6 +13,17 @@ import { useAuth } from './AuthContext';
 
 const PAGE_SIZE = 20;
 const EMPTY_TRANSACTIONS: AdminTransactionResponse[] = [];
+const SORT_OPTIONS = [
+  { label: 'Data: mais recente', value: 'createdAt,desc' },
+  { label: 'Data: mais antiga', value: 'createdAt,asc' },
+  { label: 'Valor: maior primeiro', value: 'totalAmount,desc' },
+  { label: 'Valor: menor primeiro', value: 'totalAmount,asc' },
+  { label: 'Status', value: 'status,asc' },
+  { label: 'Nome: A-Z', value: 'name,asc' },
+  { label: 'Nome: Z-A', value: 'name,desc' },
+] as const;
+
+type AdminTransactionSort = (typeof SORT_OPTIONS)[number]['value'];
 
 export function AdminDashboardPage() {
   const { logout } = useAuth();
@@ -20,11 +31,12 @@ export function AdminDashboardPage() {
   const [queryFilter, setQueryFilter] = useState('');
   const [submittedQueryFilter, setSubmittedQueryFilter] = useState('');
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<AdminTransactionSort>('createdAt,desc');
   const [areMetricsVisible, setAreMetricsVisible] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['admin-transactions', submittedQueryFilter, page],
-    queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE }),
+    queryKey: ['admin-transactions', submittedQueryFilter, page, sort],
+    queryFn: () => adminTransactionService.list({ query: submittedQueryFilter, page, size: PAGE_SIZE, sort }),
   });
   const summaryQuery = useQuery({
     queryKey: ['admin-transaction-summary'],
@@ -103,6 +115,26 @@ export function AdminDashboardPage() {
                 placeholder="nome ou (11) 99999-9999"
                 value={queryFilter}
               />
+            </div>
+            <div className="md:w-56">
+              <label className="block text-sm font-semibold text-charcoal" htmlFor="admin-transaction-sort">
+                Ordenar por
+              </label>
+              <select
+                className="mt-2 min-h-12 w-full rounded-lg border border-line bg-white px-4 text-base text-charcoal outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20"
+                id="admin-transaction-sort"
+                onChange={(event) => {
+                  setPage(0);
+                  setSort(event.target.value as AdminTransactionSort);
+                }}
+                value={sort}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="md:w-44">
               <Button type="submit">

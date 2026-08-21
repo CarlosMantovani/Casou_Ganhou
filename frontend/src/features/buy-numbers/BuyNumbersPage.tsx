@@ -1,9 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronRight, CreditCard, Flag, Minus, Plus, RotateCcw, Search, Trophy } from 'lucide-react';
-import type { BaseSyntheticEvent, ReactNode } from 'react';
+import { ArrowLeft, CreditCard, Minus, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 
 import { BrandMark, GoldDivider } from '../../components/brand/BrandMark';
 import { StepProgress } from '../../components/brand/StepProgress';
@@ -14,16 +13,15 @@ import { TextInput } from '../../components/ui/TextInput';
 import { publicMessages } from '../../content/messages';
 import { homeService } from '../../services/homeService';
 import { transactionService } from '../../services/transactionService';
-import type { FlagRankingItem, RaffleResult } from '../../types/home';
+import type { RaffleResult } from '../../types/home';
 import { isPastDateTime } from '../../utils/dateTime';
 import { formatCurrency } from '../../utils/formatters';
 import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/phone';
-import { FlagRankingList } from '../flag-ranking/FlagRankingList';
-import { PdfDownloadContent, RecoveryCodeContent } from '../payment-return/PaymentReturnPage';
+import { FlagRankingPanel } from '../flag-ranking/FlagRankingPanel';
 import { CountdownPanel } from './CountdownPanel';
-import { buyerSchema, recoverySchema, type BuyerFormData, type RecoveryFormData } from './schemas';
+import { buyerSchema, type BuyerFormData } from './schemas';
 
-export function BuyNumbersPage() {
+export function BuyNumbersPage({ showBackLink = false }: { showBackLink?: boolean }) {
   const [buyer, setBuyer] = useState<BuyerFormData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [, setTick] = useState(0);
@@ -36,15 +34,6 @@ export function BuyNumbersPage() {
     defaultValues: { name: '', phone: '' },
     mode: 'onChange',
     resolver: zodResolver(buyerSchema),
-  });
-  const {
-    formState: { errors: recoveryErrors, isValid: isRecoveryValid },
-    handleSubmit: handleRecoverySubmit,
-    register: registerRecovery,
-  } = useForm<RecoveryFormData>({
-    defaultValues: { phone: '', recoveryCode: '' },
-    mode: 'onChange',
-    resolver: zodResolver(recoverySchema),
   });
 
   const homeSummaryQuery = useQuery({
@@ -72,13 +61,6 @@ export function BuyNumbersPage() {
       window.location.assign(response.checkoutUrl);
     },
   });
-  const recoveryMutation = useMutation({
-    mutationFn: (request: RecoveryFormData) =>
-      transactionService.recover({
-        phone: normalizePhoneNumber(request.phone),
-        recoveryCode: request.recoveryCode,
-      }),
-  });
 
   const onSubmitBuyer = (data: BuyerFormData) => {
     setBuyer({
@@ -93,9 +75,6 @@ export function BuyNumbersPage() {
   const handlePay = () => {
     if (!buyer || isDrawClosed || createTransactionMutation.isPending) return;
     createTransactionMutation.mutate({ ...buyer, quantity });
-  };
-  const handleRecover = (data: RecoveryFormData) => {
-    recoveryMutation.mutate(data);
   };
 
   const currentStep: 1 | 2 = buyer ? 2 : 1;
@@ -115,277 +94,168 @@ export function BuyNumbersPage() {
           </div>
         </header>
 
+        {showBackLink ? (
+          <a
+            className="inline-flex min-h-11 items-center justify-center gap-2 self-center rounded-lg border border-green px-4 py-2 text-sm font-bold text-green transition hover:bg-ivory-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+            href="/"
+          >
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            Voltar
+          </a>
+        ) : null}
+
         <CountdownPanel scheduledDrawAt={scheduledDrawAt} />
 
         {!isDrawClosed ? <StepProgress currentStep={currentStep} /> : null}
 
-        {isDrawClosed ? (
-          <Card className="border border-line bg-white/90 text-center shadow-none">
-            <h1 className="font-serif text-2xl font-bold text-green">Sorteio encerrado</h1>
-            <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-warm-gray">{publicMessages.drawClosed}</p>
-          </Card>
-        ) : !buyer ? (
-          <Card>
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmitBuyer)}>
-              <div>
-                <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos começar!</h1>
-                <p className="mt-1 text-sm text-warm-gray">Preencha seus dados e escolha a quantidade de números da sorte.</p>
-              </div>
+            {isDrawClosed ? (
+              <Card className="border border-line bg-white/90 text-center shadow-none">
+                <h1 className="font-serif text-2xl font-bold text-green">Sorteio encerrado</h1>
+                <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-warm-gray">{publicMessages.drawClosed}</p>
+              </Card>
+            ) : !buyer ? (
+              <Card>
+                <form className="space-y-5" onSubmit={handleSubmit(onSubmitBuyer)}>
+                  <div>
+                    <h1 className="font-serif text-xl font-semibold text-charcoal">Vamos começar!</h1>
+                    <p className="mt-1 text-sm text-warm-gray">Preencha seus dados e escolha a quantidade de números da sorte.</p>
+                  </div>
 
-              <TextInput
-                autoComplete="name"
-                error={errors.name?.message}
-                id="buyer-name"
-                label="Nome"
-                placeholder="Seu nome"
-                {...register('name')}
-              />
+                  <TextInput
+                    autoComplete="name"
+                    error={errors.name?.message}
+                    id="buyer-name"
+                    label="Nome"
+                    placeholder="Seu nome"
+                    {...register('name')}
+                  />
 
-              <TextInput
-                autoComplete="tel"
-                error={errors.phone?.message}
-                helper="Use um telefone com DDD."
-                id="buyer-phone"
-                inputMode="tel"
-                label="Telefone"
-                maxLength={15}
-                placeholder="(11) 99999-9999"
-                type="tel"
-                {...register('phone', {
-                  onChange: (event) => {
-                    event.target.value = formatPhoneNumber(event.target.value);
-                  },
-                })}
-              />
+                  <TextInput
+                    autoComplete="tel"
+                    error={errors.phone?.message}
+                    helper="Use um telefone com DDD."
+                    id="buyer-phone"
+                    inputMode="tel"
+                    label="Telefone"
+                    maxLength={15}
+                    placeholder="(11) 99999-9999"
+                    type="tel"
+                    {...register('phone', {
+                      onChange: (event) => {
+                        event.target.value = formatPhoneNumber(event.target.value);
+                      },
+                    })}
+                  />
 
-              <Button disabled={!isValid || homeSummaryQuery.isLoading} type="submit">
-                Continuar
-              </Button>
-            </form>
-          </Card>
-        ) : (
-          <section className="space-y-4" aria-labelledby="quantity-title">
-            <div className="text-center">
-              <h1 className="font-serif text-lg text-charcoal" id="quantity-title">
-                Quantos números você quer?
-              </h1>
-              <button
-                className="mt-2 text-xs font-semibold text-green underline underline-offset-4"
-                onClick={() => setBuyer(null)}
-                type="button"
-              >
-                Alterar dados
-              </button>
-            </div>
-
-            <Card>
-              <div className="flex items-center justify-center gap-8">
-                <button
-                  aria-label="Diminuir quantidade"
-                  className="grid h-14 w-14 place-items-center rounded-full border-2 border-green text-green transition disabled:cursor-not-allowed disabled:opacity-30"
-                  disabled={quantity === 1}
-                  onClick={decreaseQuantity}
-                  type="button"
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
-
-                <div className="min-w-24 text-center">
-                  <span className="block font-serif text-7xl font-bold leading-none text-charcoal">{quantity}</span>
-                  <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'número' : 'números'}</span>
+                  <Button disabled={!isValid || homeSummaryQuery.isLoading} type="submit">
+                    Continuar
+                  </Button>
+                  <a
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-green bg-white/70 px-4 py-2 text-sm font-bold text-green transition hover:bg-ivory-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+                    href="/recover"
+                  >
+                    <Search aria-hidden="true" className="h-4 w-4" />
+                    Consultar meus números
+                  </a>
+                </form>
+              </Card>
+            ) : (
+              <section className="space-y-4" aria-labelledby="quantity-title">
+                <div className="text-center">
+                  <h1 className="font-serif text-lg text-charcoal" id="quantity-title">
+                    Quantos números você quer?
+                  </h1>
+                  <button
+                    className="mt-2 text-xs font-semibold text-green underline underline-offset-4"
+                    onClick={() => setBuyer(null)}
+                    type="button"
+                  >
+                    Alterar dados
+                  </button>
                 </div>
 
-                <button
-                  aria-label="Aumentar quantidade"
-                  className="grid h-14 w-14 place-items-center rounded-full bg-green text-white shadow-button transition hover:bg-green-deep"
-                  onClick={increaseQuantity}
-                  type="button"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              </div>
-            </Card>
+                <Card>
+                  <div className="flex items-center justify-center gap-8">
+                    <button
+                      aria-label="Diminuir quantidade"
+                      className="grid h-14 w-14 place-items-center rounded-full border-2 border-green text-green transition disabled:cursor-not-allowed disabled:opacity-30"
+                      disabled={quantity === 1}
+                      onClick={decreaseQuantity}
+                      type="button"
+                    >
+                      <Minus className="h-5 w-5" />
+                    </button>
 
-            <Card className="bg-ivory-deep shadow-none">
-              <dl className="space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-sm text-warm-gray">Quantidade</dt>
-                  <dd className="text-sm font-semibold">
-                    {quantity} {quantity === 1 ? 'número' : 'números'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-sm text-warm-gray">Valor unitário</dt>
-                  <dd className="text-sm font-semibold">
-                    {quoteQuery.isLoading ? 'Atualizando...' : unitPrice ? formatCurrency(unitPrice) : '-'}
-                  </dd>
-                </div>
-                <div className="h-px bg-line" />
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-base font-bold">Total</dt>
-                  <dd className="font-serif text-3xl font-bold text-green">
-                    {quoteQuery.isLoading ? '...' : totalAmount ? formatCurrency(totalAmount) : '-'}
-                  </dd>
-                </div>
-              </dl>
-            </Card>
+                    <div className="min-w-24 text-center">
+                      <span className="block font-serif text-7xl font-bold leading-none text-charcoal">{quantity}</span>
+                      <span className="mt-1 block text-xs text-warm-gray">{quantity === 1 ? 'número' : 'números'}</span>
+                    </div>
 
-            {quoteQuery.isError ? (
-              <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
-                {publicMessages.quoteError}
-              </p>
-            ) : null}
+                    <button
+                      aria-label="Aumentar quantidade"
+                      className="grid h-14 w-14 place-items-center rounded-full bg-green text-white shadow-button transition hover:bg-green-deep"
+                      onClick={increaseQuantity}
+                      type="button"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </div>
+                </Card>
 
-            {createTransactionMutation.isError ? (
-              <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
-                {publicMessages.checkoutError}
-              </p>
-            ) : null}
+                <Card className="bg-ivory-deep shadow-none">
+                  <dl className="space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-sm text-warm-gray">Quantidade</dt>
+                      <dd className="text-sm font-semibold">
+                        {quantity} {quantity === 1 ? 'número' : 'números'}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-sm text-warm-gray">Valor unitário</dt>
+                      <dd className="text-sm font-semibold">
+                        {quoteQuery.isLoading ? 'Atualizando...' : unitPrice ? formatCurrency(unitPrice) : '-'}
+                      </dd>
+                    </div>
+                    <div className="h-px bg-line" />
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-base font-bold">Total</dt>
+                      <dd className="font-serif text-3xl font-bold text-green">
+                        {quoteQuery.isLoading ? '...' : totalAmount ? formatCurrency(totalAmount) : '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </Card>
 
-            <Button
-              disabled={!quoteQuery.data || quoteQuery.isFetching}
-              isLoading={createTransactionMutation.isPending}
-              onClick={handlePay}
-              type="button"
-            >
-              <CreditCard aria-hidden="true" className="h-5 w-5" />
-              Pagar com Mercado Pago
-            </Button>
+                {quoteQuery.isError ? (
+                  <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
+                    {publicMessages.quoteError}
+                  </p>
+                ) : null}
 
-            <p className="px-2 text-center text-xs leading-relaxed text-warm-gray">
-              Você será redirecionado ao Mercado Pago para concluir o pagamento com segurança.
-            </p>
-          </section>
+                {createTransactionMutation.isError ? (
+                  <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
+                    {publicMessages.checkoutError}
+                  </p>
+                ) : null}
+
+                <Button disabled={!quoteQuery.data || quoteQuery.isFetching} isLoading={createTransactionMutation.isPending} onClick={handlePay} type="button">
+                  <CreditCard aria-hidden="true" className="h-5 w-5" />
+                  Pagar com Mercado Pago
+                </Button>
+
+                <p className="px-2 text-center text-xs leading-relaxed text-warm-gray">
+                  Você será redirecionado ao Mercado Pago para concluir o pagamento com segurança.
+                </p>
+              </section>
         )}
         <RaffleResultPanel isDrawClosed={isDrawClosed} result={homeSummaryQuery.data?.raffleResult ?? null} />
-        <RecoveryLookupPanel
-          errors={recoveryErrors}
-          isValid={isRecoveryValid}
-          onSubmit={handleRecoverySubmit(handleRecover)}
-          register={registerRecovery}
-          transaction={recoveryMutation.data}
-          isError={recoveryMutation.isError}
-          isPending={recoveryMutation.isPending}
-        />
-        <FlagRankingPanel
-          isLoading={homeSummaryQuery.isLoading}
-          ranking={homeSummaryQuery.data?.flagRanking ?? []}
-        />
+        <FlagRankingPanel isLoading={homeSummaryQuery.isLoading} ranking={homeSummaryQuery.data?.flagRanking ?? []} />
       </div>
     </main>
   );
 }
 
-function RecoveryLookupPanel({
-  errors,
-  isError,
-  isPending,
-  isValid,
-  onSubmit,
-  register,
-  transaction,
-}: {
-  errors: FieldErrors<RecoveryFormData>;
-  isError: boolean;
-  isPending: boolean;
-  isValid: boolean;
-  onSubmit: (event?: BaseSyntheticEvent) => Promise<void>;
-  register: UseFormRegister<RecoveryFormData>;
-  transaction?: Awaited<ReturnType<typeof transactionService.recover>>;
-}) {
-  return (
-    <aside>
-      <Card className="bg-white/90">
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-green">Consultar números</p>
-            <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Já tenho um código</h2>
-          </div>
-
-          <TextInput
-            autoComplete="tel"
-            error={errors.phone?.message}
-            id="recovery-phone"
-            inputMode="tel"
-            label="Telefone da compra"
-            maxLength={15}
-            placeholder="(11) 99999-9999"
-            type="tel"
-            {...register('phone', {
-              onChange: (event) => {
-                event.target.value = formatPhoneNumber(event.target.value);
-              },
-            })}
-          />
-
-          <TextInput
-            autoComplete="one-time-code"
-            error={errors.recoveryCode?.message}
-            id="recovery-code"
-            inputMode="numeric"
-            label="Código de 4 dígitos"
-            maxLength={4}
-            placeholder="0000"
-            {...register('recoveryCode', {
-              onChange: (event) => {
-                event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
-              },
-            })}
-          />
-
-          {isError ? (
-            <p className="rounded-lg border border-wine/30 bg-white px-4 py-3 text-sm text-wine" role="alert">
-              {publicMessages.recoveryError}
-            </p>
-          ) : null}
-
-          <Button disabled={!isValid} isLoading={isPending} type="submit">
-            <Search aria-hidden="true" className="h-5 w-5" />
-            Consultar meus números
-          </Button>
-        </form>
-
-        {transaction ? (
-          <div className="mt-5 space-y-4 border-t border-line pt-5">
-            <RecoveryCodeContent recoveryCode={transaction.recoveryCode} />
-            {transaction.participantFlagEmoji && transaction.participantFlagName ? (
-              <div className="rounded-lg border border-[#EEE6DF] bg-white/80 px-4 py-3 text-center shadow-none">
-                <p className="text-xs font-bold uppercase tracking-wide text-terracotta">Sua bandeira</p>
-                <div className="mt-3 flex items-center justify-center gap-3">
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-blush">
-                    <FlagEmoji className="h-8 w-8" emoji={transaction.participantFlagEmoji} />
-                  </span>
-                  <span className="font-serif text-xl font-bold text-charcoal">{transaction.participantFlagName}</span>
-                </div>
-              </div>
-            ) : null}
-            {transaction.status === 'APROVADO' && transaction.luckyNumbers.length > 0 ? (
-              <>
-                <h3 className="text-sm font-bold text-charcoal">Seus números da sorte</h3>
-                <div className="flex flex-wrap justify-center gap-3">
-                  {transaction.luckyNumbers.map((number) => (
-                    <span className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-charcoal shadow-sm" key={number}>
-                      {number}
-                    </span>
-                  ))}
-                </div>
-                <div className="rounded-lg border border-gold bg-gold/10 p-4">
-                  <PdfDownloadContent externalReference={transaction.externalReference} />
-                </div>
-              </>
-            ) : (
-              <p className="rounded-lg bg-ivory-deep px-4 py-3 text-sm leading-relaxed text-warm-gray">
-                {transaction.status === 'PENDENTE' ? publicMessages.pending : 'Esta compra ainda não possui números gerados.'}
-              </p>
-            )}
-          </div>
-        ) : null}
-      </Card>
-    </aside>
-  );
-}
-
-function RaffleResultPanel({ isDrawClosed, result }: { isDrawClosed: boolean; result: RaffleResult | null }) {
+export function RaffleResultPanel({ isDrawClosed, result }: { isDrawClosed: boolean; result: RaffleResult | null }) {
   if (!isDrawClosed || !result) return null;
 
   return (
@@ -404,53 +274,5 @@ function RaffleResultPanel({ isDrawClosed, result }: { isDrawClosed: boolean; re
         ) : null}
       </Card>
     </aside>
-  );
-}
-
-function FlagRankingPanel({ isLoading, ranking }: { isLoading: boolean; ranking: FlagRankingItem[] }) {
-  return (
-    <aside>
-      <Card className="bg-white/90">
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-green">Disputa das bandeiras</p>
-            <h2 className="mt-2 font-serif text-2xl font-bold text-charcoal">Ranking de bandeiras</h2>
-            <div className="mt-4 grid gap-2">
-              <FlagRule
-                icon={<Flag aria-hidden="true" className="h-4 w-4" />}
-                text="Uma bandeira exclusiva por telefone."
-              />
-              <FlagRule
-                icon={<RotateCcw aria-hidden="true" className="h-4 w-4" />}
-                text="Novas compras somam pontos na mesma bandeira."
-              />
-              <FlagRule
-                icon={<Trophy aria-hidden="true" className="h-4 w-4" />}
-                text="A líder também ganhará um prêmio especial."
-              />
-            </div>
-          </div>
-
-          <FlagRankingList isLoading={isLoading} ranking={ranking} />
-
-          <a
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-green bg-transparent px-5 py-3 text-sm font-semibold text-green transition hover:bg-ivory-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
-            href="/flag-ranking"
-          >
-            Ver top 30
-            <ChevronRight aria-hidden="true" className="h-4 w-4" />
-          </a>
-        </div>
-      </Card>
-    </aside>
-  );
-}
-
-function FlagRule({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg bg-ivory-deep/70 px-3 py-2 text-sm font-medium text-charcoal">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-green">{icon}</span>
-      <span className="leading-snug">{text}</span>
-    </div>
   );
 }

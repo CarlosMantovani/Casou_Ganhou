@@ -280,7 +280,7 @@ describe('App', () => {
       flagRanking: [],
     });
 
-    renderApp();
+    renderApp('/buy');
 
     expect(await screen.findAllByText('Sorteio encerrado')).toHaveLength(2);
     expect(screen.getByText('Sorteio encerrado. Não é mais possível comprar números.')).toBeInTheDocument();
@@ -332,7 +332,7 @@ describe('App', () => {
 
   it('requires name and phone before the quantity step', async () => {
     const user = userEvent.setup();
-    renderApp();
+    renderApp('/buy');
 
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
 
@@ -365,7 +365,7 @@ describe('App', () => {
         totalAmount: '20.00',
       });
 
-    renderApp();
+    renderApp('/buy');
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '11999999999');
@@ -382,7 +382,7 @@ describe('App', () => {
     const assign = vi.fn();
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...window.location, assign },
+      value: { ...window.location, pathname: '/buy', assign },
     });
     mockedTransactionService.create.mockResolvedValue({
       checkoutUrl: 'https://checkout.example.com',
@@ -391,7 +391,7 @@ describe('App', () => {
       recoveryCode: '4821',
     });
 
-    renderApp();
+    renderApp('/buy');
 
     await user.type(screen.getByLabelText('Nome'), 'Guest User');
     await user.type(screen.getByLabelText('Telefone'), '(11) 99999-9999');
@@ -505,7 +505,7 @@ describe('App', () => {
     expect(screen.getByText('4821')).toBeInTheDocument();
   });
 
-  it('recovers lucky numbers by phone and code from the home page', async () => {
+  it('recovers lucky numbers by phone and code from the recovery page', async () => {
     const user = userEvent.setup();
     mockedTransactionService.recover.mockResolvedValue({
       externalReference: 'external-reference',
@@ -518,7 +518,7 @@ describe('App', () => {
       totalAmount: '10.00',
     });
 
-    renderApp();
+    renderApp('/recover');
 
     await user.type(await screen.findByLabelText('Telefone da compra'), '11999999999');
     await user.type(screen.getByLabelText('Código de 4 dígitos'), '4821');

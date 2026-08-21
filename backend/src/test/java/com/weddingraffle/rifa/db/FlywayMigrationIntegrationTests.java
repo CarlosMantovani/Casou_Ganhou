@@ -116,19 +116,53 @@ class FlywayMigrationIntegrationTests {
                     participant_flag_name,
                     participant_flag_emoji
                 ) values (
-                    'Test Buyer',
+                    'Older Buyer',
                     '44999999999',
-                    'buyer@example.com',
+                    'older@example.com',
                     3,
                     30.00,
                     10.00,
                     'APPROVED',
                     'CASH',
-                    'external-reference-ranking-test',
+                    'external-reference-ranking-older',
                     '4821',
                     'BRAZIL',
                     'Brasil',
                     '🇧🇷'
+                )
+                """);
+        statement.executeUpdate(
+                """
+                insert into transaction (
+                    name,
+                    phone,
+                    email,
+                    quantity,
+                    total_amount,
+                    unit_price,
+                    status,
+                    payment_method,
+                    external_reference,
+                    recovery_code,
+                    participant_flag_code,
+                    participant_flag_name,
+                    participant_flag_emoji,
+                    created_at
+                ) values (
+                    'Recent Buyer',
+                    '44999999998',
+                    'recent@example.com',
+                    3,
+                    30.00,
+                    10.00,
+                    'APPROVED',
+                    'CASH',
+                    'external-reference-ranking-recent',
+                    '4822',
+                    'CANADA',
+                    'Canada',
+                    'CA',
+                    '2030-08-21T10:00:00-03:00'
                 )
                 """);
 
@@ -142,10 +176,10 @@ class FlywayMigrationIntegrationTests {
                 from transaction
                 where status = 'APPROVED'
                 group by participant_flag_code, participant_flag_name, participant_flag_emoji
-                order by sum(quantity) desc, participant_flag_name asc
+                order by sum(quantity) desc, max(created_at) desc, participant_flag_name asc
                 """)) {
             return resultSet.next()
-                    && "BRAZIL".equals(resultSet.getString("code"))
+                    && "CANADA".equals(resultSet.getString("code"))
                     && resultSet.getLong("total_numbers") == 3L;
         }
     }
@@ -162,9 +196,9 @@ class FlywayMigrationIntegrationTests {
                 from transaction
                 """)) {
             return resultSet.next()
-                    && resultSet.getLong("total_transactions") == 1L
-                    && resultSet.getLong("approved_lucky_numbers") == 3L
-                    && resultSet.getBigDecimal("approved_revenue").compareTo(new java.math.BigDecimal("30.00")) == 0;
+                    && resultSet.getLong("total_transactions") == 2L
+                    && resultSet.getLong("approved_lucky_numbers") == 6L
+                    && resultSet.getBigDecimal("approved_revenue").compareTo(new java.math.BigDecimal("60.00")) == 0;
         }
     }
 }

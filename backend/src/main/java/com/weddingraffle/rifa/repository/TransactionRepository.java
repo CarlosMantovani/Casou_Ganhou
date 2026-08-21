@@ -66,7 +66,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                     from transaction
                     where status = 'APPROVED'
                     group by participant_flag_code, participant_flag_name, participant_flag_emoji
-                    order by sum(quantity) desc, participant_flag_name asc
+                    order by sum(quantity) desc, max(created_at) desc, participant_flag_name asc
                     """,
             nativeQuery = true)
     List<FlagRankingProjection> findApprovedFlagRanking(Pageable pageable);

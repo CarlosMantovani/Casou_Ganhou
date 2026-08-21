@@ -24,7 +24,7 @@ export function AdminCashPaymentPage() {
     handleSubmit,
     register,
   } = useForm<CashPaymentFormData>({
-    defaultValues: { email: '', name: '', phone: '', quantity: 1 },
+    defaultValues: { name: '', phone: '', quantity: 1 },
     mode: 'onChange',
     resolver: zodResolver(cashPaymentSchema),
   });
@@ -34,7 +34,6 @@ export function AdminCashPaymentPage() {
       adminTransactionService.createCashTransaction({
         name: data.name.trim(),
         phone: normalizePhoneNumber(data.phone),
-        email: data.email?.trim() || undefined,
         quantity: data.quantity,
       }),
     onSuccess: () => {
@@ -89,16 +88,6 @@ export function AdminCashPaymentPage() {
                   onChange={(event) => field.onChange(formatPhoneNumber(event.target.value))}
                 />
               )}
-            />
-
-            <TextInput
-              id="cash-email"
-              label="E-mail (opcional)"
-              placeholder="convidado@email.com"
-              inputMode="email"
-              type="email"
-              error={errors.email?.message}
-              {...register('email')}
             />
 
             <TextInput

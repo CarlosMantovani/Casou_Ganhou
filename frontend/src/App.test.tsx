@@ -765,6 +765,7 @@ describe('App', () => {
     renderApp('/admin/cash-payment');
 
     await user.type(await screen.findByLabelText('Nome'), 'Cash Guest');
+    expect(screen.queryByLabelText('E-mail (opcional)')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Telefone'), '11999999999');
     expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-9999');
     await user.clear(screen.getByLabelText('Quantidade'));
@@ -773,7 +774,6 @@ describe('App', () => {
 
     await waitFor(() =>
       expect(mockedAdminTransactionService.createCashTransaction).toHaveBeenCalledWith({
-        email: undefined,
         name: 'Cash Guest',
         phone: '11999999999',
         quantity: 10,

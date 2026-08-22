@@ -75,6 +75,8 @@ public class Transaction {
 
     private Long currentPaymentEventId;
 
+    private OffsetDateTime luckyNumbersGeneratedAt;
+
     @Column(nullable = false, length = 50)
     private String participantFlagCode;
 
@@ -224,6 +226,10 @@ public class Transaction {
         return currentPaymentEventId;
     }
 
+    public OffsetDateTime getLuckyNumbersGeneratedAt() {
+        return luckyNumbersGeneratedAt;
+    }
+
     public String getParticipantFlagCode() {
         return participantFlagCode;
     }
@@ -261,6 +267,16 @@ public class Transaction {
         this.mpPreferenceId = mpPreferenceId;
         this.mpCheckoutUrl = mpCheckoutUrl;
         this.mpCollectorId = mpCollectorId;
+    }
+
+    public boolean hasCompletedLuckyNumberBatch() {
+        return luckyNumbersGeneratedAt != null;
+    }
+
+    public void markLuckyNumberBatchCompleted(OffsetDateTime completedAt) {
+        if (luckyNumbersGeneratedAt == null) {
+            luckyNumbersGeneratedAt = completedAt;
+        }
     }
 
     public void assignRecoveryCode(String recoveryCode) {

@@ -2,6 +2,7 @@ package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.entity.PaymentEvent;
 import com.weddingraffle.rifa.entity.PaymentEventProcessingStatus;
+import com.weddingraffle.rifa.entity.PaymentEventReconciliationStatus;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentProviderName;
 import com.weddingraffle.rifa.entity.PaymentStatus;
@@ -83,6 +84,7 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
         if (duplicate.isPresent()) {
             PaymentEvent event = duplicate.get();
             event.registerDuplicate(now);
+            transaction.ifPresent(this::applyConsolidatedApprovalIfEligible);
             LOGGER.info(
                     "Ignored duplicate payment event paymentId={} status={} deliveries={}",
                     providerPaymentId,
@@ -112,6 +114,7 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                 paymentStateMachine.mapProviderStatus(payment.status()).orElseThrow();
         if (!paymentStateMachine.shouldApply(lockedTransaction, candidate, payment.dateLastUpdated())) {
             event.markObsolete(now);
+            applyConsolidatedApprovalIfEligible(lockedTransaction);
             LOGGER.info(
                     "Ignored obsolete payment event paymentId={} status={} providerUpdatedAt={}",
                     providerPaymentId,
@@ -120,9 +123,6 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
             return event.getProcessingStatus();
         }
 
-        if (candidate == PaymentStatus.APPROVED && lockedTransaction.getStatus() != PaymentStatus.APPROVED) {
-            allocateLuckyNumbersOrStartReview(lockedTransaction);
-        }
         lockedTransaction.markPaymentState(
                 candidate,
                 providerPaymentId,
@@ -130,6 +130,7 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                 paymentStateMachine.priority(candidate),
                 event.getId());
         event.markApplied(now);
+        applyConsolidatedApprovalIfEligible(lockedTransaction);
         LOGGER.info(
                 "Applied reconciled payment event paymentId={} externalReference={} status={}",
                 providerPaymentId,
@@ -214,16 +215,43 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
         return failures.stream().distinct().toList();
     }
 
-    private void allocateLuckyNumbersOrStartReview(Transaction transaction) {
-        if (transaction.getCapacityReviewStatus() != null) {
+    private void applyConsolidatedApprovalIfEligible(Transaction transaction) {
+        if (transaction.getStatus() != PaymentStatus.APPROVED || transaction.getCapacityReviewStatus() != null) {
+            return;
+        }
+        validateConsolidatedApprovedLedgerState(transaction);
+        if (transaction.hasCompletedLuckyNumberBatch()) {
             return;
         }
         CapacityAllocationResult allocation =
                 capacityReservationService.allocate(transaction.getExternalReference(), transaction.getQuantity());
         if (allocation == CapacityAllocationResult.INSUFFICIENT_CAPACITY) {
             transaction.markCapacityReviewPending();
-        } else if (allocation == CapacityAllocationResult.ALLOCATED) {
+        } else if (allocation == CapacityAllocationResult.ALLOCATED
+                || allocation == CapacityAllocationResult.ALREADY_ALLOCATED) {
             luckyNumberService.generateFor(transaction);
+        }
+    }
+
+    private void validateConsolidatedApprovedLedgerState(Transaction transaction) {
+        Long currentEventId = transaction.getCurrentPaymentEventId();
+        if (currentEventId == null) {
+            throw new IllegalStateException("Approved transaction has no consolidated payment ledger event.");
+        }
+        PaymentEvent currentEvent = paymentEventRepository
+                .findById(currentEventId)
+                .orElseThrow(() -> new IllegalStateException("Consolidated payment ledger event was not found."));
+        boolean approvedProviderState = paymentStateMachine
+                .mapProviderStatus(currentEvent.getProviderStatus())
+                .filter(status -> status == PaymentStatus.APPROVED)
+                .isPresent();
+        boolean sameTransaction = currentEvent.getProviderPayment().getTransaction() != null
+                && currentEvent.getProviderPayment().getTransaction().getId().equals(transaction.getId());
+        if (currentEvent.getReconciliationStatus() != PaymentEventReconciliationStatus.MATCHED
+                || currentEvent.getProcessingStatus() != PaymentEventProcessingStatus.APPLIED
+                || !approvedProviderState
+                || !sameTransaction) {
+            throw new IllegalStateException("Consolidated payment ledger state is not eligible for approval.");
         }
     }
 

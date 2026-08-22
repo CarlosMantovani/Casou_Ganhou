@@ -15,7 +15,6 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -37,7 +36,7 @@ public class CapacityReservationServiceImpl implements CapacityReservationServic
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void reserve(String externalReference, int quantity) {
         OffsetDateTime now = now();
         RaffleCapacity capacity = lockCapacity();

@@ -64,6 +64,9 @@ public class Transaction {
 
     private String mpPreferenceId;
 
+    @Column(length = 2048)
+    private String mpCheckoutUrl;
+
     @Column(nullable = false, length = 50)
     private String participantFlagCode;
 
@@ -193,6 +196,10 @@ public class Transaction {
         return mpPreferenceId;
     }
 
+    public String getMpCheckoutUrl() {
+        return mpCheckoutUrl;
+    }
+
     public String getParticipantFlagCode() {
         return participantFlagCode;
     }
@@ -218,8 +225,9 @@ public class Transaction {
         this.mpPaymentId = mpPaymentId;
     }
 
-    public void assignPreference(String mpPreferenceId) {
+    public void assignPreference(String mpPreferenceId, String mpCheckoutUrl) {
         this.mpPreferenceId = mpPreferenceId;
+        this.mpCheckoutUrl = mpCheckoutUrl;
     }
 
     public void assignRecoveryCode(String recoveryCode) {

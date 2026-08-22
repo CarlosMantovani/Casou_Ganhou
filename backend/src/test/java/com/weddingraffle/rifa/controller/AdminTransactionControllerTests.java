@@ -140,7 +140,7 @@ class AdminTransactionControllerTests {
 
     @Test
     void createCashTransactionReturnsApprovedNumbersForAdmin() throws Exception {
-        when(adminTransactionService.createCashTransaction(any()))
+        when(adminTransactionService.createCashTransaction(eq("cash-key-123"), any()))
                 .thenReturn(new CashTransactionCreateResponse(
                         "external",
                         "4821",
@@ -158,6 +158,7 @@ class AdminTransactionControllerTests {
                         4));
 
         mockMvc.perform(post("/transactions/cash")
+                        .header("Idempotency-Key", "cash-key-123")
                         .contentType("application/json")
                         .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
@@ -171,6 +172,15 @@ class AdminTransactionControllerTests {
                 .andExpect(jsonPath("$.luckyNumbers[0]").value("00003"))
                 .andExpect(jsonPath("$.previousLuckyNumbers[0]").value("00001"))
                 .andExpect(jsonPath("$.totalLuckyNumbers").value(4));
+    }
+
+    @Test
+    void createCashTransactionRequiresIdempotencyKeyForAdmin() throws Exception {
+        mockMvc.perform(post("/transactions/cash")
+                        .contentType("application/json")
+                        .content("{\"name\":\"Guest User\",\"phone\":\"(11) 99999-9999\",\"quantity\":2}")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

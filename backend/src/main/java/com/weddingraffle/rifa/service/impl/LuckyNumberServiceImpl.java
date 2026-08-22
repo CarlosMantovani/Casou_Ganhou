@@ -7,8 +7,12 @@ import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.service.LuckyNumberCandidateGenerator;
 import com.weddingraffle.rifa.service.LuckyNumberService;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,29 +21,38 @@ public class LuckyNumberServiceImpl implements LuckyNumberService {
     private final AppProperties appProperties;
     private final LuckyNumberRepository luckyNumberRepository;
     private final LuckyNumberCandidateGenerator candidateGenerator;
+    private final Clock clock;
 
     public LuckyNumberServiceImpl(
             AppProperties appProperties,
             LuckyNumberRepository luckyNumberRepository,
-            LuckyNumberCandidateGenerator candidateGenerator) {
+            LuckyNumberCandidateGenerator candidateGenerator,
+            Clock clock) {
         this.appProperties = appProperties;
         this.luckyNumberRepository = luckyNumberRepository;
         this.candidateGenerator = candidateGenerator;
+        this.clock = clock;
     }
 
     @Override
     public List<LuckyNumber> generateFor(Transaction transaction) {
+        if (transaction.hasCompletedLuckyNumberBatch()) {
+            return completedBatch(transaction);
+        }
         if (luckyNumberRepository.existsByTransaction(transaction)) {
-            return luckyNumberRepository.findByTransactionOrderByNumberAsc(transaction);
+            throw new IllegalStateException("Lucky numbers exist without a completed batch marker.");
         }
 
         NumberRange range = numberRange();
         List<LuckyNumber> luckyNumbers = new ArrayList<>();
-        for (int index = 0; index < transaction.getQuantity(); index++) {
+        for (int index = 1; index <= transaction.getQuantity(); index++) {
             String number = nextAvailableNumber(range, luckyNumbers);
-            luckyNumbers.add(new LuckyNumber(number, transaction.getEmail(), transaction));
+            luckyNumbers.add(new LuckyNumber(number, transaction.getEmail(), transaction, index));
         }
-        return luckyNumberRepository.saveAll(luckyNumbers);
+        List<LuckyNumber> persisted = luckyNumberRepository.saveAllAndFlush(luckyNumbers);
+        ensureExactBatch(transaction, persisted);
+        transaction.markLuckyNumberBatchCompleted(OffsetDateTime.now(clock));
+        return persisted;
     }
 
     @Override
@@ -77,6 +90,27 @@ public class LuckyNumberServiceImpl implements LuckyNumberService {
             throw new IllegalStateException("Invalid lucky number range.");
         }
         return new NumberRange(min, max, Math.max(minValue.length(), maxValue.length()));
+    }
+
+    private List<LuckyNumber> completedBatch(Transaction transaction) {
+        List<LuckyNumber> luckyNumbers = luckyNumberRepository.findByTransactionOrderByNumberAsc(transaction);
+        ensureExactBatch(transaction, luckyNumbers);
+        return luckyNumbers;
+    }
+
+    private static void ensureExactBatch(Transaction transaction, List<LuckyNumber> luckyNumbers) {
+        Set<Integer> indexes = new HashSet<>();
+        for (LuckyNumber luckyNumber : luckyNumbers) {
+            indexes.add(luckyNumber.getAllocationIndex());
+        }
+        if (luckyNumbers.size() != transaction.getQuantity() || indexes.size() != transaction.getQuantity()) {
+            throw new IllegalStateException("Lucky-number batch does not match transaction quantity.");
+        }
+        for (int expectedIndex = 1; expectedIndex <= transaction.getQuantity(); expectedIndex++) {
+            if (!indexes.contains(expectedIndex)) {
+                throw new IllegalStateException("Lucky-number batch does not match transaction quantity.");
+            }
+        }
     }
 
     private static boolean contains(List<LuckyNumber> luckyNumbers, String number) {

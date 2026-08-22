@@ -172,6 +172,10 @@ class PurchaseIdempotencyConcurrencyIntegrationTests {
         assertThat(responses).hasSize(2).allMatch(responses.getFirst()::equals);
         assertThat(transactionRepository.count()).isEqualTo(1);
         assertThat(luckyNumberRepository.count()).isEqualTo(3);
+        assertThat(transactionRepository.findAll())
+                .singleElement()
+                .extracting(transaction -> transaction.getLuckyNumbersGeneratedAt())
+                .isNotNull();
         assertThat(purchaseIntentRepository.count()).isEqualTo(1);
         assertThat(capacityReservationRepository.findAll())
                 .singleElement()

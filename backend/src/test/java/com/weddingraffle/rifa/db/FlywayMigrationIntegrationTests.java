@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -8,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -80,6 +82,16 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(columnExists(statement, "transaction", "current_payment_event_id"))
                     .isTrue();
+            assertThat(columnExists(statement, "transaction", "lucky_numbers_generated_at"))
+                    .isTrue();
+            assertThat(columnExists(statement, "lucky_number", "allocation_index"))
+                    .isTrue();
+            assertThat(constraintExists(statement, "uq_lucky_number_transaction_allocation_index"))
+                    .isTrue();
+            assertThat(triggerExists(statement, "trg_transaction_lucky_number_batch_integrity"))
+                    .isTrue();
+            assertThat(triggerExists(statement, "trg_lucky_number_batch_integrity"))
+                    .isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
             assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
             assertThat(adminTransactionSummaryQueryWorks(statement)).isTrue();
@@ -145,6 +157,53 @@ class FlywayMigrationIntegrationTests {
         }
     }
 
+    @Test
+    void migratesAnExistingExactLuckyNumberBatchAndPersistsItsMarker() throws SQLException {
+        String schema = "legacy_exact_lucky_number_batch";
+        flyway(schema, MigrationVersion.fromVersion("16")).migrate();
+
+        try (Connection connection = POSTGRES.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            long transactionId = insertLegacyTransaction(statement, "legacy-exact-batch", 2);
+            statement.executeUpdate("insert into lucky_number (number, transaction_id) values ('00001', "
+                    + transactionId + "), ('00002', " + transactionId + ")");
+        }
+
+        flyway(schema, null).migrate();
+
+        try (Connection connection = POSTGRES.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            assertThat(singleLong(
+                            statement, "select count(*) from transaction where lucky_numbers_generated_at is not null"))
+                    .isEqualTo(1);
+            assertThat(
+                            singleString(
+                                    statement,
+                                    "select string_agg(allocation_index::text, ',' order by allocation_index) from lucky_number"))
+                    .isEqualTo("1,2");
+        }
+    }
+
+    @Test
+    void refusesToMarkAnExistingPartialLuckyNumberBatchAsCompleted() throws SQLException {
+        String schema = "legacy_partial_lucky_number_batch";
+        flyway(schema, MigrationVersion.fromVersion("16")).migrate();
+
+        try (Connection connection = POSTGRES.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            long transactionId = insertLegacyTransaction(statement, "legacy-partial-batch", 2);
+            statement.executeUpdate(
+                    "insert into lucky_number (number, transaction_id) values ('00001', " + transactionId + ")");
+        }
+
+        assertThatThrownBy(() -> flyway(schema, null).migrate())
+                .isInstanceOf(FlywayException.class)
+                .hasStackTraceContaining("persisted count differs from transaction quantity");
+    }
+
     private static Flyway flyway(String schema, MigrationVersion target) {
         var configuration = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
@@ -198,6 +257,23 @@ class FlywayMigrationIntegrationTests {
         try (ResultSet resultSet = statement.executeQuery(
                 "select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = '"
                         + tableName + "' and column_name = '" + columnName + "')")) {
+            resultSet.next();
+            return resultSet.getBoolean(1);
+        }
+    }
+
+    private static boolean constraintExists(Statement statement, String constraintName) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                "select exists (select 1 from pg_constraint where connamespace = 'public'::regnamespace and conname = '"
+                        + constraintName + "')")) {
+            resultSet.next();
+            return resultSet.getBoolean(1);
+        }
+    }
+
+    private static boolean triggerExists(Statement statement, String triggerName) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                "select exists (select 1 from pg_trigger where not tgisinternal and tgname = '" + triggerName + "')")) {
             resultSet.next();
             return resultSet.getBoolean(1);
         }
@@ -375,5 +451,44 @@ class FlywayMigrationIntegrationTests {
                 )
                 """
                         .formatted(quantity, totalAmount, externalReference, flagCode, flagCode, capacityReviewStatus));
+    }
+
+    private static long insertLegacyTransaction(Statement statement, String externalReference, int quantity)
+            throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(
+                """
+                insert into transaction (
+                    name,
+                    phone,
+                    quantity,
+                    total_amount,
+                    unit_price,
+                    status,
+                    payment_method,
+                    external_reference,
+                    recovery_code,
+                    participant_flag_code,
+                    participant_flag_name,
+                    participant_flag_emoji
+                ) values (
+                    'Legacy Batch Buyer',
+                    '11999999999',
+                    %d,
+                    %d0.00,
+                    10.00,
+                    'APPROVED',
+                    'CASH',
+                    '%s',
+                    '4821',
+                    'BRAZIL',
+                    'Brasil',
+                    'BR'
+                )
+                returning id
+                """
+                        .formatted(quantity, quantity, externalReference))) {
+            resultSet.next();
+            return resultSet.getLong(1);
+        }
     }
 }

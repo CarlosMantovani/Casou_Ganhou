@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -52,11 +53,16 @@ class FlywayMigrationIntegrationTests {
             assertThat(tableExists(statement, "raffle_capacity")).isTrue();
             assertThat(tableExists(statement, "capacity_reservation")).isTrue();
             assertThat(tableExists(statement, "purchase_intent")).isTrue();
+            assertThat(tableExists(statement, "provider_payment")).isTrue();
+            assertThat(tableExists(statement, "payment_event")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_email")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_external_reference"))
                     .isTrue();
             assertThat(indexExists(statement, "idx_transaction_status")).isTrue();
             assertThat(indexExists(statement, "idx_lucky_number_email")).isTrue();
+            assertThat(indexExists(statement, "idx_provider_payment_transaction_id"))
+                    .isTrue();
+            assertThat(indexExists(statement, "idx_payment_event_history")).isTrue();
             assertThat(columnExists(statement, "transaction", "confirmation_email_sent_at"))
                     .isFalse();
             assertThat(columnExists(statement, "transaction", "confirmation_email_failed_at"))
@@ -68,9 +74,105 @@ class FlywayMigrationIntegrationTests {
                     .isTrue();
             assertThat(columnExists(statement, "purchase_intent", "response_payload"))
                     .isTrue();
+            assertThat(columnExists(statement, "transaction", "mp_collector_id"))
+                    .isTrue();
+            assertThat(columnExists(statement, "transaction", "payment_state_updated_at"))
+                    .isTrue();
+            assertThat(columnExists(statement, "transaction", "current_payment_event_id"))
+                    .isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
             assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
             assertThat(adminTransactionSummaryQueryWorks(statement)).isTrue();
+        }
+    }
+
+    @Test
+    void migratesExistingPaymentIdentifiersIntoAnUnverifiedLegacyLedger() throws SQLException {
+        String schema = "legacy_payment_ledger";
+        Flyway beforeLedger = flyway(schema, MigrationVersion.fromVersion("15"));
+        beforeLedger.migrate();
+
+        try (Connection connection = POSTGRES.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate(
+                    """
+                    insert into transaction (
+                        name,
+                        phone,
+                        quantity,
+                        total_amount,
+                        unit_price,
+                        status,
+                        payment_method,
+                        external_reference,
+                        recovery_code,
+                        participant_flag_code,
+                        participant_flag_name,
+                        participant_flag_emoji,
+                        mp_payment_id,
+                        mp_preference_id
+                    ) values (
+                        'Legacy Buyer',
+                        '11999999999',
+                        2,
+                        20.00,
+                        10.00,
+                        'APPROVED',
+                        'MERCADO_PAGO',
+                        'legacy-external-reference',
+                        '4821',
+                        'BRAZIL',
+                        'Brasil',
+                        'BR',
+                        'legacy-payment-123',
+                        '456-preference-123'
+                    )
+                    """);
+        }
+
+        flyway(schema, null).migrate();
+
+        try (Connection connection = POSTGRES.createConnection("");
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            assertThat(singleString(statement, "select mp_collector_id from transaction"))
+                    .isEqualTo("456");
+            assertThat(singleLong(statement, "select count(*) from provider_payment"))
+                    .isEqualTo(1);
+            assertThat(singleString(statement, "select failure_reasons from payment_event"))
+                    .isEqualTo("LEGACY_UNVERIFIED");
+        }
+    }
+
+    private static Flyway flyway(String schema, MigrationVersion target) {
+        var configuration = Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas(schema)
+                .locations("classpath:db/migration")
+                .placeholders(Map.of(
+                        "admin_username", "admin",
+                        "admin_password_hash", ADMIN_PASSWORD_HASH,
+                        "raffle_unit_price", RAFFLE_UNIT_PRICE,
+                        "raffle_number_min", RAFFLE_NUMBER_MIN,
+                        "raffle_number_max", RAFFLE_NUMBER_MAX));
+        if (target != null) {
+            configuration.target(target);
+        }
+        return configuration.load();
+    }
+
+    private static String singleString(Statement statement, String query) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+            resultSet.next();
+            return resultSet.getString(1);
+        }
+    }
+
+    private static long singleLong(Statement statement, String query) throws SQLException {
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+            resultSet.next();
+            return resultSet.getLong(1);
         }
     }
 

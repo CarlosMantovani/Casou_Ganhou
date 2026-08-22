@@ -15,10 +15,9 @@ import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
-import com.weddingraffle.rifa.service.CapacityAllocationResult;
-import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.OnlinePurchaseAttempt;
+import com.weddingraffle.rifa.service.PaymentReconciliationService;
 import com.weddingraffle.rifa.service.PurchaseIntentService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import com.weddingraffle.rifa.service.TransactionService;
@@ -26,14 +25,10 @@ import com.weddingraffle.rifa.util.ParticipantNormalizer;
 import com.weddingraffle.rifa.util.PurchaseRequestHasher;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -44,7 +39,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
-    private final CapacityReservationService capacityReservationService;
+    private final PaymentReconciliationService paymentReconciliationService;
     private final PurchaseIntentService purchaseIntentService;
     private final PurchaseRequestHasher purchaseRequestHasher;
 
@@ -53,14 +48,14 @@ public class TransactionServiceImpl implements TransactionService {
             TransactionRepository transactionRepository,
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
-            CapacityReservationService capacityReservationService,
+            PaymentReconciliationService paymentReconciliationService,
             PurchaseIntentService purchaseIntentService,
             PurchaseRequestHasher purchaseRequestHasher) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
-        this.capacityReservationService = capacityReservationService;
+        this.paymentReconciliationService = paymentReconciliationService;
         this.purchaseIntentService = purchaseIntentService;
         this.purchaseRequestHasher = purchaseRequestHasher;
     }
@@ -112,38 +107,12 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    @Transactional
     public void processPaymentNotification(String paymentId) {
         PaymentProviderPayment payment = paymentProviderClient.getPayment(paymentId);
-        Transaction transaction = transactionRepository
-                .findByExternalReference(payment.externalReference())
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
-
-        PaymentStatus currentStatus = transaction.getStatus();
-        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-        boolean paymentIdChanged = !Objects.equals(transaction.getMpPaymentId(), payment.paymentId());
-
-        if (currentStatus == paymentStatus && !paymentIdChanged) {
-            LOGGER.info(
-                    "Ignored unchanged payment notification for externalReference={} status={}",
-                    transaction.getExternalReference(),
-                    currentStatus);
-            return;
-        }
-
-        if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
-            allocateLuckyNumbersOrStartReview(transaction);
-        }
-        transaction.markPayment(paymentStatus, payment.paymentId());
-        transactionRepository.save(transaction);
-        LOGGER.info(
-                "Updated transaction externalReference={} to status={}",
-                transaction.getExternalReference(),
-                transaction.getStatus());
+        paymentReconciliationService.reconcile(paymentId, null, payment);
     }
 
     @Override
-    @Transactional
     public TransactionStatusResponse getStatus(String externalReference) {
         Transaction transaction = transactionRepository
                 .findByExternalReference(externalReference)
@@ -151,13 +120,15 @@ public class TransactionServiceImpl implements TransactionService {
 
         if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
             refreshPendingTransaction(transaction);
+            transaction = transactionRepository
+                    .findByExternalReference(externalReference)
+                    .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
         }
 
         return toStatusResponse(transaction);
     }
 
     @Override
-    @Transactional
     public TransactionStatusResponse recover(TransactionRecoveryRequest request) {
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         List<Transaction> transactions =
@@ -166,28 +137,31 @@ public class TransactionServiceImpl implements TransactionService {
             throw new ResourceNotFoundException("Transaction not found.");
         }
 
+        boolean refreshed = false;
         for (Transaction transaction : transactions) {
             if (transaction.getStatus() == PaymentStatus.PENDING && transaction.getMpPaymentId() != null) {
                 refreshPendingTransaction(transaction);
+                refreshed = true;
             }
         }
 
-        return transactions.stream()
+        if (refreshed) {
+            transactions =
+                    transactionRepository.findByPhoneAndRecoveryCodeOrderByCreatedAtDesc(phone, request.recoveryCode());
+        }
+
+        List<Transaction> currentTransactions = transactions;
+        return currentTransactions.stream()
                 .filter(transaction -> transaction.getStatus() == PaymentStatus.APPROVED)
                 .findFirst()
                 .map(this::toRecoveryResponse)
-                .orElseGet(() -> toStatusResponse(transactions.getFirst()));
+                .orElseGet(() -> toStatusResponse(currentTransactions.getFirst()));
     }
 
     private void refreshPendingTransaction(Transaction transaction) {
         PaymentProviderPayment payment = paymentProviderClient.getPayment(transaction.getMpPaymentId());
-        PaymentStatus paymentStatus = toPaymentStatus(payment.status());
-        PaymentStatus currentStatus = transaction.getStatus();
-        if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
-            allocateLuckyNumbersOrStartReview(transaction);
-        }
-        transaction.markPayment(paymentStatus, payment.paymentId());
-        transactionRepository.save(transaction);
+        paymentReconciliationService.reconcile(
+                transaction.getMpPaymentId(), transaction.getExternalReference(), payment);
     }
 
     private TransactionStatusResponse toStatusResponse(Transaction transaction) {
@@ -209,21 +183,6 @@ public class TransactionServiceImpl implements TransactionService {
                 luckyNumbers.size() + previousLuckyNumbers.size());
     }
 
-    private void allocateLuckyNumbersOrStartReview(Transaction transaction) {
-        if (transaction.getCapacityReviewStatus() != null) {
-            return;
-        }
-        CapacityAllocationResult allocation =
-                capacityReservationService.allocate(transaction.getExternalReference(), transaction.getQuantity());
-        if (allocation == CapacityAllocationResult.INSUFFICIENT_CAPACITY) {
-            transaction.markCapacityReviewPending();
-            return;
-        }
-        if (allocation == CapacityAllocationResult.ALLOCATED) {
-            luckyNumberService.generateFor(transaction);
-        }
-    }
-
     private TransactionStatusResponse toRecoveryResponse(Transaction transaction) {
         List<String> luckyNumbers = luckyNumberService.findApprovedNumbersByPhone(transaction.getPhone());
         return new TransactionStatusResponse(
@@ -237,21 +196,6 @@ public class TransactionServiceImpl implements TransactionService {
                 luckyNumbers,
                 List.of(),
                 luckyNumbers.size());
-    }
-
-    private static PaymentStatus toPaymentStatus(String mercadoPagoStatus) {
-        if (!StringUtils.hasText(mercadoPagoStatus)) {
-            return PaymentStatus.PENDING;
-        }
-        return switch (mercadoPagoStatus.toLowerCase(Locale.ROOT)) {
-            case "approved" -> PaymentStatus.APPROVED;
-            case "rejected" -> PaymentStatus.REJECTED;
-            case "cancelled", "canceled" -> PaymentStatus.CANCELLED;
-            case "refunded" -> PaymentStatus.REFUNDED;
-            case "charged_back" -> PaymentStatus.CHARGED_BACK;
-            case "in_mediation" -> PaymentStatus.IN_MEDIATION;
-            default -> PaymentStatus.PENDING;
-        };
     }
 
     private void ensureDrawIsOpen() {

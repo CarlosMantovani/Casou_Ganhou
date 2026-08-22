@@ -121,7 +121,7 @@ public class PurchaseIntentServiceImpl implements PurchaseIntentService {
         }
 
         Transaction transaction = findTransaction(intent);
-        transaction.assignPreference(preference.preferenceId(), preference.checkoutUrl());
+        transaction.assignPreference(preference.preferenceId(), preference.checkoutUrl(), preference.collectorId());
         TransactionCreateResponse response = new TransactionCreateResponse(
                 transaction.getExternalReference(),
                 transaction.getRecoveryCode(),

@@ -25,10 +25,9 @@ import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
-import com.weddingraffle.rifa.service.CapacityAllocationResult;
-import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.OnlinePurchaseAttempt;
+import com.weddingraffle.rifa.service.PaymentReconciliationService;
 import com.weddingraffle.rifa.service.PurchaseIntentService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
 import com.weddingraffle.rifa.util.PurchaseRequestHasher;
@@ -58,7 +57,7 @@ class TransactionServiceImplTests {
     private RaffleConfigService raffleConfigService;
 
     @Mock
-    private CapacityReservationService capacityReservationService;
+    private PaymentReconciliationService paymentReconciliationService;
 
     @Mock
     private PurchaseIntentService purchaseIntentService;
@@ -112,11 +111,13 @@ class TransactionServiceImplTests {
                         new BigDecimal("20.00")))
                 .thenReturn(new OnlinePurchaseAttempt(preferenceRequest, null));
         when(paymentProviderClient.createPreference(preferenceRequest, idempotencyKey))
-                .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
+                .thenReturn(new CheckoutPreferenceResponse(
+                        "preference-123", "https://checkout.example.com", "collector-123"));
         when(purchaseIntentService.completeOnline(
                         idempotencyKey,
                         requestHash,
-                        new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com")))
+                        new CheckoutPreferenceResponse(
+                                "preference-123", "https://checkout.example.com", "collector-123")))
                 .thenReturn(expectedResponse);
 
         TransactionCreateResponse response = transactionService.create(
@@ -140,7 +141,8 @@ class TransactionServiceImplTests {
                 .completeOnline(
                         idempotencyKey,
                         requestHash,
-                        new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
+                        new CheckoutPreferenceResponse(
+                                "preference-123", "https://checkout.example.com", "collector-123"));
     }
 
     @Test
@@ -213,7 +215,7 @@ class TransactionServiceImplTests {
                 new CheckoutPreferenceRequest("Guest User", null, 2, new BigDecimal("10.00"), "external-reference-123");
         OnlinePurchaseAttempt pendingAttempt = new OnlinePurchaseAttempt(preferenceRequest, null);
         CheckoutPreferenceResponse preference =
-                new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com");
+                new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com", "collector-123");
         TransactionCreateResponse persistedResponse = new TransactionCreateResponse(
                 "external-reference-123", "4821", "preference-123", "https://checkout.example.com");
         when(purchaseIntentService.findOnline(idempotencyKey, requestHash))
@@ -262,7 +264,7 @@ class TransactionServiceImplTests {
                 new CheckoutPreferenceRequest("Guest User", null, 2, new BigDecimal("10.00"), "external-reference-123");
         OnlinePurchaseAttempt pendingAttempt = new OnlinePurchaseAttempt(preferenceRequest, null);
         CheckoutPreferenceResponse preference =
-                new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com");
+                new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com", "collector-123");
         TransactionCreateResponse persistedResponse = new TransactionCreateResponse(
                 "external-reference-123", "4821", "preference-123", "https://checkout.example.com");
         when(purchaseIntentService.findOnline(idempotencyKey, requestHash))
@@ -294,103 +296,15 @@ class TransactionServiceImplTests {
     }
 
     @Test
-    void processesApprovedPaymentNotification() {
+    void fetchesPaymentOutsideTheDatabaseProcessorAndDelegatesReconciliation() {
         TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-        when(capacityReservationService.allocate("external-reference-123", 2))
-                .thenReturn(CapacityAllocationResult.ALLOCATED);
+        PaymentProviderPayment payment = payment("123", "external-reference-123", "approved");
+        when(paymentProviderClient.getPayment("123")).thenReturn(payment);
 
         transactionService.processPaymentNotification("123");
 
-        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.APPROVED);
-        assertThat(transaction.getMpPaymentId()).isEqualTo("123");
-        verify(luckyNumberService).generateFor(transaction);
-        verify(transactionRepository).save(transaction);
-    }
-
-    @Test
-    void processesRejectedPaymentNotificationWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "rejected"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-
-        transactionService.processPaymentNotification("123");
-
-        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REJECTED);
-        verify(luckyNumberService, never()).generateFor(transaction);
-        verify(transactionRepository).save(transaction);
-    }
-
-    @Test
-    void ignoresDuplicateNotificationForApprovedTransaction() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
-        transaction.markPayment(PaymentStatus.APPROVED, "123");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-
-        transactionService.processPaymentNotification("123");
-
-        verify(luckyNumberService, never()).generateFor(transaction);
-        verify(transactionRepository, never()).save(transaction);
-    }
-
-    @Test
-    void updatesApprovedTransactionWhenPaymentIsRefundedWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
-        transaction.markPayment(PaymentStatus.APPROVED, "123");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "refunded"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-
-        transactionService.processPaymentNotification("123");
-
-        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
-        verify(luckyNumberService, never()).generateFor(transaction);
-        verify(transactionRepository).save(transaction);
-    }
-
-    @Test
-    void mapsChargebackAndMediationStatusesWithoutGeneratingLuckyNumbers() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction chargebackTransaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-123");
-        chargebackTransaction.markPayment(PaymentStatus.APPROVED, "123");
-        Transaction mediationTransaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.APPROVED, "external-reference-456");
-        mediationTransaction.markPayment(PaymentStatus.APPROVED, "456");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "charged_back"));
-        when(paymentProviderClient.getPayment("456"))
-                .thenReturn(new PaymentProviderPayment("456", "external-reference-456", "in_mediation"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(chargebackTransaction));
-        when(transactionRepository.findByExternalReference("external-reference-456"))
-                .thenReturn(Optional.of(mediationTransaction));
-
-        transactionService.processPaymentNotification("123");
-        transactionService.processPaymentNotification("456");
-
-        assertThat(chargebackTransaction.getStatus()).isEqualTo(PaymentStatus.CHARGED_BACK);
-        assertThat(mediationTransaction.getStatus()).isEqualTo(PaymentStatus.IN_MEDIATION);
-        verify(luckyNumberService, never()).generateFor(any());
-        verify(transactionRepository).save(chargebackTransaction);
-        verify(transactionRepository).save(mediationTransaction);
+        verify(paymentReconciliationService).reconcile("123", null, payment);
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -422,13 +336,18 @@ class TransactionServiceImplTests {
         TransactionServiceImpl transactionService = transactionService();
         Transaction transaction = new Transaction(
                 "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
-        transaction.markPayment(PaymentStatus.PENDING, "123");
+        transaction.markPaymentState(
+                PaymentStatus.PENDING, "123", java.time.OffsetDateTime.parse("2026-08-22T12:00:00Z"), (short) 10, 1L);
         when(transactionRepository.findByExternalReference("external-reference-123"))
                 .thenReturn(Optional.of(transaction));
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
-        when(capacityReservationService.allocate("external-reference-123", 2))
-                .thenReturn(CapacityAllocationResult.ALLOCATED);
+        PaymentProviderPayment payment = payment("123", "external-reference-123", "approved");
+        when(paymentProviderClient.getPayment("123")).thenReturn(payment);
+        when(paymentReconciliationService.reconcile("123", "external-reference-123", payment))
+                .thenAnswer(invocation -> {
+                    transaction.markPaymentState(
+                            PaymentStatus.APPROVED, "123", payment.dateLastUpdated(), (short) 40, 2L);
+                    return com.weddingraffle.rifa.entity.PaymentEventProcessingStatus.APPLIED;
+                });
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
         when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external-reference-123"))
                 .thenReturn(List.of());
@@ -436,49 +355,7 @@ class TransactionServiceImplTests {
         var response = transactionService.getStatus("external-reference-123");
 
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
-        verify(luckyNumberService).generateFor(transaction);
-        verify(transactionRepository).save(transaction);
-    }
-
-    @Test
-    void keepsApprovedLatePaymentInCapacityReviewWithoutGeneratingPartialNumbers() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-        when(capacityReservationService.allocate("external-reference-123", 2))
-                .thenReturn(CapacityAllocationResult.INSUFFICIENT_CAPACITY);
-
-        transactionService.processPaymentNotification("123");
-
-        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.APPROVED);
-        assertThat(transaction.getCapacityReviewStatus())
-                .isEqualTo(com.weddingraffle.rifa.entity.CapacityReviewStatus.PENDING);
-        verify(luckyNumberService, never()).generateFor(any());
-        verify(transactionRepository).save(transaction);
-    }
-
-    @Test
-    void doesNotRetryAllocationAfterTransactionEnteredCapacityReview() {
-        TransactionServiceImpl transactionService = transactionService();
-        Transaction transaction = new Transaction(
-                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.REFUNDED, "external-reference-123");
-        transaction.markCapacityReviewPending();
-        when(paymentProviderClient.getPayment("123"))
-                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
-        when(transactionRepository.findByExternalReference("external-reference-123"))
-                .thenReturn(Optional.of(transaction));
-
-        transactionService.processPaymentNotification("123");
-
-        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.APPROVED);
-        assertThat(transaction.getCapacityReviewStatus())
-                .isEqualTo(com.weddingraffle.rifa.entity.CapacityReviewStatus.PENDING);
-        verify(capacityReservationService, never()).allocate(any(), any(Integer.class));
-        verify(luckyNumberService, never()).generateFor(any());
+        verify(paymentReconciliationService).reconcile("123", "external-reference-123", payment);
     }
 
     @Test
@@ -515,8 +392,23 @@ class TransactionServiceImplTests {
                 transactionRepository,
                 paymentProviderClient,
                 luckyNumberService,
-                capacityReservationService,
+                paymentReconciliationService,
                 purchaseIntentService,
                 purchaseRequestHasher);
+    }
+
+    private static PaymentProviderPayment payment(String paymentId, String externalReference, String status) {
+        return new PaymentProviderPayment(
+                paymentId,
+                externalReference,
+                externalReference,
+                "preference-123",
+                "collector-123",
+                new BigDecimal("20.00"),
+                "BRL",
+                status,
+                "accredited",
+                java.time.OffsetDateTime.parse("2026-08-22T11:00:00Z"),
+                java.time.OffsetDateTime.parse("2026-08-22T12:00:00Z"));
     }
 }

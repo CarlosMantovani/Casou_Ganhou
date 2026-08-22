@@ -6,12 +6,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.payment.PaymentOrder;
 import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -23,8 +28,10 @@ class MercadoPagoClientTests {
         Preference preference = mock(Preference.class);
         when(preference.getId()).thenReturn("preference-123");
         when(preference.getInitPoint()).thenReturn("https://checkout.example.com");
+        when(preference.getCollectorId()).thenReturn(456L);
         when(preferenceClient.create(any(), any(MPRequestOptions.class))).thenReturn(preference);
-        MercadoPagoClient client = new MercadoPagoClient(appProperties(), mock(PaymentClient.class), preferenceClient);
+        MercadoPagoClient client = new MercadoPagoClient(
+                appProperties(), mock(PaymentClient.class), preferenceClient, mock(MerchantOrderClient.class));
 
         CheckoutPreferenceResponse response = client.createPreference(
                 new CheckoutPreferenceRequest("Guest User", null, 2, new BigDecimal("10.00"), "external-reference-123"),
@@ -34,7 +41,52 @@ class MercadoPagoClientTests {
         verify(preferenceClient).create(any(), optionsCaptor.capture());
         assertThat(optionsCaptor.getValue().getCustomHeaders()).containsEntry("X-Idempotency-Key", "checkout-key-123");
         assertThat(response)
-                .isEqualTo(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
+                .isEqualTo(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com", "456"));
+    }
+
+    @Test
+    void mapsAllFieldsRequiredForPaymentReconciliation() throws Exception {
+        PaymentClient paymentClient = mock(PaymentClient.class);
+        MerchantOrderClient merchantOrderClient = mock(MerchantOrderClient.class);
+        Payment payment = mock(Payment.class);
+        PaymentOrder paymentOrder = mock(PaymentOrder.class);
+        MerchantOrder merchantOrder = mock(MerchantOrder.class);
+        OffsetDateTime createdAt = OffsetDateTime.parse("2026-08-22T11:00:00Z");
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2026-08-22T12:00:00Z");
+        when(payment.getId()).thenReturn(123L);
+        when(payment.getExternalReference()).thenReturn("external-reference-123");
+        when(payment.getCollectorId()).thenReturn(456L);
+        when(payment.getTransactionAmount()).thenReturn(new BigDecimal("20.00"));
+        when(payment.getCurrencyId()).thenReturn("BRL");
+        when(payment.getStatus()).thenReturn("approved");
+        when(payment.getStatusDetail()).thenReturn("accredited");
+        when(payment.getDateCreated()).thenReturn(createdAt);
+        when(payment.getDateLastUpdated()).thenReturn(updatedAt);
+        when(payment.getOrder()).thenReturn(paymentOrder);
+        when(paymentOrder.getId()).thenReturn(789L);
+        when(paymentClient.get(123L)).thenReturn(payment);
+        when(merchantOrder.getPreferenceId()).thenReturn("preference-123");
+        when(merchantOrder.getExternalReference()).thenReturn("external-reference-123");
+        when(merchantOrderClient.get(789L)).thenReturn(merchantOrder);
+        MercadoPagoClient client = new MercadoPagoClient(
+                appProperties(), paymentClient, mock(PreferenceClient.class), merchantOrderClient);
+
+        PaymentProviderPayment result = client.getPayment("123");
+
+        assertThat(result)
+                .isEqualTo(new PaymentProviderPayment(
+                        "123",
+                        "external-reference-123",
+                        "external-reference-123",
+                        "preference-123",
+                        "456",
+                        new BigDecimal("20.00"),
+                        "BRL",
+                        "approved",
+                        "accredited",
+                        createdAt,
+                        updatedAt));
+        verify(merchantOrderClient).get(789L);
     }
 
     private static AppProperties appProperties() {

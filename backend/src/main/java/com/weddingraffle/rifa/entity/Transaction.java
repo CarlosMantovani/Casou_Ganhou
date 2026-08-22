@@ -64,8 +64,16 @@ public class Transaction {
 
     private String mpPreferenceId;
 
+    private String mpCollectorId;
+
     @Column(length = 2048)
     private String mpCheckoutUrl;
+
+    private OffsetDateTime paymentStateUpdatedAt;
+
+    private Short paymentStatePriority;
+
+    private Long currentPaymentEventId;
 
     @Column(nullable = false, length = 50)
     private String participantFlagCode;
@@ -196,8 +204,24 @@ public class Transaction {
         return mpPreferenceId;
     }
 
+    public String getMpCollectorId() {
+        return mpCollectorId;
+    }
+
     public String getMpCheckoutUrl() {
         return mpCheckoutUrl;
+    }
+
+    public OffsetDateTime getPaymentStateUpdatedAt() {
+        return paymentStateUpdatedAt;
+    }
+
+    public Short getPaymentStatePriority() {
+        return paymentStatePriority;
+    }
+
+    public Long getCurrentPaymentEventId() {
+        return currentPaymentEventId;
     }
 
     public String getParticipantFlagCode() {
@@ -220,14 +244,23 @@ public class Transaction {
         return updatedAt;
     }
 
-    public void markPayment(PaymentStatus status, String mpPaymentId) {
+    public void markPaymentState(
+            PaymentStatus status,
+            String mpPaymentId,
+            OffsetDateTime paymentStateUpdatedAt,
+            short paymentStatePriority,
+            Long currentPaymentEventId) {
         this.status = status;
         this.mpPaymentId = mpPaymentId;
+        this.paymentStateUpdatedAt = paymentStateUpdatedAt;
+        this.paymentStatePriority = paymentStatePriority;
+        this.currentPaymentEventId = currentPaymentEventId;
     }
 
-    public void assignPreference(String mpPreferenceId, String mpCheckoutUrl) {
+    public void assignPreference(String mpPreferenceId, String mpCheckoutUrl, String mpCollectorId) {
         this.mpPreferenceId = mpPreferenceId;
         this.mpCheckoutUrl = mpCheckoutUrl;
+        this.mpCollectorId = mpCollectorId;
     }
 
     public void assignRecoveryCode(String recoveryCode) {

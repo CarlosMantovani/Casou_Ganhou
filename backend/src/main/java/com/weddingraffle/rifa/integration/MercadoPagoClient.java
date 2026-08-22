@@ -1,6 +1,7 @@
 package com.weddingraffle.rifa.integration;
 
 import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
@@ -10,6 +11,7 @@ import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
+import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
@@ -33,18 +35,24 @@ public class MercadoPagoClient implements PaymentProviderClient {
 
     private final AppProperties appProperties;
     private final PaymentClient paymentClient;
+    private final MerchantOrderClient merchantOrderClient;
     private final PreferenceClient preferenceClient;
 
     @Autowired
     public MercadoPagoClient(AppProperties appProperties) {
-        this(appProperties, new PaymentClient(), new PreferenceClient());
+        this(appProperties, new PaymentClient(), new PreferenceClient(), new MerchantOrderClient());
     }
 
-    MercadoPagoClient(AppProperties appProperties, PaymentClient paymentClient, PreferenceClient preferenceClient) {
+    MercadoPagoClient(
+            AppProperties appProperties,
+            PaymentClient paymentClient,
+            PreferenceClient preferenceClient,
+            MerchantOrderClient merchantOrderClient) {
         this.appProperties = appProperties;
         MercadoPagoConfig.setAccessToken(appProperties.mercadoPago().accessToken());
         this.paymentClient = paymentClient;
         this.preferenceClient = preferenceClient;
+        this.merchantOrderClient = merchantOrderClient;
     }
 
     @Override
@@ -61,7 +69,8 @@ public class MercadoPagoClient implements PaymentProviderClient {
                     .customHeaders(Map.of("X-Idempotency-Key", idempotencyKey))
                     .build();
             Preference preference = preferenceClient.create(toPreferenceRequest(request), requestOptions);
-            return new CheckoutPreferenceResponse(preference.getId(), preference.getInitPoint());
+            return new CheckoutPreferenceResponse(
+                    preference.getId(), preference.getInitPoint(), asString(preference.getCollectorId()));
         } catch (MPApiException | MPException exception) {
             throw new ExternalPaymentException("Unable to create Mercado Pago preference.", exception);
         }
@@ -79,17 +88,39 @@ public class MercadoPagoClient implements PaymentProviderClient {
         LOGGER.info("Mercado Pago payment status request paymentId={}", paymentId);
         try {
             Payment payment = paymentClient.get(Long.valueOf(paymentId));
+            MerchantOrder merchantOrder = getMerchantOrder(payment);
             LOGGER.info(
                     "Mercado Pago payment status response paymentId={} externalReference={} status={}",
                     payment.getId(),
                     payment.getExternalReference(),
                     payment.getStatus());
             return new PaymentProviderPayment(
-                    String.valueOf(payment.getId()), payment.getExternalReference(), payment.getStatus());
+                    asString(payment.getId()),
+                    payment.getExternalReference(),
+                    merchantOrder != null ? merchantOrder.getExternalReference() : null,
+                    merchantOrder != null ? merchantOrder.getPreferenceId() : null,
+                    asString(payment.getCollectorId()),
+                    payment.getTransactionAmount(),
+                    payment.getCurrencyId(),
+                    payment.getStatus(),
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getDateLastUpdated());
         } catch (MPApiException | MPException | NumberFormatException exception) {
             LOGGER.warn("Mercado Pago payment status request failed paymentId={}", paymentId, exception);
             throw new ExternalPaymentException("Unable to get Mercado Pago payment.", exception);
         }
+    }
+
+    private MerchantOrder getMerchantOrder(Payment payment) throws MPException, MPApiException {
+        if (payment.getOrder() == null || payment.getOrder().getId() == null) {
+            return null;
+        }
+        return merchantOrderClient.get(payment.getOrder().getId());
+    }
+
+    private static String asString(Long value) {
+        return value != null ? String.valueOf(value) : null;
     }
 
     private PreferenceRequest toPreferenceRequest(CheckoutPreferenceRequest request) {

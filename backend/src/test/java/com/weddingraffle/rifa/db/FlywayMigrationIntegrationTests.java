@@ -18,6 +18,8 @@ class FlywayMigrationIntegrationTests {
 
     private static final String ADMIN_PASSWORD_HASH = "$2a$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
     private static final String RAFFLE_UNIT_PRICE = "10.00";
+    private static final String RAFFLE_NUMBER_MIN = "00000";
+    private static final String RAFFLE_NUMBER_MAX = "99999";
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -33,7 +35,9 @@ class FlywayMigrationIntegrationTests {
                 .placeholders(Map.of(
                         "admin_username", "admin",
                         "admin_password_hash", ADMIN_PASSWORD_HASH,
-                        "raffle_unit_price", RAFFLE_UNIT_PRICE))
+                        "raffle_unit_price", RAFFLE_UNIT_PRICE,
+                        "raffle_number_min", RAFFLE_NUMBER_MIN,
+                        "raffle_number_max", RAFFLE_NUMBER_MAX))
                 .load();
 
         flyway.migrate();
@@ -45,6 +49,8 @@ class FlywayMigrationIntegrationTests {
             assertThat(tableExists(statement, "raffle_draw")).isTrue();
             assertThat(tableExists(statement, "admin_user")).isTrue();
             assertThat(tableExists(statement, "raffle_config")).isTrue();
+            assertThat(tableExists(statement, "raffle_capacity")).isTrue();
+            assertThat(tableExists(statement, "capacity_reservation")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_email")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_external_reference"))
                     .isTrue();
@@ -165,6 +171,16 @@ class FlywayMigrationIntegrationTests {
                     '2030-08-21T10:00:00-03:00'
                 )
                 """);
+        insertCapacityReviewTransaction(
+                statement,
+                "capacity-review-contribution",
+                "CONTRIBUTION_WITHOUT_NUMBERS",
+                100,
+                "1000.00",
+                "UNITED_STATES");
+        insertCapacityReviewTransaction(
+                statement, "capacity-review-refund", "REFUND_COMPLETED", 50, "500.00", "MEXICO");
+        insertCapacityReviewTransaction(statement, "capacity-review-pending", "PENDING", 20, "200.00", "FRANCE");
 
         try (ResultSet resultSet = statement.executeQuery(
                 """
@@ -175,6 +191,7 @@ class FlywayMigrationIntegrationTests {
                     cast(sum(quantity) as bigint) as total_numbers
                 from transaction
                 where status = 'APPROVED'
+                  and capacity_review_status is null
                 group by participant_flag_code, participant_flag_name, participant_flag_emoji
                 order by sum(quantity) desc, max(created_at) desc, participant_flag_name asc
                 """)) {
@@ -189,16 +206,67 @@ class FlywayMigrationIntegrationTests {
                 """
                 select
                     cast(count(id) as bigint) as total_transactions,
-                    cast(coalesce(sum(case when status = 'APPROVED' then quantity else 0 end), 0) as bigint)
+                    cast(coalesce(sum(case
+                        when status = 'APPROVED' and capacity_review_status is null then quantity
+                        else 0
+                    end), 0) as bigint)
                         as approved_lucky_numbers,
-                    coalesce(sum(case when status = 'APPROVED' then total_amount else 0 end), 0)
+                    coalesce(sum(case
+                        when status = 'APPROVED'
+                            and capacity_review_status is distinct from 'REFUND_COMPLETED'
+                        then total_amount
+                        else 0
+                    end), 0)
                         as approved_revenue
                 from transaction
                 """)) {
             return resultSet.next()
-                    && resultSet.getLong("total_transactions") == 2L
+                    && resultSet.getLong("total_transactions") == 5L
                     && resultSet.getLong("approved_lucky_numbers") == 6L
-                    && resultSet.getBigDecimal("approved_revenue").compareTo(new java.math.BigDecimal("60.00")) == 0;
+                    && resultSet.getBigDecimal("approved_revenue").compareTo(new java.math.BigDecimal("1260.00")) == 0;
         }
+    }
+
+    private static void insertCapacityReviewTransaction(
+            Statement statement,
+            String externalReference,
+            String capacityReviewStatus,
+            int quantity,
+            String totalAmount,
+            String flagCode)
+            throws SQLException {
+        statement.executeUpdate(
+                """
+                insert into transaction (
+                    name,
+                    phone,
+                    quantity,
+                    total_amount,
+                    unit_price,
+                    status,
+                    payment_method,
+                    external_reference,
+                    recovery_code,
+                    participant_flag_code,
+                    participant_flag_name,
+                    participant_flag_emoji,
+                    capacity_review_status
+                ) values (
+                    'Capacity Review Buyer',
+                    '11999999999',
+                    %d,
+                    %s,
+                    10.00,
+                    'APPROVED',
+                    'MERCADO_PAGO',
+                    '%s',
+                    '4821',
+                    '%s',
+                    '%s',
+                    'FLAG',
+                    '%s'
+                )
+                """
+                        .formatted(quantity, totalAmount, externalReference, flagCode, flagCode, capacityReviewStatus));
     }
 }

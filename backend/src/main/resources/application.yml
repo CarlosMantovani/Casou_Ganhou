@@ -18,6 +18,8 @@ spring:
       admin_username: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_USERNAME}
       admin_password_hash: ${SPRING_FLYWAY_PLACEHOLDERS_ADMIN_PASSWORD_HASH}
       raffle_unit_price: ${RAFFLE_UNIT_PRICE}
+      raffle_number_min: ${RAFFLE_NUMBER_MIN}
+      raffle_number_max: ${RAFFLE_NUMBER_MAX}
 
 server:
   port: ${SERVER_PORT:8080}

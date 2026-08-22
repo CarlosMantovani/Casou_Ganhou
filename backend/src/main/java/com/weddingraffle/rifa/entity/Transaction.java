@@ -50,6 +50,10 @@ public class Transaction {
     @Column(nullable = false, columnDefinition = "payment_method")
     private PaymentMethod paymentMethod = PaymentMethod.MERCADO_PAGO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 40)
+    private CapacityReviewStatus capacityReviewStatus;
+
     @Column(nullable = false, unique = true)
     private String externalReference;
 
@@ -169,6 +173,10 @@ public class Transaction {
         return paymentMethod;
     }
 
+    public CapacityReviewStatus getCapacityReviewStatus() {
+        return capacityReviewStatus;
+    }
+
     public String getExternalReference() {
         return externalReference;
     }
@@ -222,6 +230,19 @@ public class Transaction {
         this.participantFlagCode = participantFlag.code();
         this.participantFlagName = participantFlag.name();
         this.participantFlagEmoji = participantFlag.emoji();
+    }
+
+    public void markCapacityReviewPending() {
+        capacityReviewStatus = CapacityReviewStatus.PENDING;
+    }
+
+    public void completeCapacityReview(CapacityReviewStatus resolution) {
+        if (capacityReviewStatus != CapacityReviewStatus.PENDING
+                || resolution == null
+                || resolution == CapacityReviewStatus.PENDING) {
+            throw new IllegalStateException("Invalid capacity review transition.");
+        }
+        capacityReviewStatus = resolution;
     }
 
     private static BigDecimal inferUnitPrice(BigDecimal totalAmount, Integer quantity) {

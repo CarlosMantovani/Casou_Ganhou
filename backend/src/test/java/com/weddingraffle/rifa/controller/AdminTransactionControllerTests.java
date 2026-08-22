@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +18,7 @@ import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.config.SecurityConfig;
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
+import com.weddingraffle.rifa.dto.CapacityReviewDecision;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
 import com.weddingraffle.rifa.entity.PaymentMethod;
@@ -83,6 +85,7 @@ class AdminTransactionControllerTests {
                         "11999999999",
                         "guest@example.com",
                         PaymentMethod.MERCADO_PAGO,
+                        null,
                         2,
                         new BigDecimal("20.00"),
                         PaymentStatusResponse.APROVADO,
@@ -203,6 +206,26 @@ class AdminTransactionControllerTests {
                 .andExpect(status().isNoContent());
 
         verify(adminTransactionService).deleteCashTransaction("cash-reference");
+    }
+
+    @Test
+    void capacityReviewDecisionRequiresAuthentication() throws Exception {
+        mockMvc.perform(put("/transactions/external/capacity-review")
+                        .contentType("application/json")
+                        .content("{\"decision\":\"REFUND_COMPLETED\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void resolvesCapacityReviewForAdmin() throws Exception {
+        mockMvc.perform(put("/transactions/external/capacity-review")
+                        .contentType("application/json")
+                        .content("{\"decision\":\"CONTRIBUTION_WITHOUT_NUMBERS\"}")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isNoContent());
+
+        verify(adminTransactionService)
+                .resolveCapacityReview("external", CapacityReviewDecision.CONTRIBUTION_WITHOUT_NUMBERS);
     }
 
     @TestConfiguration

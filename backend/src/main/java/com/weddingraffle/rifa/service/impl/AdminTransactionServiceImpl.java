@@ -2,9 +2,11 @@ package com.weddingraffle.rifa.service.impl;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
+import com.weddingraffle.rifa.dto.CapacityReviewDecision;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
+import com.weddingraffle.rifa.entity.CapacityReviewStatus;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
@@ -16,6 +18,8 @@ import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
+import com.weddingraffle.rifa.service.CapacityAllocationResult;
+import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
@@ -42,6 +46,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     private final LuckyNumberService luckyNumberService;
     private final ParticipantFlagService participantFlagService;
     private final RecoveryCodeService recoveryCodeService;
+    private final CapacityReservationService capacityReservationService;
 
     public AdminTransactionServiceImpl(
             RaffleConfigService raffleConfigService,
@@ -49,13 +54,15 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             LuckyNumberRepository luckyNumberRepository,
             LuckyNumberService luckyNumberService,
             ParticipantFlagService participantFlagService,
-            RecoveryCodeService recoveryCodeService) {
+            RecoveryCodeService recoveryCodeService,
+            CapacityReservationService capacityReservationService) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.luckyNumberRepository = luckyNumberRepository;
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
         this.recoveryCodeService = recoveryCodeService;
+        this.capacityReservationService = capacityReservationService;
     }
 
     @Override
@@ -85,6 +92,9 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         String email = ParticipantNormalizer.normalizeEmail(request.email());
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
+        String externalReference = UUID.randomUUID().toString();
+
+        capacityReservationService.reserve(externalReference, request.quantity());
 
         Transaction transaction = new Transaction(
                 name,
@@ -95,10 +105,15 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 totalAmount,
                 PaymentStatus.APPROVED,
                 PaymentMethod.CASH,
-                UUID.randomUUID().toString());
+                externalReference);
         transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
         transaction.assignRecoveryCode(recoveryCodeService.resolveForPhone(phone));
         transactionRepository.save(transaction);
+        CapacityAllocationResult allocation =
+                capacityReservationService.allocate(externalReference, request.quantity());
+        if (allocation != CapacityAllocationResult.ALLOCATED) {
+            throw new IllegalStateException("Cash transaction capacity was not allocated.");
+        }
         List<String> luckyNumbers = luckyNumberService.generateFor(transaction).stream()
                 .map(LuckyNumber::getNumber)
                 .sorted()
@@ -135,7 +150,29 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
         }
 
         luckyNumberRepository.deleteByTransaction(transaction);
+        capacityReservationService.releaseAllocation(externalReference);
         transactionRepository.delete(transaction);
+    }
+
+    @Override
+    @Transactional
+    public void resolveCapacityReview(String externalReference, CapacityReviewDecision decision) {
+        Transaction transaction = transactionRepository
+                .findByExternalReference(externalReference)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found."));
+        if (transaction.getPaymentMethod() != PaymentMethod.MERCADO_PAGO
+                || transaction.getStatus() != PaymentStatus.APPROVED
+                || transaction.getCapacityReviewStatus() != CapacityReviewStatus.PENDING) {
+            throw new InvalidTransactionStateException("Transaction is not pending capacity review.");
+        }
+
+        CapacityReviewStatus resolution =
+                switch (decision) {
+                    case REFUND_COMPLETED -> CapacityReviewStatus.REFUND_COMPLETED;
+                    case CONTRIBUTION_WITHOUT_NUMBERS -> CapacityReviewStatus.CONTRIBUTION_WITHOUT_NUMBERS;
+                };
+        transaction.completeCapacityReview(resolution);
+        transactionRepository.save(transaction);
     }
 
     private Map<Transaction, List<String>> numbersByTransaction(List<Transaction> transactions) {
@@ -166,6 +203,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
                 transaction.getPhone(),
                 transaction.getEmail(),
                 transaction.getPaymentMethod(),
+                transaction.getCapacityReviewStatus(),
                 transaction.getQuantity(),
                 transaction.getTotalAmount(),
                 PaymentStatusResponse.from(transaction.getStatus()),

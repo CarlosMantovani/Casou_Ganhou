@@ -17,6 +17,8 @@ import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
+import com.weddingraffle.rifa.service.CapacityAllocationResult;
+import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
@@ -45,6 +47,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final LuckyNumberService luckyNumberService;
     private final ParticipantFlagService participantFlagService;
     private final RecoveryCodeService recoveryCodeService;
+    private final CapacityReservationService capacityReservationService;
 
     public TransactionServiceImpl(
             RaffleConfigService raffleConfigService,
@@ -52,13 +55,15 @@ public class TransactionServiceImpl implements TransactionService {
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
             ParticipantFlagService participantFlagService,
-            RecoveryCodeService recoveryCodeService) {
+            RecoveryCodeService recoveryCodeService,
+            CapacityReservationService capacityReservationService) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
         this.participantFlagService = participantFlagService;
         this.recoveryCodeService = recoveryCodeService;
+        this.capacityReservationService = capacityReservationService;
     }
 
     @Override
@@ -80,6 +85,8 @@ public class TransactionServiceImpl implements TransactionService {
         String externalReference = UUID.randomUUID().toString();
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
+
+        capacityReservationService.reserve(externalReference, request.quantity());
 
         CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(
                 new CheckoutPreferenceRequest(name, null, request.quantity(), unitPrice, externalReference));
@@ -126,7 +133,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
-            luckyNumberService.generateFor(transaction);
+            allocateLuckyNumbersOrStartReview(transaction);
         }
         transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
@@ -178,7 +185,7 @@ public class TransactionServiceImpl implements TransactionService {
         PaymentStatus paymentStatus = toPaymentStatus(payment.status());
         PaymentStatus currentStatus = transaction.getStatus();
         if (paymentStatus == PaymentStatus.APPROVED && currentStatus != PaymentStatus.APPROVED) {
-            luckyNumberService.generateFor(transaction);
+            allocateLuckyNumbersOrStartReview(transaction);
         }
         transaction.markPayment(paymentStatus, payment.paymentId());
         transactionRepository.save(transaction);
@@ -201,6 +208,21 @@ public class TransactionServiceImpl implements TransactionService {
                 luckyNumbers,
                 previousLuckyNumbers,
                 luckyNumbers.size() + previousLuckyNumbers.size());
+    }
+
+    private void allocateLuckyNumbersOrStartReview(Transaction transaction) {
+        if (transaction.getCapacityReviewStatus() != null) {
+            return;
+        }
+        CapacityAllocationResult allocation =
+                capacityReservationService.allocate(transaction.getExternalReference(), transaction.getQuantity());
+        if (allocation == CapacityAllocationResult.INSUFFICIENT_CAPACITY) {
+            transaction.markCapacityReviewPending();
+            return;
+        }
+        if (allocation == CapacityAllocationResult.ALLOCATED) {
+            luckyNumberService.generateFor(transaction);
+        }
     }
 
     private TransactionStatusResponse toRecoveryResponse(Transaction transaction) {

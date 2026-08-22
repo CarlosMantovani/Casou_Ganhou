@@ -2,6 +2,7 @@ package com.weddingraffle.rifa.controller;
 
 import com.weddingraffle.rifa.dto.AdminTransactionResponse;
 import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
+import com.weddingraffle.rifa.dto.CapacityReviewDecisionRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.CashTransactionCreateResponse;
 import com.weddingraffle.rifa.service.AdminTransactionService;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -82,6 +84,14 @@ public class AdminTransactionController {
     public ResponseEntity<Void> deleteCashTransaction(@PathVariable String externalReference) {
         adminTransactionService.deleteCashTransaction(externalReference);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @Operation(summary = "Resolve an approved payment without lucky-number capacity")
+    @PutMapping("/{externalReference}/capacity-review")
+    public ResponseEntity<Void> resolveCapacityReview(
+            @PathVariable String externalReference, @Valid @RequestBody CapacityReviewDecisionRequest request) {
+        adminTransactionService.resolveCapacityReview(externalReference, request.decision());
+        return ResponseEntity.noContent().build();
     }
 
     private static String shortReference(String externalReference) {

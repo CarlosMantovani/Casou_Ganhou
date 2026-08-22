@@ -134,7 +134,8 @@ class PurchaseIdempotencyConcurrencyIntegrationTests {
             providerCalls.await(10, TimeUnit.SECONDS);
             return checkouts.computeIfAbsent(key, ignored -> {
                 createdCheckouts.incrementAndGet();
-                return new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com");
+                return new CheckoutPreferenceResponse(
+                        "preference-123", "https://checkout.example.com", "collector-123");
             });
         });
 
@@ -185,7 +186,8 @@ class PurchaseIdempotencyConcurrencyIntegrationTests {
     @Test
     void sameKeyWithDifferentPayloadIsRejectedWithoutAnotherReservation() {
         when(paymentProviderClient.createPreference(any(), anyString()))
-                .thenReturn(new CheckoutPreferenceResponse("preference-123", "https://checkout.example.com"));
+                .thenReturn(new CheckoutPreferenceResponse(
+                        "preference-123", "https://checkout.example.com", "collector-123"));
         transactionService.create(
                 "payload-conflict-key", new TransactionCreateRequest("Guest User", "(11) 99999-9999", 1));
 

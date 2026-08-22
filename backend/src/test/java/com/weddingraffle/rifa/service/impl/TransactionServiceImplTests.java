@@ -23,6 +23,8 @@ import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
 import com.weddingraffle.rifa.repository.TransactionRepository;
+import com.weddingraffle.rifa.service.CapacityAllocationResult;
+import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
@@ -56,6 +58,9 @@ class TransactionServiceImplTests {
 
     @Mock
     private RecoveryCodeService recoveryCodeService;
+
+    @Mock
+    private CapacityReservationService capacityReservationService;
 
     @Test
     void calculatesQuoteFromConfiguredUnitPrice() {
@@ -124,6 +129,7 @@ class TransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getParticipantFlagCode()).isEqualTo("BRAZIL");
         assertThat(transactionCaptor.getValue().getParticipantFlagName()).isEqualTo("Brasil");
         assertThat(transactionCaptor.getValue().getParticipantFlagEmoji()).isEqualTo("🇧🇷");
+        verify(capacityReservationService).reserve(response.externalReference(), 2);
     }
 
     @Test
@@ -148,6 +154,8 @@ class TransactionServiceImplTests {
                 .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
         when(transactionRepository.findByExternalReference("external-reference-123"))
                 .thenReturn(Optional.of(transaction));
+        when(capacityReservationService.allocate("external-reference-123", 2))
+                .thenReturn(CapacityAllocationResult.ALLOCATED);
 
         transactionService.processPaymentNotification("123");
 
@@ -271,6 +279,8 @@ class TransactionServiceImplTests {
                 .thenReturn(Optional.of(transaction));
         when(paymentProviderClient.getPayment("123"))
                 .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
+        when(capacityReservationService.allocate("external-reference-123", 2))
+                .thenReturn(CapacityAllocationResult.ALLOCATED);
         when(luckyNumberService.findNumbers("external-reference-123")).thenReturn(List.of("00001", "00002"));
         when(luckyNumberService.findPreviousApprovedNumbers("0000000000", "external-reference-123"))
                 .thenReturn(List.of());
@@ -280,6 +290,47 @@ class TransactionServiceImplTests {
         assertThat(response.status()).isEqualTo(PaymentStatusResponse.APROVADO);
         verify(luckyNumberService).generateFor(transaction);
         verify(transactionRepository).save(transaction);
+    }
+
+    @Test
+    void keepsApprovedLatePaymentInCapacityReviewWithoutGeneratingPartialNumbers() {
+        TransactionServiceImpl transactionService = transactionService();
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.PENDING, "external-reference-123");
+        when(paymentProviderClient.getPayment("123"))
+                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+        when(capacityReservationService.allocate("external-reference-123", 2))
+                .thenReturn(CapacityAllocationResult.INSUFFICIENT_CAPACITY);
+
+        transactionService.processPaymentNotification("123");
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(transaction.getCapacityReviewStatus())
+                .isEqualTo(com.weddingraffle.rifa.entity.CapacityReviewStatus.PENDING);
+        verify(luckyNumberService, never()).generateFor(any());
+        verify(transactionRepository).save(transaction);
+    }
+
+    @Test
+    void doesNotRetryAllocationAfterTransactionEnteredCapacityReview() {
+        TransactionServiceImpl transactionService = transactionService();
+        Transaction transaction = new Transaction(
+                "guest@example.com", 2, new BigDecimal("20.00"), PaymentStatus.REFUNDED, "external-reference-123");
+        transaction.markCapacityReviewPending();
+        when(paymentProviderClient.getPayment("123"))
+                .thenReturn(new PaymentProviderPayment("123", "external-reference-123", "approved"));
+        when(transactionRepository.findByExternalReference("external-reference-123"))
+                .thenReturn(Optional.of(transaction));
+
+        transactionService.processPaymentNotification("123");
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(transaction.getCapacityReviewStatus())
+                .isEqualTo(com.weddingraffle.rifa.entity.CapacityReviewStatus.PENDING);
+        verify(capacityReservationService, never()).allocate(any(), any(Integer.class));
+        verify(luckyNumberService, never()).generateFor(any());
     }
 
     @Test
@@ -317,6 +368,7 @@ class TransactionServiceImplTests {
                 paymentProviderClient,
                 luckyNumberService,
                 participantFlagService,
-                recoveryCodeService);
+                recoveryCodeService,
+                capacityReservationService);
     }
 }

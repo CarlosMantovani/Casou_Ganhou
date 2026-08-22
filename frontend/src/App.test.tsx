@@ -42,6 +42,7 @@ vi.mock('./services/adminTransactionService', () => ({
     getParticipantLuckyNumbersPdf: vi.fn(),
     getSummary: vi.fn(),
     list: vi.fn(),
+    resolveCapacityReview: vi.fn(),
   },
 }));
 
@@ -510,6 +511,25 @@ describe('App', () => {
     expect(screen.getByText(/Não compartilhe com ninguém/i)).toBeInTheDocument();
   });
 
+  it('keeps an approved payment without numbers in the normal buyer flow and directs contact to admin', async () => {
+    mockedTransactionService.getStatus.mockResolvedValue({
+      externalReference: 'external-reference',
+      recoveryCode: '4821',
+      luckyNumbers: [],
+      participantFlagEmoji: '🇧🇷',
+      participantFlagName: 'Brasil',
+      quantity: 2,
+      status: 'APROVADO',
+      totalAmount: '20.00',
+    });
+
+    renderApp('/payment-return/success?external_reference=external-reference');
+
+    expect(await screen.findByText('Pagamento confirmado')).toBeInTheDocument();
+    expect(screen.getByText(/Entre em contato com o administrador/i)).toBeInTheDocument();
+    expect(screen.queryByText('REVISÃO DE CAPACIDADE')).not.toBeInTheDocument();
+  });
+
   it('recovers lucky numbers by phone and code from the recovery page', async () => {
     const user = userEvent.setup();
     mockedTransactionService.recover.mockResolvedValue({
@@ -736,6 +756,47 @@ describe('App', () => {
     } finally {
       confirm.mockRestore();
     }
+  });
+
+  it('allows the admin to resolve a capacity review without exposing it publicly', async () => {
+    const user = userEvent.setup();
+    storeAdminSession(createAdminSession({ accessToken: 'jwt-token', expiresIn: 3600, tokenType: 'Bearer' }));
+    mockedAdminTransactionService.list.mockResolvedValue({
+      content: [
+        {
+          capacityReviewStatus: 'PENDING',
+          createdAt: '2026-08-14T18:00:00-03:00',
+          email: null,
+          externalReference: 'review-reference',
+          luckyNumbers: [],
+          name: 'Review Guest',
+          paymentMethod: 'MERCADO_PAGO',
+          phone: '11999999999',
+          quantity: 2,
+          status: 'APROVADO',
+          totalAmount: '20.00',
+        },
+      ],
+      first: true,
+      last: true,
+      number: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    });
+    mockedAdminTransactionService.resolveCapacityReview.mockResolvedValue();
+
+    renderApp('/admin');
+
+    expect(await screen.findByText('REVISÃO DE CAPACIDADE')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Contribuição mantida sem números' }));
+
+    await waitFor(() =>
+      expect(mockedAdminTransactionService.resolveCapacityReview).toHaveBeenCalledWith(
+        'review-reference',
+        'CONTRIBUTION_WITHOUT_NUMBERS',
+      ),
+    );
   });
 
   it('registers an admin cash payment and shows pdf link', async () => {

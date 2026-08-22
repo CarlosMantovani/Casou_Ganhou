@@ -2,6 +2,7 @@ import { apiClient } from '../config/apiClient';
 import type {
   AdminTransactionResponse,
   AdminTransactionSummaryResponse,
+  CapacityReviewDecision,
   CashTransactionCreateRequest,
   CashTransactionCreateResponse,
 } from '../types/admin';
@@ -40,6 +41,10 @@ export const adminTransactionService = {
 
   async deleteCashTransaction(externalReference: string): Promise<void> {
     await apiClient.delete(`/transactions/${externalReference}`);
+  },
+
+  async resolveCapacityReview(externalReference: string, decision: CapacityReviewDecision): Promise<void> {
+    await apiClient.put(`/transactions/${externalReference}/capacity-review`, { decision });
   },
 
   async getParticipantLuckyNumbersPdf(externalReference: string): Promise<Blob> {

@@ -9,8 +9,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.weddingraffle.rifa.dto.AdminTransactionSummaryResponse;
+import com.weddingraffle.rifa.dto.CapacityReviewDecision;
 import com.weddingraffle.rifa.dto.CashTransactionCreateRequest;
 import com.weddingraffle.rifa.dto.PaymentStatusResponse;
+import com.weddingraffle.rifa.entity.CapacityReviewStatus;
 import com.weddingraffle.rifa.entity.LuckyNumber;
 import com.weddingraffle.rifa.entity.ParticipantFlag;
 import com.weddingraffle.rifa.entity.PaymentMethod;
@@ -21,6 +23,8 @@ import com.weddingraffle.rifa.exception.InvalidTransactionStateException;
 import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
+import com.weddingraffle.rifa.service.CapacityAllocationResult;
+import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
 import com.weddingraffle.rifa.service.ParticipantFlagService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
@@ -55,6 +59,9 @@ class AdminTransactionServiceImplTests {
 
     @Mock
     private RecoveryCodeService recoveryCodeService;
+
+    @Mock
+    private CapacityReservationService capacityReservationService;
 
     @Test
     void listsTransactionsWithLuckyNumbers() {
@@ -124,6 +131,7 @@ class AdminTransactionServiceImplTests {
                 .thenReturn(new ParticipantFlag("BRAZIL", "Brasil", "🇧🇷"));
         when(raffleConfigService.getCurrentUnitPrice()).thenReturn(new BigDecimal("10.00"));
         when(recoveryCodeService.resolveForPhone("11999999999")).thenReturn("4821");
+        when(capacityReservationService.allocate(anyString(), eq(2))).thenReturn(CapacityAllocationResult.ALLOCATED);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(luckyNumberService.generateFor(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
@@ -152,6 +160,7 @@ class AdminTransactionServiceImplTests {
         assertThat(transactionCaptor.getValue().getRecoveryCode()).isEqualTo("4821");
         verify(luckyNumberService).generateFor(any(Transaction.class));
         verify(luckyNumberService).findPreviousApprovedNumbers(eq("11999999999"), anyString());
+        verify(capacityReservationService).reserve(response.externalReference(), 2);
     }
 
     @Test
@@ -182,6 +191,7 @@ class AdminTransactionServiceImplTests {
         service.deleteCashTransaction("cash-reference");
 
         verify(luckyNumberRepository).deleteByTransaction(transaction);
+        verify(capacityReservationService).releaseAllocation("cash-reference");
         verify(transactionRepository).delete(transaction);
     }
 
@@ -203,6 +213,44 @@ class AdminTransactionServiceImplTests {
                 .isInstanceOf(InvalidTransactionStateException.class);
     }
 
+    @Test
+    void recordsManualRefundForPendingCapacityReview() {
+        AdminTransactionServiceImpl service = service();
+        Transaction transaction = reviewedTransaction();
+        when(transactionRepository.findByExternalReference("mp-reference")).thenReturn(Optional.of(transaction));
+
+        service.resolveCapacityReview("mp-reference", CapacityReviewDecision.REFUND_COMPLETED);
+
+        assertThat(transaction.getCapacityReviewStatus()).isEqualTo(CapacityReviewStatus.REFUND_COMPLETED);
+        verify(transactionRepository).save(transaction);
+    }
+
+    @Test
+    void recordsContributionWithoutNumbersForPendingCapacityReview() {
+        AdminTransactionServiceImpl service = service();
+        Transaction transaction = reviewedTransaction();
+        when(transactionRepository.findByExternalReference("mp-reference")).thenReturn(Optional.of(transaction));
+
+        service.resolveCapacityReview("mp-reference", CapacityReviewDecision.CONTRIBUTION_WITHOUT_NUMBERS);
+
+        assertThat(transaction.getCapacityReviewStatus()).isEqualTo(CapacityReviewStatus.CONTRIBUTION_WITHOUT_NUMBERS);
+        verify(transactionRepository).save(transaction);
+    }
+
+    private static Transaction reviewedTransaction() {
+        Transaction transaction = new Transaction(
+                "Guest User",
+                "11999999999",
+                null,
+                1,
+                new BigDecimal("10.00"),
+                PaymentStatus.APPROVED,
+                PaymentMethod.MERCADO_PAGO,
+                "mp-reference");
+        transaction.markCapacityReviewPending();
+        return transaction;
+    }
+
     private AdminTransactionServiceImpl service() {
         return new AdminTransactionServiceImpl(
                 raffleConfigService,
@@ -210,6 +258,7 @@ class AdminTransactionServiceImplTests {
                 luckyNumberRepository,
                 luckyNumberService,
                 participantFlagService,
-                recoveryCodeService);
+                recoveryCodeService,
+                capacityReservationService);
     }
 }

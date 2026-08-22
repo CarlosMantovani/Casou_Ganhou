@@ -75,6 +75,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/transactions/{externalReference}")
                         .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/transactions/{externalReference}/capacity-review")
+                        .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/admin/raffle-config")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/admin/raffle-config/unit-price")

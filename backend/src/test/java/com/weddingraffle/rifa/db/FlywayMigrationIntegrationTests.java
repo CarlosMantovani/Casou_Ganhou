@@ -51,6 +51,7 @@ class FlywayMigrationIntegrationTests {
             assertThat(tableExists(statement, "raffle_config")).isTrue();
             assertThat(tableExists(statement, "raffle_capacity")).isTrue();
             assertThat(tableExists(statement, "capacity_reservation")).isTrue();
+            assertThat(tableExists(statement, "purchase_intent")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_email")).isTrue();
             assertThat(indexExists(statement, "idx_transaction_external_reference"))
                     .isTrue();
@@ -63,6 +64,10 @@ class FlywayMigrationIntegrationTests {
             assertThat(columnExists(statement, "transaction", "confirmation_email_last_error"))
                     .isFalse();
             assertThat(columnExists(statement, "transaction", "unit_price")).isTrue();
+            assertThat(columnExists(statement, "purchase_intent", "request_hash"))
+                    .isTrue();
+            assertThat(columnExists(statement, "purchase_intent", "response_payload"))
+                    .isTrue();
             assertThat(adminSeedExists(statement)).isTrue();
             assertThat(approvedFlagRankingQueryWorks(statement)).isTrue();
             assertThat(adminTransactionSummaryQueryWorks(statement)).isTrue();

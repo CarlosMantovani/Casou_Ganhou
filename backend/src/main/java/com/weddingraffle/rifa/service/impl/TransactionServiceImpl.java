@@ -7,12 +7,10 @@ import com.weddingraffle.rifa.dto.TransactionQuoteRequest;
 import com.weddingraffle.rifa.dto.TransactionQuoteResponse;
 import com.weddingraffle.rifa.dto.TransactionRecoveryRequest;
 import com.weddingraffle.rifa.dto.TransactionStatusResponse;
-import com.weddingraffle.rifa.entity.PaymentMethod;
 import com.weddingraffle.rifa.entity.PaymentStatus;
 import com.weddingraffle.rifa.entity.Transaction;
 import com.weddingraffle.rifa.exception.InvalidRaffleStateException;
 import com.weddingraffle.rifa.exception.ResourceNotFoundException;
-import com.weddingraffle.rifa.integration.CheckoutPreferenceRequest;
 import com.weddingraffle.rifa.integration.CheckoutPreferenceResponse;
 import com.weddingraffle.rifa.integration.PaymentProviderClient;
 import com.weddingraffle.rifa.integration.PaymentProviderPayment;
@@ -20,18 +18,19 @@ import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.CapacityAllocationResult;
 import com.weddingraffle.rifa.service.CapacityReservationService;
 import com.weddingraffle.rifa.service.LuckyNumberService;
-import com.weddingraffle.rifa.service.ParticipantFlagService;
+import com.weddingraffle.rifa.service.OnlinePurchaseAttempt;
+import com.weddingraffle.rifa.service.PurchaseIntentService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
-import com.weddingraffle.rifa.service.RecoveryCodeService;
 import com.weddingraffle.rifa.service.TransactionService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
+import com.weddingraffle.rifa.util.PurchaseRequestHasher;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,25 +44,25 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final PaymentProviderClient paymentProviderClient;
     private final LuckyNumberService luckyNumberService;
-    private final ParticipantFlagService participantFlagService;
-    private final RecoveryCodeService recoveryCodeService;
     private final CapacityReservationService capacityReservationService;
+    private final PurchaseIntentService purchaseIntentService;
+    private final PurchaseRequestHasher purchaseRequestHasher;
 
     public TransactionServiceImpl(
             RaffleConfigService raffleConfigService,
             TransactionRepository transactionRepository,
             PaymentProviderClient paymentProviderClient,
             LuckyNumberService luckyNumberService,
-            ParticipantFlagService participantFlagService,
-            RecoveryCodeService recoveryCodeService,
-            CapacityReservationService capacityReservationService) {
+            CapacityReservationService capacityReservationService,
+            PurchaseIntentService purchaseIntentService,
+            PurchaseRequestHasher purchaseRequestHasher) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.paymentProviderClient = paymentProviderClient;
         this.luckyNumberService = luckyNumberService;
-        this.participantFlagService = participantFlagService;
-        this.recoveryCodeService = recoveryCodeService;
         this.capacityReservationService = capacityReservationService;
+        this.purchaseIntentService = purchaseIntentService;
+        this.purchaseRequestHasher = purchaseRequestHasher;
     }
 
     @Override
@@ -77,39 +76,39 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    @Transactional
-    public TransactionCreateResponse create(TransactionCreateRequest request) {
-        ensureDrawIsOpen();
+    public TransactionCreateResponse create(String idempotencyKey, TransactionCreateRequest request) {
+        String normalizedIdempotencyKey = purchaseRequestHasher.normalizeIdempotencyKey(idempotencyKey);
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
-        String externalReference = UUID.randomUUID().toString();
+        String requestHash = purchaseRequestHasher.online(name, phone, request.quantity());
+
+        OnlinePurchaseAttempt attempt = purchaseIntentService
+                .findOnline(normalizedIdempotencyKey, requestHash)
+                .orElseGet(() ->
+                        prepareOnlineAttempt(normalizedIdempotencyKey, requestHash, name, phone, request.quantity()));
+        if (attempt.isCompleted()) {
+            return attempt.completedResponse();
+        }
+
+        CheckoutPreferenceResponse preference =
+                paymentProviderClient.createPreference(attempt.checkoutPreferenceRequest(), normalizedIdempotencyKey);
+        TransactionCreateResponse response =
+                purchaseIntentService.completeOnline(normalizedIdempotencyKey, requestHash, preference);
+        LOGGER.info("Completed pending transaction checkout with externalReference={}", response.externalReference());
+        return response;
+    }
+
+    private OnlinePurchaseAttempt prepareOnlineAttempt(
+            String idempotencyKey, String requestHash, String name, String phone, int quantity) {
+        ensureDrawIsOpen();
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
-        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
-
-        capacityReservationService.reserve(externalReference, request.quantity());
-
-        CheckoutPreferenceResponse preference = paymentProviderClient.createPreference(
-                new CheckoutPreferenceRequest(name, null, request.quantity(), unitPrice, externalReference));
-
-        Transaction transaction = new Transaction(
-                name,
-                phone,
-                null,
-                request.quantity(),
-                unitPrice,
-                totalAmount,
-                PaymentStatus.PENDING,
-                PaymentMethod.MERCADO_PAGO,
-                externalReference);
-        transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
-        transaction.assignRecoveryCode(recoveryCodeService.resolveForPhone(phone));
-        transaction.assignPreference(preference.preferenceId());
-        transactionRepository.save(transaction);
-
-        LOGGER.info("Created pending transaction with externalReference={}", externalReference);
-
-        return new TransactionCreateResponse(
-                externalReference, transaction.getRecoveryCode(), preference.preferenceId(), preference.checkoutUrl());
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        try {
+            return purchaseIntentService.prepareOnline(
+                    idempotencyKey, requestHash, name, phone, quantity, unitPrice, totalAmount);
+        } catch (DataIntegrityViolationException exception) {
+            return purchaseIntentService.findOnline(idempotencyKey, requestHash).orElseThrow(() -> exception);
+        }
     }
 
     @Override

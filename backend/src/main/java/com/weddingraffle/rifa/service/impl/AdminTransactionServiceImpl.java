@@ -18,19 +18,17 @@ import com.weddingraffle.rifa.repository.AdminTransactionSummaryProjection;
 import com.weddingraffle.rifa.repository.LuckyNumberRepository;
 import com.weddingraffle.rifa.repository.TransactionRepository;
 import com.weddingraffle.rifa.service.AdminTransactionService;
-import com.weddingraffle.rifa.service.CapacityAllocationResult;
 import com.weddingraffle.rifa.service.CapacityReservationService;
-import com.weddingraffle.rifa.service.LuckyNumberService;
-import com.weddingraffle.rifa.service.ParticipantFlagService;
+import com.weddingraffle.rifa.service.PurchaseIntentService;
 import com.weddingraffle.rifa.service.RaffleConfigService;
-import com.weddingraffle.rifa.service.RecoveryCodeService;
 import com.weddingraffle.rifa.util.ParticipantNormalizer;
+import com.weddingraffle.rifa.util.PurchaseRequestHasher;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -43,26 +41,23 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     private final RaffleConfigService raffleConfigService;
     private final TransactionRepository transactionRepository;
     private final LuckyNumberRepository luckyNumberRepository;
-    private final LuckyNumberService luckyNumberService;
-    private final ParticipantFlagService participantFlagService;
-    private final RecoveryCodeService recoveryCodeService;
     private final CapacityReservationService capacityReservationService;
+    private final PurchaseIntentService purchaseIntentService;
+    private final PurchaseRequestHasher purchaseRequestHasher;
 
     public AdminTransactionServiceImpl(
             RaffleConfigService raffleConfigService,
             TransactionRepository transactionRepository,
             LuckyNumberRepository luckyNumberRepository,
-            LuckyNumberService luckyNumberService,
-            ParticipantFlagService participantFlagService,
-            RecoveryCodeService recoveryCodeService,
-            CapacityReservationService capacityReservationService) {
+            CapacityReservationService capacityReservationService,
+            PurchaseIntentService purchaseIntentService,
+            PurchaseRequestHasher purchaseRequestHasher) {
         this.raffleConfigService = raffleConfigService;
         this.transactionRepository = transactionRepository;
         this.luckyNumberRepository = luckyNumberRepository;
-        this.luckyNumberService = luckyNumberService;
-        this.participantFlagService = participantFlagService;
-        this.recoveryCodeService = recoveryCodeService;
         this.capacityReservationService = capacityReservationService;
+        this.purchaseIntentService = purchaseIntentService;
+        this.purchaseRequestHasher = purchaseRequestHasher;
     }
 
     @Override
@@ -84,58 +79,31 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     }
 
     @Override
-    @Transactional
-    public CashTransactionCreateResponse createCashTransaction(CashTransactionCreateRequest request) {
-        ensureDrawIsOpen();
+    public CashTransactionCreateResponse createCashTransaction(
+            String idempotencyKey, CashTransactionCreateRequest request) {
+        String normalizedIdempotencyKey = purchaseRequestHasher.normalizeIdempotencyKey(idempotencyKey);
         String name = ParticipantNormalizer.normalizeName(request.name());
         String phone = ParticipantNormalizer.normalizePhone(request.phone());
         String email = ParticipantNormalizer.normalizeEmail(request.email());
+        String requestHash = purchaseRequestHasher.cash(name, phone, email, request.quantity());
+
+        return purchaseIntentService
+                .findCash(normalizedIdempotencyKey, requestHash)
+                .orElseGet(() -> createCashTransaction(
+                        normalizedIdempotencyKey, requestHash, name, phone, email, request.quantity()));
+    }
+
+    private CashTransactionCreateResponse createCashTransaction(
+            String idempotencyKey, String requestHash, String name, String phone, String email, int quantity) {
+        ensureDrawIsOpen();
         BigDecimal unitPrice = raffleConfigService.getCurrentUnitPrice();
-        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(request.quantity()));
-        String externalReference = UUID.randomUUID().toString();
-
-        capacityReservationService.reserve(externalReference, request.quantity());
-
-        Transaction transaction = new Transaction(
-                name,
-                phone,
-                email,
-                request.quantity(),
-                unitPrice,
-                totalAmount,
-                PaymentStatus.APPROVED,
-                PaymentMethod.CASH,
-                externalReference);
-        transaction.assignParticipantFlag(participantFlagService.resolveForPhone(phone));
-        transaction.assignRecoveryCode(recoveryCodeService.resolveForPhone(phone));
-        transactionRepository.save(transaction);
-        CapacityAllocationResult allocation =
-                capacityReservationService.allocate(externalReference, request.quantity());
-        if (allocation != CapacityAllocationResult.ALLOCATED) {
-            throw new IllegalStateException("Cash transaction capacity was not allocated.");
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        try {
+            return purchaseIntentService.createCash(
+                    idempotencyKey, requestHash, name, phone, email, quantity, unitPrice, totalAmount);
+        } catch (DataIntegrityViolationException exception) {
+            return purchaseIntentService.findCash(idempotencyKey, requestHash).orElseThrow(() -> exception);
         }
-        List<String> luckyNumbers = luckyNumberService.generateFor(transaction).stream()
-                .map(LuckyNumber::getNumber)
-                .sorted()
-                .toList();
-        List<String> previousLuckyNumbers = luckyNumberService.findPreviousApprovedNumbers(
-                transaction.getPhone(), transaction.getExternalReference());
-
-        return new CashTransactionCreateResponse(
-                transaction.getExternalReference(),
-                transaction.getRecoveryCode(),
-                transaction.getName(),
-                transaction.getPhone(),
-                transaction.getEmail(),
-                transaction.getPaymentMethod(),
-                PaymentStatusResponse.from(transaction.getStatus()),
-                transaction.getQuantity(),
-                transaction.getTotalAmount(),
-                transaction.getParticipantFlagName(),
-                transaction.getParticipantFlagEmoji(),
-                luckyNumbers,
-                previousLuckyNumbers,
-                luckyNumbers.size() + previousLuckyNumbers.size());
     }
 
     @Override

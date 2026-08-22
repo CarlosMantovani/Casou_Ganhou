@@ -7,6 +7,7 @@ import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
 import com.mercadopago.client.preference.PreferencePayerRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
@@ -14,8 +15,10 @@ import com.mercadopago.resources.preference.Preference;
 import com.weddingraffle.rifa.config.AppProperties;
 import com.weddingraffle.rifa.exception.ExternalPaymentException;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
@@ -32,11 +35,16 @@ public class MercadoPagoClient implements PaymentProviderClient {
     private final PaymentClient paymentClient;
     private final PreferenceClient preferenceClient;
 
+    @Autowired
     public MercadoPagoClient(AppProperties appProperties) {
+        this(appProperties, new PaymentClient(), new PreferenceClient());
+    }
+
+    MercadoPagoClient(AppProperties appProperties, PaymentClient paymentClient, PreferenceClient preferenceClient) {
         this.appProperties = appProperties;
         MercadoPagoConfig.setAccessToken(appProperties.mercadoPago().accessToken());
-        this.paymentClient = new PaymentClient();
-        this.preferenceClient = new PreferenceClient();
+        this.paymentClient = paymentClient;
+        this.preferenceClient = preferenceClient;
     }
 
     @Override
@@ -47,9 +55,12 @@ public class MercadoPagoClient implements PaymentProviderClient {
                     @Backoff(
                             delayExpression = "${app.mercado-pago.retry.delay-millis}",
                             multiplierExpression = "${app.mercado-pago.retry.multiplier}"))
-    public CheckoutPreferenceResponse createPreference(CheckoutPreferenceRequest request) {
+    public CheckoutPreferenceResponse createPreference(CheckoutPreferenceRequest request, String idempotencyKey) {
         try {
-            Preference preference = preferenceClient.create(toPreferenceRequest(request));
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                    .customHeaders(Map.of("X-Idempotency-Key", idempotencyKey))
+                    .build();
+            Preference preference = preferenceClient.create(toPreferenceRequest(request), requestOptions);
             return new CheckoutPreferenceResponse(preference.getId(), preference.getInitPoint());
         } catch (MPApiException | MPException exception) {
             throw new ExternalPaymentException("Unable to create Mercado Pago preference.", exception);

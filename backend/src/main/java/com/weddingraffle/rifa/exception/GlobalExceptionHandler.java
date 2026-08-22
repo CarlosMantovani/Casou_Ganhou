@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -105,6 +106,17 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyConflict(
+            IdempotencyConflictException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.CONFLICT.value(),
+                        "IDEMPOTENCY_CONFLICT",
+                        exception.getMessage(),
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
             IllegalArgumentException exception, HttpServletRequest request) {
@@ -113,6 +125,17 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST.value(),
                         "BAD_REQUEST",
                         exception.getMessage(),
+                        request.getRequestURI()));
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestHeader(
+            MissingRequestHeaderException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest()
+                .body(ApiErrorResponse.withoutFieldErrors(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "BAD_REQUEST",
+                        "Required request header is missing.",
                         request.getRequestURI()));
     }
 
